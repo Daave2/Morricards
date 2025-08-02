@@ -17,7 +17,7 @@ export default function ProductCard({ product, layout }: { product: Product, lay
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
   const placeholderImage = `https://placehold.co/400x400.png`;
-  const imageUrl = product.productDetails.imageUrls?.[0]?.url;
+  const imageUrl = product.imageUrl;
 
   const cardContent = (
       <>
