@@ -5,16 +5,23 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2 } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
+import { Checkbox } from './ui/checkbox';
 
-type Product = FetchMorrisonsDataOutput[0];
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
+
+interface ProductCardProps {
+  product: Product;
+  layout: 'grid' | 'list';
+  onPick: (sku: string) => void;
+}
 
 const DataRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string | number | null }) => {
-    if (!value) return null;
+    if (value === undefined || value === null || value === '') return null;
     return (
         <div className="flex items-start gap-3">
             <div className="w-5 h-5 text-muted-foreground flex-shrink-0">{icon}</div>
@@ -23,7 +30,7 @@ const DataRow = ({ icon, label, value }: { icon: React.ReactNode, label: string,
     );
 }
 
-export default function ProductCard({ product, layout }: { product: Product, layout: 'grid' | 'list' }) {
+export default function ProductCard({ product, layout, onPick }: ProductCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
@@ -46,6 +53,14 @@ export default function ProductCard({ product, layout }: { product: Product, lay
         )}
         <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
           <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-start gap-4', 'pb-2')}>
+             <div className="flex items-center space-x-3">
+                <Checkbox
+                    id={`pick-${product.sku}`}
+                    checked={product.picked}
+                    onCheckedChange={() => onPick(product.sku)}
+                    className="h-6 w-6"
+                />
+            </div>
             {layout === 'list' && (
                <div className="relative aspect-square w-24 h-24 flex-shrink-0">
                 <Image
@@ -161,9 +176,16 @@ export default function ProductCard({ product, layout }: { product: Product, lay
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className={cn("w-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col", layout === 'list' && "flex-row")}>
-        {cardContent}
-      </Card>
-    </Collapsible>
-  );
-}
+        <Card className={cn(
+            "w-full transition-all duration-300 flex flex-col", 
+            layout === 'list' && "flex-row",
+            product.picked ? 'bg-muted/50 opacity-60' : 'hover:shadow-xl hover:-translate-y-1'
+        )}>
+            {product.picked && (
+                 <div className="absolute top-2 right-2 z-10 p-1 bg-green-500 text-white rounded-full">
+                    <CheckCircle2 className="h-5 w-5" />
+                </div>
+            )}
+           {cardContent}
+        </Card>
+    </Collapsib<ctrl63>

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import jsQR from 'jsqr';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -12,12 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
-type Product = FetchMorrisonsDataOutput[0];
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
 
 const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
@@ -30,7 +32,14 @@ export default function Home() {
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const [isScanMode, setIsScanMode] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [scannedSkus, setScannedSkus] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -39,6 +48,91 @@ export default function Home() {
       locationId: '218',
     },
   });
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported on this browser');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      setHasCameraPermission(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description: 'Please enable camera permissions in your browser settings.',
+      });
+      setIsScanMode(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isScanMode) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [isScanMode, stopCamera]);
+
+
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const tick = () => {
+      if (isScanMode && videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.height = video.videoHeight;
+          canvas.width = video.videoWidth;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+          });
+
+          if (code && !scannedSkus.has(code.data)) {
+            const newScannedSkus = new Set(scannedSkus).add(code.data);
+            setScannedSkus(newScannedSkus);
+            const currentSkus = form.getValues('skus');
+            form.setValue('skus', currentSkus ? `${currentSkus}, ${code.data}` : code.data, { shouldValidate: true });
+            toast({
+              title: 'Barcode Scanned',
+              description: `Added SKU: ${code.data}`,
+            });
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(tick);
+    };
+
+    if (isScanMode) {
+      animationFrameId = requestAnimationFrame(tick);
+    }
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isScanMode, form, scannedSkus, toast]);
+
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
     setIsLoading(true);
@@ -58,10 +152,19 @@ export default function Home() {
           description: 'Could not find any products for the given SKUs.',
         });
       }
-      setProducts(data);
+      setProducts(data.map(p => ({ ...p, picked: false })));
     }
     setIsLoading(false);
+    setIsScanMode(false);
+    setScannedSkus(new Set());
   }
+
+  const handlePick = (sku: string) => {
+    setProducts(prevProducts => {
+        const updatedProducts = prevProducts.map(p => p.sku === sku ? { ...p, picked: !p.picked } : p);
+        return updatedProducts;
+    });
+  };
 
   const sortedAndFilteredProducts = useMemo(() => {
     let result: Product[] = [...products].filter((p) =>
@@ -71,6 +174,9 @@ export default function Home() {
     const [key, direction] = sortConfig.split('-');
     
     result.sort((a, b) => {
+      if (a.picked && !b.picked) return 1;
+      if (!a.picked && b.picked) return -1;
+      
       let valA = a[key as keyof Product];
       let valB = b[key as keyof Product];
 
@@ -104,6 +210,37 @@ export default function Home() {
     return result;
   }, [products, filterQuery, sortConfig]);
 
+  if (isScanMode) {
+    return (
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-4">
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          <div className="absolute top-4 right-4 z-20">
+              <Button size="icon" variant="destructive" onClick={() => setIsScanMode(false)}>
+                  <X />
+              </Button>
+          </div>
+          <div className="relative w-full max-w-2xl aspect-[4/3] rounded-lg overflow-hidden border-4 border-primary">
+              <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+              <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-full h-1/2 border-y-4 border-dashed border-red-500 opacity-75" />
+              </div>
+          </div>
+          <div className="mt-4 text-white text-center">
+            <h2 className="text-2xl font-bold">Scanning for EAN...</h2>
+            <p className="text-muted-foreground">Position the barcode inside the red lines.</p>
+          </div>
+          { hasCameraPermission === false && (
+              <Alert variant="destructive" className="mt-4 max-w-2xl">
+                <AlertTitle>Camera Access Required</AlertTitle>
+                <AlertDescription>
+                  Please allow camera access in your browser settings to use the scanner.
+                </AlertDescription>
+              </Alert>
+          )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <main className="container mx-auto px-4 py-8 md:py-12">
@@ -111,17 +248,17 @@ export default function Home() {
           <div className="inline-flex items-center gap-4">
              <ShoppingBasket className="w-12 h-12 text-primary" />
             <h1 className="text-5xl font-bold tracking-tight text-primary">
-              Morri<span className="text-foreground">Cards</span>
+              Order<span className="text-foreground">Picker</span>
             </h1>
           </div>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Quickly check product stock, price, and location in your Morrisons store. Just paste your SKUs and get started.
+            Scan EANs or enter SKUs to build your picking list.
           </p>
         </header>
 
         <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
           <CardHeader>
-            <CardTitle>Find Products</CardTitle>
+            <CardTitle>Create Picking List</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -131,13 +268,24 @@ export default function Home() {
                   name="skus"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Product SKUs</FormLabel>
+                      <FormLabel>Product SKUs / EANs</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 119989011, 369960011"
-                          className="min-h-[120px] resize-y"
-                          {...field}
-                        />
+                        <div className="relative">
+                          <Textarea
+                            placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
+                            className="min-h-[120px] resize-y pr-24"
+                            {...field}
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="absolute top-3 right-3"
+                            onClick={() => setIsScanMode(true)}
+                          >
+                             <ScanLine className="mr-2 h-4 w-4" />
+                             Scan
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -163,7 +311,7 @@ export default function Home() {
                       Fetching Data...
                     </>
                   ) : (
-                    'Get Product Info'
+                    'Get Picking List'
                   )}
                 </Button>
               </form>
@@ -231,7 +379,7 @@ export default function Home() {
         ) : sortedAndFilteredProducts.length > 0 ? (
           <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
             {sortedAndFilteredProducts.map((product) => (
-              <ProductCard key={product.sku} product={product} layout={layout} />
+              <ProductCard key={product.sku} product={product} layout={layout} onPick={handlePick} />
             ))}
           </div>
         ) : !isLoading && products.length > 0 ? (
