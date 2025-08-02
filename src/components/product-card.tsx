@@ -188,4 +188,6 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
             )}
            {cardContent}
         </Card>
-    </Collapsib<ctrl63>
+    </Collapsible>
+  );
+}
