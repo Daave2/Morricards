@@ -42,6 +42,7 @@ export type FetchMorrisonsDataOutput = {
   status?: string;
   stockSkuUsed?: string;
   imageUrl?: string;
+  walkSequence?: string;
   productDetails: Product;
 }[];
 
@@ -128,11 +129,13 @@ function simplifyLocations(lst?: components['schemas']['Location'][]): string {
     return lst.map(niceLoc).join('; ');
 }
 
-function extractLocationBits(pi: PriceIntegrity | null): { std: string, promo: string } {
-    if (!pi || !pi.space) return { std: "", promo: "" };
-    const std = simplifyLocations(pi.space.standardSpace?.locations);
+function extractLocationBits(pi: PriceIntegrity | null): { std: string, promo: string, walk: string } {
+    if (!pi || !pi.space) return { std: "", promo: "", walk: "" };
+    const stdLocs = pi.space.standardSpace?.locations;
+    const std = simplifyLocations(stdLocs);
     const promo = simplifyLocations(pi.space.promotionalSpace?.locations);
-    return { std, promo };
+    const walk = stdLocs && stdLocs.length > 0 && stdLocs[0].storeWalkSequence ? stdLocs[0].storeWalkSequence.toString() : "";
+    return { std, promo, walk };
 }
 
 
@@ -153,7 +156,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
 
         const pi = await getPi(input.locationId, stockSku || sku);
-        const { std: stdLoc, promo: promoLoc } = extractLocationBits(pi);
+        const { std: stdLoc, promo: promoLoc, walk } = extractLocationBits(pi);
 
         const stockPosition = stockPayload?.stockPosition?.[0];
 
@@ -178,6 +181,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             status: product.status,
             stockSkuUsed: stockSku === sku ? undefined : stockSku || undefined,
             imageUrl: (product as any).imageUrl?.[0]?.url,
+            walkSequence: walk,
             productDetails: product,
         });
 

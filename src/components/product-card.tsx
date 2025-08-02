@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -79,6 +79,12 @@ export default function ProductCard({ product, layout }: { product: Product, lay
                           <Barcode className="h-5 w-5" />
                           <span>SKU: {product.sku} {product.stockSkuUsed && `(Stock SKU: ${product.stockSkuUsed})`}</span>
                       </div>
+                       {product.walkSequence && (
+                           <div className="flex items-center gap-3">
+                              <Footprints className="h-5 w-5" />
+                              <span>Walk Sequence: {product.walkSequence}</span>
+                          </div>
+                      )}
                       {product.location.promotional && (
                            <div className="flex items-center gap-3">
                               <Tag className="h-5 w-5" />

@@ -27,7 +27,7 @@ const FormSchema = z.object({
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sortConfig, setSortConfig] = useState<string>('stockQuantity-desc');
+  const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
@@ -82,6 +82,11 @@ export default function Home() {
       if (typeof valA === 'string' && typeof valB === 'string') {
         valA = valA.toLowerCase();
         valB = valB.toLowerCase();
+      }
+
+      if (key === 'walkSequence') {
+        valA = Number(valA) || Infinity;
+        valB = Number(valB) || Infinity;
       }
       
       if (valA === undefined || valA === null) return 1;
@@ -184,6 +189,7 @@ export default function Home() {
                                 <SelectValue placeholder="Sort by..." />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
                                 <SelectItem value="stockQuantity-desc">Stock (High to Low)</SelectItem>
                                 <SelectItem value="stockQuantity-asc">Stock (Low to High)</SelectItem>
                                 <SelectItem value="price-desc">Price (High to Low)</SelectItem>
