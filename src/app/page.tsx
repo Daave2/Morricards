@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import jsQR from 'jsqr';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -38,9 +38,9 @@ export default function Home() {
   const { toast } = useToast();
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number>();
+  const codeReader = useMemo(() => new BrowserMultiFormatReader(), []);
+  const controlsRef = useRef<any>();
+
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -51,52 +51,11 @@ export default function Home() {
   });
 
   const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = undefined;
+    if (controlsRef.current) {
+        controlsRef.current.stop();
+        controlsRef.current = null;
     }
   }, []);
-
-  const scanBarcode = useCallback(() => {
-    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        try {
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert',
-          });
-          
-          if (code) {
-            console.log("Detected barcode:", code.data);
-            if (!scannedSkus.has(code.data)) {
-              const newScannedSkus = new Set(scannedSkus).add(code.data);
-              setScannedSkus(newScannedSkus);
-              const currentSkus = form.getValues('skus');
-              form.setValue('skus', currentSkus ? `${currentSkus}, ${code.data}` : code.data, { shouldValidate: true });
-              toast({
-                title: 'Barcode Scanned',
-                description: `Added SKU: ${code.data}`,
-              });
-            }
-          }
-        } catch (error) {
-          // This can happen if the image data is unavailable for security reasons.
-          console.error("Error getting image data for scanning:", error);
-        }
-      }
-    }
-    animationFrameRef.current = requestAnimationFrame(scanBarcode);
-  }, [form, scannedSkus, toast]);
   
   useEffect(() => {
     async function setupCamera() {
@@ -105,27 +64,50 @@ export default function Home() {
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error('Camera not supported on this browser');
           }
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          streamRef.current = stream;
+          
           setHasCameraPermission(true);
 
           if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            // The 'canplay' event is more reliable than 'loadedmetadata' for when to start scanning
-            videoRef.current.addEventListener('canplay', () => {
-              if (videoRef.current) {
-                videoRef.current.play();
-                animationFrameRef.current = requestAnimationFrame(scanBarcode);
-              }
-            });
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+              
+              controlsRef.current = await codeReader.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
+                  if (result) {
+                      const code = result.getText();
+                      console.log("Detected barcode:", code);
+                      if (!scannedSkus.has(code)) {
+                          const newScannedSkus = new Set(scannedSkus).add(code);
+                          setScannedSkus(newScannedSkus);
+                          const currentSkus = form.getValues('skus');
+                          form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
+                          toast({
+                              title: 'Barcode Scanned',
+                              description: `Added SKU: ${code}`,
+                          });
+                      }
+                  }
+                  if (error && !(error instanceof NotFoundException)) {
+                      console.error('Barcode scan error:', error);
+                  }
+              });
+            } catch (err) {
+              console.error('Error initializing scanner:', err);
+              setHasCameraPermission(false);
+              toast({
+                  variant: 'destructive',
+                  title: 'Camera Access Denied',
+                  description: 'Please enable camera permissions in your browser settings.',
+              });
+              setIsScanMode(false);
+            }
           }
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
           toast({
             variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings.',
+            title: 'Camera Access Error',
+            description: (error as Error).message || 'Could not access camera.',
           });
           setIsScanMode(false);
         }
@@ -227,13 +209,11 @@ export default function Home() {
               </Button>
           </div>
           <div className="relative w-full max-w-2xl aspect-[4/3] rounded-lg overflow-hidden border-4 border-primary">
-              <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+              <video ref={videoRef} className="w-full h-full object-cover" />
               <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-full h-1/2 border-y-4 border-dashed border-red-500 opacity-75" />
               </div>
           </div>
-           {/* DEBUGGING CANVAS */}
-          <canvas ref={canvasRef} className="mt-4 w-1/2 border-2 border-green-500" />
           <div className="mt-4 text-white text-center">
             <h2 className="text-2xl font-bold">Scanning for EAN...</h2>
             <p className="text-muted-foreground">Position the barcode inside the red lines.</p>
