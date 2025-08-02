@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { FetchMorrisonsDataOutput } from '@/ai/flows/fetch-morrisons-data';
+import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -124,7 +124,7 @@ export default function Home() {
                       <FormLabel>Product SKUs</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Enter SKUs separated by commas, spaces, or new lines..."
+                          placeholder="Enter SKUs separated by commas, spaces, or new lines... e.g. 89123, 45892, 67345"
                           className="min-h-[120px] resize-y"
                           {...field}
                         />

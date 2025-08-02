@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode } from 'lucide-react';
-import type { FetchMorrisonsDataOutput } from '@/ai/flows/fetch-morrisons-data';
+import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 
@@ -23,6 +23,7 @@ export default function ProductCard({ product, layout }: { product: Product, lay
             {product.promotion && (
                 <CardDescription className="pt-1">
                     <Badge variant="destructive" className="bg-accent text-accent-foreground">{product.promotion}</Badge>
+
                 </CardDescription>
             )}
         </CardHeader>
