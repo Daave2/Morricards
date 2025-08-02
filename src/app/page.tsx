@@ -93,8 +93,8 @@ export default function Home() {
               controlsRef.current = await codeReaderRef.current.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
                   if (result) {
                       const code = result.getText();
-                      if (scannedSkus.has(code)) {
-                          return; // Already processed this barcode in this session
+                      if (scannedSkus.has(code) && products.length === 0) {
+                          return; // Already processed this barcode in this session when list-building
                       }
 
                       // We add all scanned codes to a session set to avoid double-processing
@@ -104,12 +104,14 @@ export default function Home() {
                       if (products.length > 0) {
                           const productToPick = products.find(p => p.sku === code);
                           if (productToPick) {
-                              handlePick(code);
-                              toast({
-                                  title: 'Item Picked',
-                                  description: `Picked: ${productToPick.name}`,
-                                  icon: <Check className="h-5 w-5 text-green-500" />
-                              });
+                              if (!productToPick.picked) {
+                                handlePick(code);
+                                toast({
+                                    title: 'Item Picked',
+                                    description: `Picked: ${productToPick.name}`,
+                                    icon: <Check className="h-5 w-5 text-green-500" />
+                                });
+                              }
                           } else {
                               toast({
                                   variant: 'destructive',
@@ -236,47 +238,40 @@ export default function Home() {
   }, [products, filterQuery, sortConfig]);
   
   const handleScanButtonClick = () => {
-    setScannedSkus(new Set()); // Reset session scanned SKUs each time scanner is opened
-    setIsScanMode(true);
+    if (isScanMode) {
+      setIsScanMode(false);
+    } else {
+      setScannedSkus(new Set()); // Reset session scanned SKUs each time scanner is opened
+      setIsScanMode(true);
+    }
   }
 
-  if (isScanMode) {
-    const scanModeTitle = products.length > 0 ? "Picking Items..." : "Scanning EANs...";
-    const scanModeDescription = products.length > 0 
-        ? "Scan an item's barcode to mark it as picked."
-        : "Position the barcode inside the red lines to add it to the list.";
-
-    return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-4 z-50">
-          <div className="absolute top-4 right-4 z-20">
-              <Button size="icon" variant="destructive" onClick={() => setIsScanMode(false)}>
-                  <X />
-              </Button>
-          </div>
-          <div className="relative w-full max-w-2xl aspect-[4/3] rounded-lg overflow-hidden border-4 border-primary">
-              <video ref={videoRef} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-full h-1/2 border-y-4 border-dashed border-red-500 opacity-75" />
-              </div>
-          </div>
-          <div className="mt-4 text-white text-center">
-            <h2 className="text-2xl font-bold">{scanModeTitle}</h2>
-            <p className="text-muted-foreground">{scanModeDescription}</p>
-          </div>
-          { hasCameraPermission === false && (
-              <Alert variant="destructive" className="mt-4 max-w-2xl">
-                <AlertTitle>Camera Access Required</AlertTitle>
-                <AlertDescription>
-                  Please allow camera access in your browser settings to use the scanner.
-                </AlertDescription>
-              </Alert>
-          )}
-      </div>
-    );
+  const getScanButtonLabel = () => {
+    if (isScanMode) return 'Close Scanner';
+    if (products.length > 0) return 'Pick by Scan';
+    return 'Scan';
   }
 
   return (
     <div className="min-h-screen">
+      {isScanMode && (
+          <div className="sticky top-0 z-50 bg-black p-4 shadow-lg">
+              <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-lg overflow-hidden border-2 border-primary">
+                  <video ref={videoRef} className="w-full h-full object-cover" />
+                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-3/4 h-1/2 border-y-2 border-dashed border-red-500 opacity-75" />
+                  </div>
+              </div>
+              { hasCameraPermission === false && (
+                <Alert variant="destructive" className="mt-4 max-w-4xl mx-auto">
+                  <AlertTitle>Camera Access Required</AlertTitle>
+                  <AlertDescription>
+                    Please allow camera access in your browser settings to use the scanner.
+                  </AlertDescription>
+                </Alert>
+              )}
+          </div>
+      )}
       <main className="container mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-12">
           <div className="inline-flex items-center gap-4">
@@ -312,12 +307,12 @@ export default function Home() {
                           />
                           <Button 
                             type="button" 
-                            variant="outline" 
+                            variant={isScanMode ? "destructive" : "outline"}
                             className="absolute top-3 right-3"
                             onClick={handleScanButtonClick}
                           >
                              <ScanLine className="mr-2 h-4 w-4" />
-                             Scan
+                             {getScanButtonLabel()}
                           </Button>
                         </div>
                       </FormControl>
@@ -367,11 +362,11 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-4">
                         <Button 
-                            variant="outline"
+                            variant={isScanMode ? "destructive" : "outline"}
                             onClick={handleScanButtonClick}
                           >
                              <ScanLine className="mr-2 h-4 w-4" />
-                             Pick by Scan
+                             {getScanButtonLabel()}
                           </Button>
                         <Select value={sortConfig} onValueChange={setSortConfig}>
                             <SelectTrigger className="w-[200px]">
