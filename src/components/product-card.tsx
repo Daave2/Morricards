@@ -53,7 +53,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
         )}
         <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
           <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-start gap-4', 'pb-2')}>
-             <div className="flex items-center space-x-3">
+             <div className="flex items-center space-x-3 pt-1">
                 <Checkbox
                     id={`pick-${product.sku}`}
                     checked={product.picked}
@@ -155,7 +155,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                       <details className="pt-2 text-xs">
                           <summary className="cursor-pointer">Raw Data</summary>
                           <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48">
-                              {JSON.stringify(product.productDetails, null, 2)}
+                              {JSON.stringify(product, null, 2)}
                           </pre>
                       </details>
                   </div>

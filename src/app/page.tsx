@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -65,6 +65,16 @@ export default function Home() {
         controlsRef.current = null;
     }
   }, []);
+
+  const handlePick = useCallback((sku: string) => {
+    setProducts(prevProducts => {
+        const productToUpdate = prevProducts.find(p => p.sku === sku);
+        if (!productToUpdate) return prevProducts;
+
+        const updatedProducts = prevProducts.map(p => p.sku === sku ? { ...p, picked: !p.picked } : p);
+        return updatedProducts;
+    });
+  }, []);
   
   useEffect(() => {
     async function setupCamera() {
@@ -83,19 +93,39 @@ export default function Home() {
               controlsRef.current = await codeReaderRef.current.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
                   if (result) {
                       const code = result.getText();
-                      setScannedSkus(prev => {
-                          if (!prev.has(code)) {
-                              const newScannedSkus = new Set(prev).add(code);
-                              const currentSkus = form.getValues('skus');
-                              form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
+                      if (scannedSkus.has(code)) {
+                          return; // Already processed this barcode in this session
+                      }
+
+                      // We add all scanned codes to a session set to avoid double-processing
+                      setScannedSkus(prev => new Set(prev).add(code));
+
+                      // If we have products, we are in "picking mode"
+                      if (products.length > 0) {
+                          const productToPick = products.find(p => p.sku === code);
+                          if (productToPick) {
+                              handlePick(code);
                               toast({
-                                  title: 'Barcode Scanned',
-                                  description: `Added SKU: ${code}`,
+                                  title: 'Item Picked',
+                                  description: `Picked: ${productToPick.name}`,
+                                  icon: <Check className="h-5 w-5 text-green-500" />
                               });
-                              return newScannedSkus;
+                          } else {
+                              toast({
+                                  variant: 'destructive',
+                                  title: 'Item Not in List',
+                                  description: `Scanned item (SKU: ${code}) is not in the picking list.`,
+                              });
                           }
-                          return prev;
-                      });
+                      } else {
+                          // Otherwise, we are in "list building mode"
+                          const currentSkus = form.getValues('skus');
+                          form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
+                          toast({
+                              title: 'Barcode Scanned',
+                              description: `Added SKU: ${code}`,
+                          });
+                      }
                   }
                   if (error && !(error instanceof notFoundExceptionRef.current)) {
                       console.error('Barcode scan error:', error);
@@ -132,7 +162,7 @@ export default function Home() {
       stopCamera();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanMode]);
+  }, [isScanMode, handlePick]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -156,16 +186,10 @@ export default function Home() {
       setProducts(data.map(p => ({ ...p, picked: false })));
     }
     setIsLoading(false);
-    setIsScanMode(false);
+    // Reset session-specific scanned SKUs after list is built or scanner is closed
+    if (isScanMode) setIsScanMode(false);
     setScannedSkus(new Set());
   }
-
-  const handlePick = (sku: string) => {
-    setProducts(prevProducts => {
-        const updatedProducts = prevProducts.map(p => p.sku === sku ? { ...p, picked: !p.picked } : p);
-        return updatedProducts;
-    });
-  };
 
   const sortedAndFilteredProducts = useMemo(() => {
     let result: Product[] = [...products].filter((p) =>
@@ -210,10 +234,20 @@ export default function Home() {
 
     return result;
   }, [products, filterQuery, sortConfig]);
+  
+  const handleScanButtonClick = () => {
+    setScannedSkus(new Set()); // Reset session scanned SKUs each time scanner is opened
+    setIsScanMode(true);
+  }
 
   if (isScanMode) {
+    const scanModeTitle = products.length > 0 ? "Picking Items..." : "Scanning EANs...";
+    const scanModeDescription = products.length > 0 
+        ? "Scan an item's barcode to mark it as picked."
+        : "Position the barcode inside the red lines to add it to the list.";
+
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-4 z-50">
           <div className="absolute top-4 right-4 z-20">
               <Button size="icon" variant="destructive" onClick={() => setIsScanMode(false)}>
                   <X />
@@ -226,8 +260,8 @@ export default function Home() {
               </div>
           </div>
           <div className="mt-4 text-white text-center">
-            <h2 className="text-2xl font-bold">Scanning for EAN...</h2>
-            <p className="text-muted-foreground">Position the barcode inside the red lines.</p>
+            <h2 className="text-2xl font-bold">{scanModeTitle}</h2>
+            <p className="text-muted-foreground">{scanModeDescription}</p>
           </div>
           { hasCameraPermission === false && (
               <Alert variant="destructive" className="mt-4 max-w-2xl">
@@ -280,7 +314,7 @@ export default function Home() {
                             type="button" 
                             variant="outline" 
                             className="absolute top-3 right-3"
-                            onClick={() => setIsScanMode(true)}
+                            onClick={handleScanButtonClick}
                           >
                              <ScanLine className="mr-2 h-4 w-4" />
                              Scan
@@ -332,6 +366,13 @@ export default function Home() {
                         />
                     </div>
                     <div className="flex items-center gap-4">
+                        <Button 
+                            variant="outline"
+                            onClick={handleScanButtonClick}
+                          >
+                             <ScanLine className="mr-2 h-4 w-4" />
+                             Pick by Scan
+                          </Button>
                         <Select value={sortConfig} onValueChange={setSortConfig}>
                             <SelectTrigger className="w-[200px]">
                                 <SelectValue placeholder="Sort by..." />
@@ -379,7 +420,7 @@ export default function Home() {
         ) : sortedAndFilteredProducts.length > 0 ? (
           <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
             {sortedAndFilteredProducts.map((product) => (
-              <ProductCard key={product.sku} product={product} layout={layout} onPick={handlePick} />
+              <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} />
             ))}
           </div>
         ) : !isLoading && products.length > 0 ? (
