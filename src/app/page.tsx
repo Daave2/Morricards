@@ -27,7 +27,7 @@ const FormSchema = z.object({
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sortConfig, setSortConfig] = useState<string>('stock-desc');
+  const [sortConfig, setSortConfig] = useState<string>('stockQuantity-desc');
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
@@ -36,7 +36,7 @@ export default function Home() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       skus: '',
-      locationId: '',
+      locationId: '218',
     },
   });
 
@@ -74,13 +74,18 @@ export default function Home() {
       let valA = a[key as keyof Product];
       let valB = b[key as keyof Product];
 
+      if (key === 'price' && valA && valB) {
+        valA = (valA as {regular?: number}).regular;
+        valB = (valB as {regular?: number}).regular;
+      }
+      
       if (typeof valA === 'string' && typeof valB === 'string') {
         valA = valA.toLowerCase();
         valB = valB.toLowerCase();
       }
       
-      if (valA === undefined) return 1;
-      if (valB === undefined) return -1;
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
 
       if (valA < valB) {
         return direction === 'asc' ? -1 : 1;
@@ -124,7 +129,7 @@ export default function Home() {
                       <FormLabel>Product SKUs</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Enter SKUs separated by commas, spaces, or new lines... e.g. 89123, 45892, 67345"
+                          placeholder="Enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 119989011"
                           className="min-h-[120px] resize-y"
                           {...field}
                         />
@@ -140,7 +145,7 @@ export default function Home() {
                     <FormItem>
                       <FormLabel>Store Location ID</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 471" {...field} />
+                        <Input placeholder="e.g., 218" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

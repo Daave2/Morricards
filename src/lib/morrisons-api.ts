@@ -1,103 +1,186 @@
 /**
  * @fileOverview An API for fetching Morrisons product data.
  */
+import type {components} from '../morrisons-types';
+
+const API_KEY = "0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW";
+const BEARER_TOKEN_DEFAULT = "l5rXP77Vno9GxqP0RA8351v5iJt8";
+
+const BASE_PRODUCT = "https://api.morrisons.com/product/v1/items";
+const BASE_STOCK = "https://api.morrisons.com/stock/v2/locations";
+const BASE_LOCN = "https://api.morrisons.com/priceintegrity/v1/locations";
+
+const HEADERS_BASE = {
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (MorriCards Web)",
+};
 
 export interface FetchMorrisonsDataInput {
   locationId: string;
   skus: string[];
 }
 
+type Product = components['schemas']['Product'];
+type StockPayload = components['schemas']['StockPayload'];
+type PriceIntegrity = components['schemas']['PriceIntegrity'];
+
 export type FetchMorrisonsDataOutput = {
   sku: string;
   name: string;
-  price: number;
+  price: {
+      regular?: number;
+      promotional?: string;
+  };
   stockQuantity: number;
-  location: string;
-  promotion?: string;
+  stockUnit?: string;
+  location: {
+      standard?: string;
+      promotional?: string;
+  };
+  temperature?: string;
+  weight?: number;
+  status?: string;
+  stockSkuUsed?: string;
+  productDetails: Product;
 }[];
 
-// This is a placeholder API. In a real-world scenario, this would be a proper authenticated API.
-const API_ENDPOINT = 'https://groceries.morrisons.com/api/products/v2/details';
-
-interface MorrisonsProduct {
-    name: string;
-    sku: string;
-    sales_unit: string;
-    typical_weight: {
-      value: string;
-      unit: string;
-    };
-    image: {
-      url: string;
-    };
-    price: {
-      price: {
-        value: string;
-      };
-      unit_price: {
-        value: string;
-        per: string;
-      };
-    };
-    promotions: {
-      text: string;
-    }[];
-    availability: {
-      stock_level: number;
-      is_in_stock: boolean;
-    };
-    aisle: {
-      name: string;
+async function fetchJson<T>(url: string, bearer: string | null = BEARER_TOKEN_DEFAULT): Promise<T | null> {
+    const headers = {...HEADERS_BASE};
+    if (bearer) {
+        (headers as any)['Authorization'] = `Bearer ${bearer}`;
+    }
+    try {
+        let r = await fetch(url, {headers});
+        if ((r.status === 401 || r.status === 403) && bearer) {
+            // Retry without bearer token
+            const noBearerHeaders = {...HEADERS_BASE};
+            r = await fetch(url, {headers: noBearerHeaders});
+        }
+        if (r.status === 404) {
+            return null;
+        }
+        r.raise_for_status();
+        return r.json() as Promise<T>;
+    } catch (e) {
+        console.error(`Failed to fetch ${url}`, e);
+        return null;
     }
 }
 
-interface ApiResponse {
-    items: MorrisonsProduct[];
+
+function getProduct(sku: string): Promise<Product | null> {
+    return fetchJson<Product>(`${BASE_PRODUCT}/${sku}?apikey=${API_KEY}`);
 }
+
+function candidateStockSkus(prod: Product, primarySku: string): string[] {
+    const skus = [primarySku];
+    if (prod.packComponents) {
+        for (const pc of prod.packComponents) {
+            if (pc.itemNumber) {
+                skus.push(pc.itemNumber.toString());
+            }
+        }
+    }
+    return skus;
+}
+
+async function tryStock(loc: string, skus: string[]): Promise<{ sku: string | null, payload: StockPayload | null }> {
+    for (const s of skus) {
+        const payload = await fetchJson<StockPayload>(`${BASE_STOCK}/${loc}/items/${s}?apikey=${API_KEY}`);
+        if (payload) {
+            return { sku: s, payload };
+        }
+    }
+    return { sku: null, payload: null };
+}
+
+function getPi(loc: string, sku: string): Promise<PriceIntegrity | null> {
+    return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`);
+}
+
+function niceLoc(raw: components['schemas']['Location']): string {
+    const sideRe = /^([LR])(\d+)$/i;
+    const aisle = raw.aisle || "";
+    let bay = raw.bayNumber || "";
+    const shelf = raw.shelfNumber || "";
+    let side = "";
+    
+    const m = bay.match(sideRe);
+    if (m) {
+        side = m[1].toUpperCase() === "L" ? "Left" : "Right";
+        bay = m[2];
+    }
+    
+    const parts: string[] = [];
+    if (aisle) parts.push(`Aisle ${aisle}`);
+    if (side) parts.push(`${side} bay ${bay}`);
+    else if (bay) parts.push(`Bay ${bay}`);
+    if (shelf) parts.push(`shelf ${shelf}`);
+    
+    return parts.join(', ');
+}
+
+function simplifyLocations(lst?: components['schemas']['Location'][]): string {
+    if (!lst || lst.length === 0) return "";
+    return lst.map(niceLoc).join('; ');
+}
+
+function extractLocationBits(pi: PriceIntegrity | null): { std: string, promo: string } {
+    if (!pi || !pi.space) return { std: "", promo: "" };
+    const std = simplifyLocations(pi.space.standardSpace?.locations);
+    const promo = simplifyLocations(pi.space.promotionalSpace?.locations);
+    return { std, promo };
+}
+
 
 export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promise<FetchMorrisonsDataOutput> {
   console.log(`Fetching data for SKUs: ${input.skus.join(', ')} at location: ${input.locationId}`);
 
-  const params = new URLSearchParams({
-    'skus': input.skus.join(','),
-    'storeId': input.locationId, 
-  });
+  const results: FetchMorrisonsDataOutput = [];
 
-  try {
-    const response = await fetch(`${API_ENDPOINT}?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
+  for (const sku of input.skus) {
+    try {
+        const product = await getProduct(sku);
+        if (!product) {
+            console.warn(`Product not found for SKU: ${sku}`);
+            continue;
         }
-    });
 
-    if (!response.ok) {
-        console.error('Morrisons API request failed with status:', response.status);
-        throw new Error(`API request failed: ${response.statusText}`);
+        const stockCandidates = candidateStockSkus(product, sku);
+        const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
+
+        const pi = await getPi(input.locationId, stockSku || sku);
+        const { std: stdLoc, promo: promoLoc } = extractLocationBits(pi);
+
+        const stockPosition = stockPayload?.stockPosition?.[0];
+
+        const prices = pi?.prices;
+        const promos = pi?.promotions;
+
+        results.push({
+            sku: product.itemNumber || sku,
+            name: product.tillDescription || product.itemDescription || 'Unknown Product',
+            price: {
+                regular: prices?.[0]?.regularPrice,
+                promotional: promos?.[0]?.marketingAttributes?.offerValue,
+            },
+            stockQuantity: stockPosition?.qty || 0,
+            stockUnit: stockPosition?.unitofMeasure,
+            location: {
+                standard: stdLoc,
+                promotional: promoLoc,
+            },
+            temperature: product.temperatureRegime,
+            weight: product.dimensions?.weight,
+            status: product.status,
+            stockSkuUsed: stockSku || undefined,
+            productDetails: product,
+        });
+
+    } catch (error) {
+        console.error(`Failed to process SKU ${sku}:`, error);
     }
-
-    const result: ApiResponse = await response.json();
-
-    if (!result || !result.items) {
-        console.log('No items found in Morrisons API response');
-        return [];
-    }
-    
-    const products: FetchMorrisonsDataOutput = result.items.map(item => ({
-        sku: item.sku,
-        name: item.name,
-        price: parseFloat(item.price.price.value),
-        stockQuantity: item.availability.stock_level,
-        location: item.aisle.name,
-        promotion: item.promotions.length > 0 ? item.promotions[0].text : undefined
-    }));
-
-    return products;
-
-  } catch (error) {
-    console.error('Failed to fetch data from Morrisons API:', error);
-    // In case of an error, we can return an empty array or re-throw.
-    // For this app, returning an empty array is safer to prevent crashes.
-    return [];
   }
+
+  return results;
 }
