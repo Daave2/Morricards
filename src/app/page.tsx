@@ -40,6 +40,7 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number>();
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -48,11 +49,14 @@ export default function Home() {
       locationId: '218',
     },
   });
-
+  
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
   }, []);
 
@@ -67,6 +71,11 @@ export default function Home() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.addEventListener('loadedmetadata', () => {
+            if (videoRef.current) {
+              scanBarcode();
+            }
+        });
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -79,6 +88,36 @@ export default function Home() {
       setIsScanMode(false);
     }
   };
+  
+  const scanBarcode = useCallback(() => {
+    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
+
+        if (code && !scannedSkus.has(code.data)) {
+          const newScannedSkus = new Set(scannedSkus).add(code.data);
+          setScannedSkus(newScannedSkus);
+          const currentSkus = form.getValues('skus');
+          form.setValue('skus', currentSkus ? `${currentSkus}, ${code.data}` : code.data, { shouldValidate: true });
+          toast({
+            title: 'Barcode Scanned',
+            description: `Added SKU: ${code.data}`,
+          });
+        }
+      }
+    }
+    animationFrameRef.current = requestAnimationFrame(scanBarcode);
+  }, [form, scannedSkus, toast]);
+
 
   useEffect(() => {
     if (isScanMode) {
@@ -90,48 +129,6 @@ export default function Home() {
       stopCamera();
     };
   }, [isScanMode, stopCamera]);
-
-
-  useEffect(() => {
-    let animationFrameId: number;
-
-    const tick = () => {
-      if (isScanMode && videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          canvas.height = video.videoHeight;
-          canvas.width = video.videoWidth;
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert',
-          });
-
-          if (code && !scannedSkus.has(code.data)) {
-            const newScannedSkus = new Set(scannedSkus).add(code.data);
-            setScannedSkus(newScannedSkus);
-            const currentSkus = form.getValues('skus');
-            form.setValue('skus', currentSkus ? `${currentSkus}, ${code.data}` : code.data, { shouldValidate: true });
-            toast({
-              title: 'Barcode Scanned',
-              description: `Added SKU: ${code.data}`,
-            });
-          }
-        }
-      }
-      animationFrameId = requestAnimationFrame(tick);
-    };
-
-    if (isScanMode) {
-      animationFrameId = requestAnimationFrame(tick);
-    }
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [isScanMode, form, scannedSkus, toast]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
