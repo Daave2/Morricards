@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import type { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -38,8 +38,15 @@ export default function Home() {
   const { toast } = useToast();
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReader = useMemo(() => new BrowserMultiFormatReader(), []);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<any>();
+
+  useEffect(() => {
+    // Dynamically import the library on the client-side
+    import('@zxing/library').then(ZXing => {
+        codeReaderRef.current = new ZXing.BrowserMultiFormatReader();
+    });
+  }, []);
 
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -59,7 +66,7 @@ export default function Home() {
   
   useEffect(() => {
     async function setupCamera() {
-      if (isScanMode) {
+      if (isScanMode && codeReaderRef.current) {
         try {
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error('Camera not supported on this browser');
@@ -71,7 +78,7 @@ export default function Home() {
             try {
               const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
               
-              controlsRef.current = await codeReader.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
+              controlsRef.current = await codeReaderRef.current.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
                   if (result) {
                       const code = result.getText();
                       console.log("Detected barcode:", code);
@@ -86,7 +93,7 @@ export default function Home() {
                           });
                       }
                   }
-                  if (error && !(error instanceof NotFoundException)) {
+                  if (error && !(error instanceof (window as any).ZXing.NotFoundException)) {
                       console.error('Barcode scan error:', error);
                   }
               });
@@ -386,5 +393,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
