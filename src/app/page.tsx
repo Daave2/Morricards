@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -93,8 +93,8 @@ export default function Home() {
               controlsRef.current = await codeReaderRef.current.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
                   if (result) {
                       const code = result.getText();
-                      if (scannedSkus.has(code) && products.length === 0) {
-                          return; // Already processed this barcode in this session when list-building
+                      if (scannedSkus.has(code)) { // Covers both list building and picking mode
+                          return; 
                       }
 
                       // We add all scanned codes to a session set to avoid double-processing
@@ -104,7 +104,13 @@ export default function Home() {
                       if (products.length > 0) {
                           const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
                           if (productToPick) {
-                              if (!productToPick.picked) {
+                              if (productToPick.picked) {
+                                  toast({
+                                      title: 'Item Already Picked',
+                                      description: `Already picked: ${productToPick.name}`,
+                                      icon: <Info className="h-5 w-5 text-blue-500" />
+                                  });
+                              } else {
                                 handlePick(productToPick.sku);
                                 toast({
                                     title: 'Item Picked',
@@ -116,7 +122,7 @@ export default function Home() {
                               toast({
                                   variant: 'destructive',
                                   title: 'Item Not in List',
-                                  description: `Scanned item (SKU: ${code}) is not in the picking list.`,
+                                  description: `Scanned item (EAN: ${code}) is not in the picking list.`,
                               });
                           }
                       } else {
@@ -125,7 +131,7 @@ export default function Home() {
                           form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
                           toast({
                               title: 'Barcode Scanned',
-                              description: `Added SKU: ${code}`,
+                              description: `Added EAN: ${code}`,
                           });
                       }
                   }
