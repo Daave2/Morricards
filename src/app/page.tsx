@@ -129,7 +129,7 @@ export default function Home() {
                       <FormLabel>Product SKUs</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 119989011"
+                          placeholder="Enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 119989011, 369960011"
                           className="min-h-[120px] resize-y"
                           {...field}
                         />
@@ -209,6 +209,7 @@ export default function Home() {
           <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
             {Array.from({ length: 8 }).map((_, i) => (
                 <Card key={i} className="w-full">
+                     <Skeleton className="aspect-square w-full" />
                     <CardHeader>
                         <Skeleton className="h-6 w-3/4" />
                         <Skeleton className="h-4 w-1/2" />

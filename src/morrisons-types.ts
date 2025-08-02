@@ -47,6 +47,9 @@ export interface components {
       packComponents?: ({
           itemNumber?: number;
         })[];
+      imageUrls?: ({
+          url?: string;
+        })[];
     };
     StockPayload: {
       stockPosition?: ({

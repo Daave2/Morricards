@@ -41,6 +41,7 @@ export type FetchMorrisonsDataOutput = {
   weight?: number;
   status?: string;
   stockSkuUsed?: string;
+  imageUrl?: string;
   productDetails: Product;
 }[];
 
@@ -176,6 +177,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             weight: product.dimensions?.weight,
             status: product.status,
             stockSkuUsed: stockSku === sku ? undefined : stockSku || undefined,
+            imageUrl: product.imageUrls?.[0]?.url,
             productDetails: product,
         });
 
