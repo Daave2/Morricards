@@ -95,47 +95,48 @@ export default function Home() {
     animationFrameRef.current = requestAnimationFrame(scanBarcode);
   }, [form, scannedSkus, toast]);
   
-  const startCamera = async () => {
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera not supported on this browser');
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      streamRef.current = stream;
-      setHasCameraPermission(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          if(videoRef.current) {
-             videoRef.current.play();
-             animationFrameRef.current = requestAnimationFrame(scanBarcode);
-          }
-        };
-      }
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setHasCameraPermission(false);
-      toast({
-        variant: 'destructive',
-        title: 'Camera Access Denied',
-        description: 'Please enable camera permissions in your browser settings.',
-      });
-      setIsScanMode(false);
-    }
-  };
-
   useEffect(() => {
-    if (isScanMode) {
-      startCamera();
-    } else {
-      stopCamera();
+    async function setupCamera() {
+      if (isScanMode) {
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Camera not supported on this browser');
+          }
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          streamRef.current = stream;
+          setHasCameraPermission(true);
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            // The 'canplay' event is more reliable than 'loadedmetadata' for when to start scanning
+            videoRef.current.addEventListener('canplay', () => {
+              if (videoRef.current) {
+                videoRef.current.play();
+                animationFrameRef.current = requestAnimationFrame(scanBarcode);
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings.',
+          });
+          setIsScanMode(false);
+        }
+      } else {
+        stopCamera();
+      }
     }
+    setupCamera();
+
     return () => {
       stopCamera();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanMode, stopCamera]);
+  }, [isScanMode]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
