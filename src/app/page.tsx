@@ -104,22 +104,22 @@ export default function Home() {
             } catch (err) {
               console.error('Error initializing scanner:', err);
               setHasCameraPermission(false);
-              toast({
+              setTimeout(() => toast({
                   variant: 'destructive',
                   title: 'Camera Access Denied',
                   description: 'Please enable camera permissions in your browser settings.',
-              });
+              }), 0);
               setIsScanMode(false);
             }
           }
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
-          toast({
+          setTimeout(() => toast({
             variant: 'destructive',
             title: 'Camera Access Error',
             description: (error as Error).message || 'Could not access camera.',
-          });
+          }), 0);
           setIsScanMode(false);
         }
       } else {
