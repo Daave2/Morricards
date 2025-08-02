@@ -102,7 +102,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
               <div className={cn("px-6 pb-4", layout === 'list' && 'px-4')}>
                   <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} ${product.stockSkuUsed ? `(Stock: ${product.stockSkuUsed})` : ''}`} />
+                        <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                         <DataRow icon={<Footprints />} label="Walk Sequence" value={product.walkSequence} />
                         <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
                         <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />

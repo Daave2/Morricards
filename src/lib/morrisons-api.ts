@@ -26,6 +26,7 @@ type PriceIntegrity = components['schemas']['PriceIntegrity'];
 
 export type FetchMorrisonsDataOutput = {
   sku: string;
+  scannedSku: string;
   name: string;
   price: {
       regular?: number;
@@ -165,6 +166,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
         results.push({
             sku: product.itemNumber || sku,
+            scannedSku: sku,
             name: product.tillDescription || product.itemDescription || 'Unknown Product',
             price: {
                 regular: prices?.[0]?.regularPrice,

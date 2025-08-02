@@ -68,10 +68,10 @@ export default function Home() {
 
   const handlePick = useCallback((sku: string) => {
     setProducts(prevProducts => {
-        const productToUpdate = prevProducts.find(p => p.sku === sku);
+        const productToUpdate = prevProducts.find(p => p.sku === sku || p.scannedSku === sku);
         if (!productToUpdate) return prevProducts;
 
-        const updatedProducts = prevProducts.map(p => p.sku === sku ? { ...p, picked: !p.picked } : p);
+        const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
         return updatedProducts;
     });
   }, []);
@@ -102,10 +102,10 @@ export default function Home() {
 
                       // If we have products, we are in "picking mode"
                       if (products.length > 0) {
-                          const productToPick = products.find(p => p.sku === code);
+                          const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
                           if (productToPick) {
                               if (!productToPick.picked) {
-                                handlePick(code);
+                                handlePick(productToPick.sku);
                                 toast({
                                     title: 'Item Picked',
                                     description: `Picked: ${productToPick.name}`,
