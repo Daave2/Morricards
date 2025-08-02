@@ -40,11 +40,13 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<any>();
+  const notFoundExceptionRef = useRef<any>(null);
+
 
   useEffect(() => {
-    // Dynamically import the library on the client-side
     import('@zxing/library').then(ZXing => {
         codeReaderRef.current = new ZXing.BrowserMultiFormatReader();
+        notFoundExceptionRef.current = ZXing.NotFoundException;
     });
   }, []);
 
@@ -66,7 +68,7 @@ export default function Home() {
   
   useEffect(() => {
     async function setupCamera() {
-      if (isScanMode && codeReaderRef.current) {
+      if (isScanMode && codeReaderRef.current && notFoundExceptionRef.current) {
         try {
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error('Camera not supported on this browser');
@@ -81,7 +83,6 @@ export default function Home() {
               controlsRef.current = await codeReaderRef.current.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
                   if (result) {
                       const code = result.getText();
-                      console.log("Detected barcode:", code);
                       if (!scannedSkus.has(code)) {
                           const newScannedSkus = new Set(scannedSkus).add(code);
                           setScannedSkus(newScannedSkus);
@@ -93,7 +94,7 @@ export default function Home() {
                           });
                       }
                   }
-                  if (error && !(error instanceof (window as any).ZXing.NotFoundException)) {
+                  if (error && !(error instanceof notFoundExceptionRef.current)) {
                       console.error('Barcode scan error:', error);
                   }
               });
