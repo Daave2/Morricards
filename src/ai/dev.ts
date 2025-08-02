@@ -1,4 +1,4 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/fetch-morrisons-data.ts';
+// This file is used for Genkit development and can be empty if no flows are being actively developed.

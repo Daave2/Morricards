@@ -1,6 +1,6 @@
 'use server';
 
-import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/ai/flows/fetch-morrisons-data';
+import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { z } from 'zod';
 
 const FormSchema = z.object({
