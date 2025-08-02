@@ -17,13 +17,14 @@ export default function ProductCard({ product, layout }: { product: Product, lay
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
   const placeholderImage = `https://placehold.co/400x400.png`;
+  const imageUrl = product.productDetails.imageUrls?.[0]?.url;
 
   const cardContent = (
       <>
         {layout === 'grid' && (
           <div className="relative aspect-square w-full">
             <Image
-              src={product.imageUrl || placeholderImage}
+              src={imageUrl || placeholderImage}
               alt={product.name}
               fill
               className="object-cover rounded-t-lg"
@@ -37,7 +38,7 @@ export default function ProductCard({ product, layout }: { product: Product, lay
             {layout === 'list' && (
                <div className="relative aspect-square w-24 h-24 flex-shrink-0">
                 <Image
-                  src={product.imageUrl || placeholderImage}
+                  src={imageUrl || placeholderImage}
                   alt={product.name}
                   fill
                   className="object-cover rounded-md"
