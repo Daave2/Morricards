@@ -75,16 +75,19 @@ export default function Home() {
           const code = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: 'dontInvert',
           });
-
-          if (code && !scannedSkus.has(code.data)) {
-            const newScannedSkus = new Set(scannedSkus).add(code.data);
-            setScannedSkus(newScannedSkus);
-            const currentSkus = form.getValues('skus');
-            form.setValue('skus', currentSkus ? `${currentSkus}, ${code.data}` : code.data, { shouldValidate: true });
-            toast({
-              title: 'Barcode Scanned',
-              description: `Added SKU: ${code.data}`,
-            });
+          
+          if (code) {
+            console.log("Detected barcode:", code.data);
+            if (!scannedSkus.has(code.data)) {
+              const newScannedSkus = new Set(scannedSkus).add(code.data);
+              setScannedSkus(newScannedSkus);
+              const currentSkus = form.getValues('skus');
+              form.setValue('skus', currentSkus ? `${currentSkus}, ${code.data}` : code.data, { shouldValidate: true });
+              toast({
+                title: 'Barcode Scanned',
+                description: `Added SKU: ${code.data}`,
+              });
+            }
           }
         } catch (error) {
           // This can happen if the image data is unavailable for security reasons.
@@ -218,7 +221,6 @@ export default function Home() {
   if (isScanMode) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-4">
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
           <div className="absolute top-4 right-4 z-20">
               <Button size="icon" variant="destructive" onClick={() => setIsScanMode(false)}>
                   <X />
@@ -230,6 +232,8 @@ export default function Home() {
                   <div className="w-full h-1/2 border-y-4 border-dashed border-red-500 opacity-75" />
               </div>
           </div>
+           {/* DEBUGGING CANVAS */}
+          <canvas ref={canvasRef} className="mt-4 w-1/2 border-2 border-green-500" />
           <div className="mt-4 text-white text-center">
             <h2 className="text-2xl font-bold">Scanning for EAN...</h2>
             <p className="text-muted-foreground">Position the barcode inside the red lines.</p>
