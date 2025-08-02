@@ -83,16 +83,19 @@ export default function Home() {
               controlsRef.current = await codeReaderRef.current.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
                   if (result) {
                       const code = result.getText();
-                      if (!scannedSkus.has(code)) {
-                          const newScannedSkus = new Set(scannedSkus).add(code);
-                          setScannedSkus(newScannedSkus);
-                          const currentSkus = form.getValues('skus');
-                          form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
-                          toast({
-                              title: 'Barcode Scanned',
-                              description: `Added SKU: ${code}`,
-                          });
-                      }
+                      setScannedSkus(prev => {
+                          if (!prev.has(code)) {
+                              const newScannedSkus = new Set(prev).add(code);
+                              const currentSkus = form.getValues('skus');
+                              form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
+                              toast({
+                                  title: 'Barcode Scanned',
+                                  description: `Added SKU: ${code}`,
+                              });
+                              return newScannedSkus;
+                          }
+                          return prev;
+                      });
                   }
                   if (error && !(error instanceof notFoundExceptionRef.current)) {
                       console.error('Barcode scan error:', error);
