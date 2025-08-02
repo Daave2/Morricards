@@ -45,9 +45,9 @@ export type FetchMorrisonsDataOutput = {
 }[];
 
 async function fetchJson<T>(url: string, bearer: string | null = BEARER_TOKEN_DEFAULT): Promise<T | null> {
-    const headers = {...HEADERS_BASE};
+    const headers = {...HEADERS_BASE} as any;
     if (bearer) {
-        (headers as any)['Authorization'] = `Bearer ${bearer}`;
+        headers['Authorization'] = `Bearer ${bearer}`;
     }
     try {
         let r = await fetch(url, {headers});
@@ -59,7 +59,9 @@ async function fetchJson<T>(url: string, bearer: string | null = BEARER_TOKEN_DE
         if (r.status === 404) {
             return null;
         }
-        r.raise_for_status();
+        if (!r.ok) {
+            throw new Error(`HTTP error! status: ${r.status}`);
+        }
         return r.json() as Promise<T>;
     } catch (e) {
         console.error(`Failed to fetch ${url}`, e);
@@ -173,7 +175,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             temperature: product.temperatureRegime,
             weight: product.dimensions?.weight,
             status: product.status,
-            stockSkuUsed: stockSku || undefined,
+            stockSkuUsed: stockSku === sku ? undefined : stockSku || undefined,
             productDetails: product,
         });
 
