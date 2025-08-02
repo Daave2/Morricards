@@ -5,12 +5,23 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
+import { Separator } from './ui/separator';
 
 type Product = FetchMorrisonsDataOutput[0];
+
+const DataRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string | number | null }) => {
+    if (!value) return null;
+    return (
+        <div className="flex items-start gap-3">
+            <div className="w-5 h-5 text-muted-foreground flex-shrink-0">{icon}</div>
+            <span><strong>{label}:</strong> {value}</span>
+        </div>
+    );
+}
 
 export default function ProductCard({ product, layout }: { product: Product, layout: 'grid' | 'list' }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,37 +85,58 @@ export default function ProductCard({ product, layout }: { product: Product, lay
 
           <CollapsibleContent>
               <div className={cn("px-6 pb-4", layout === 'list' && 'px-4')}>
-                  <div className="border-t pt-4 mt-4 space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                          <Barcode className="h-5 w-5" />
-                          <span>SKU: {product.sku} {product.stockSkuUsed && `(Stock SKU: ${product.stockSkuUsed})`}</span>
+                  <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} ${product.stockSkuUsed ? `(Stock: ${product.stockSkuUsed})` : ''}`} />
+                        <DataRow icon={<Footprints />} label="Walk Sequence" value={product.walkSequence} />
+                        <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
+                        <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
+                        <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
+                        <DataRow icon={<Info />} label="Status" value={product.status} />
                       </div>
-                       {product.walkSequence && (
-                           <div className="flex items-center gap-3">
-                              <Footprints className="h-5 w-5" />
-                              <span>Walk Sequence: {product.walkSequence}</span>
+
+                      { (product.productDetails.ingredients?.length || product.productDetails.allergenInfo?.length) && <Separator /> }
+                      
+                      {product.productDetails.ingredients && product.productDetails.ingredients.length > 0 && (
+                          <div>
+                              <h4 className="font-bold mb-2 flex items-center gap-2"><Leaf className="h-5 w-5" /> Ingredients</h4>
+                              <p className="text-xs">{product.productDetails.ingredients.join(', ')}</p>
                           </div>
                       )}
-                      {product.location.promotional && (
-                           <div className="flex items-center gap-3">
-                              <Tag className="h-5 w-5" />
-                              <span>Promo Location: {product.location.promotional}</span>
+                      
+                      {product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0 && (
+                          <div>
+                              <h4 className="font-bold mb-2 flex items-center gap-2"><Shell className="h-5 w-5" /> Allergens</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {product.productDetails.allergenInfo.map(allergen => (
+                                    <Badge key={allergen.name} variant={allergen.value === 'Contains' ? 'destructive' : 'secondary'}>
+                                        {allergen.name}
+                                    </Badge>
+                                ))}
+                              </div>
                           </div>
                       )}
-                       <div className="flex items-center gap-3">
-                          <Thermometer className="h-5 w-5" />
-                          <span>{product.temperature || 'Unknown'}</span>
-                      </div>
-                      {product.weight && (
-                          <div className="flex items-center gap-3">
-                              <Weight className="h-5 w-5" />
-                              <span>{product.weight} kg</span>
-                          </div>
+
+                      {product.productDetails.nutritionalInfo && <Separator />}
+
+                      {product.productDetails.nutritionalInfo && (
+                        <div>
+                            <h4 className="font-bold mb-2 flex items-center gap-2"><Beaker className="h-5 w-5" /> Nutrition</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{product.productDetails.nutritionalHeading}</p>
+                            <div className='space-y-1 text-xs'>
+                                {product.productDetails.nutritionalInfo
+                                    .filter(n => !n.name.startsWith('*'))
+                                    .map(nutrient => (
+                                    <div key={nutrient.name} className="flex justify-between border-b pb-1">
+                                        <span>{nutrient.name}</span>
+                                        <span className="text-right">{nutrient.perComp?.split(',')[0]}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                       )}
-                       <div className="flex items-center gap-3">
-                          <Info className="h-5 w-5" />
-                          <span>Status: {product.status}</span>
-                      </div>
+
+
                       <details className="pt-2 text-xs">
                           <summary className="cursor-pointer">Raw Data</summary>
                           <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48">

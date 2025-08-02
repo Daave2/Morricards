@@ -47,9 +47,19 @@ export interface components {
       packComponents?: ({
           itemNumber?: number;
         })[];
-      imageUrls?: ({
+      imageUrl?: ({
           url?: string;
         })[];
+      ingredients?: string[];
+      allergenInfo?: {
+        name: string;
+        value: string;
+      }[];
+      nutritionalInfo?: {
+        name: string;
+        perComp: string | null;
+      }[];
+      nutritionalHeading?: string;
     };
     StockPayload: {
       stockPosition?: ({
