@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -310,24 +311,24 @@ export default function Home() {
                   name="skus"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Product SKUs / EANs</FormLabel>
+                       <div className="flex justify-between items-center">
+                        <FormLabel>Product SKUs / EANs</FormLabel>
+                        <Button
+                          type="button"
+                          variant={isScanMode ? 'destructive' : 'outline'}
+                          size="sm"
+                          onClick={handleScanButtonClick}
+                        >
+                          <ScanLine className="mr-2 h-4 w-4" />
+                          {getScanButtonLabel()}
+                        </Button>
+                      </div>
                       <FormControl>
-                        <div className="relative">
-                          <Textarea
-                            placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                            className="min-h-[120px] resize-y pr-32"
-                            {...field}
-                          />
-                          <Button 
-                            type="button" 
-                            variant={isScanMode ? "destructive" : "outline"}
-                            className="absolute top-3 right-3"
-                            onClick={handleScanButtonClick}
-                          >
-                             <ScanLine className="mr-2 h-4 w-4" />
-                             {getScanButtonLabel()}
-                          </Button>
-                        </div>
+                        <Textarea
+                          placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
+                          className="min-h-[120px] resize-y"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
