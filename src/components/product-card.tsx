@@ -187,16 +187,18 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                       )}
 
 
-                      { bws && <Separator /> }
                       { bws && (
-                          <div>
-                            <h4 className="font-bold mb-2 flex items-center gap-2"><GlassWater className="h-5 w-5" /> Beers, Wines & Spirits</h4>
-                            <div className="space-y-2">
-                                <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={`${bws.alcoholByVolume}%`} />
-                                <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} valueClassName='text-xs italic' />
-                                <DataRow icon={<Info />} label="Volume" value={`${bws.volumeInLitres}L`} />
+                          <>
+                            <Separator />
+                            <div>
+                              <h4 className="font-bold mb-2 flex items-center gap-2"><GlassWater className="h-5 w-5" /> Beers, Wines & Spirits</h4>
+                              <div className="space-y-2">
+                                  <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={bws.alcoholByVolume ? `${bws.alcoholByVolume}%` : null} />
+                                  <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} valueClassName='text-xs italic' />
+                                  <DataRow icon={<Info />} label="Volume" value={bws.volumeInLitres ? `${bws.volumeInLitres}L` : null} />
+                              </div>
                             </div>
-                          </div>
+                          </>
                       )}
 
 
@@ -280,4 +282,3 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
-
