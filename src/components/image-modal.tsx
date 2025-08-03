@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { Expand } from 'lucide-react';
 
 interface ImageModalProps {
@@ -15,6 +15,7 @@ export default function ImageModal({ src, alt, children }: ImageModalProps) {
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="p-0 border-0 max-w-2xl">
+        <DialogTitle className="sr-only">{alt}</DialogTitle>
         <div className="relative aspect-square">
           <Image
             src={src}
@@ -22,7 +23,7 @@ export default function ImageModal({ src, alt, children }: ImageModalProps) {
             fill
             className="object-contain"
             data-ai-hint="product image large"
-            unoptimized
+unoptimized
           />
         </div>
       </DialogContent>
