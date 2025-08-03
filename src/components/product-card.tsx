@@ -5,12 +5,13 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2 } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
+import ImageModal from './image-modal';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
 
@@ -40,16 +41,21 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   const cardContent = (
       <>
         {layout === 'grid' && (
-          <div className="relative aspect-square w-full">
-            <Image
-              src={imageUrl || placeholderImage}
-              alt={product.name}
-              fill
-              className="object-cover rounded-t-lg"
-              data-ai-hint="product image"
-              unoptimized
-            />
-          </div>
+          <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
+            <div className="relative aspect-square w-full cursor-pointer group/image">
+               <div className="absolute top-2 right-2 z-10 p-1.5 bg-background/70 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity">
+                    <Expand className="h-4 w-4" />
+                </div>
+              <Image
+                src={imageUrl || placeholderImage}
+                alt={product.name}
+                fill
+                className="object-cover rounded-t-lg"
+                data-ai-hint="product image"
+                unoptimized
+              />
+            </div>
+          </ImageModal>
         )}
         <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
           <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-start gap-4', 'pb-2')}>
@@ -62,16 +68,21 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                 />
             </div>
             {layout === 'list' && (
-               <div className="relative aspect-square w-24 h-24 flex-shrink-0">
-                <Image
-                  src={imageUrl || placeholderImage}
-                  alt={product.name}
-                  fill
-                  className="object-cover rounded-md"
-                  data-ai-hint="product image"
-                  unoptimized
-                />
-              </div>
+              <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
+                <div className="relative aspect-square w-24 h-24 flex-shrink-0 cursor-pointer group/image">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                        <Expand className="h-6 w-6 text-white" />
+                    </div>
+                  <Image
+                    src={imageUrl || placeholderImage}
+                    alt={product.name}
+                    fill
+                    className="object-cover rounded-md"
+                    data-ai-hint="product image"
+                    unoptimized
+                  />
+                </div>
+              </ImageModal>
             )}
             <div className='flex-grow'>
                 <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
