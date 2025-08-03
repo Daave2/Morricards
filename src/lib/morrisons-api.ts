@@ -167,7 +167,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         results.push({
             sku: product.itemNumber || sku,
             scannedSku: sku,
-            name: product.tillDescription || product.itemDescription || 'Unknown Product',
+            name: product.customerFriendlyDescription || product.tillDescription || product.itemDescription || 'Unknown Product',
             price: {
                 regular: prices?.[0]?.regularPrice,
                 promotional: promos?.[0]?.marketingAttributes?.offerValue,

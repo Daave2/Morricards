@@ -36,6 +36,7 @@ export interface components {
       itemNumber?: string;
       itemDescription?: string;
       tillDescription?: string;
+      customerFriendlyDescription?: string;
       status?: string;
       temperatureRegime?: string;
       dimensions?: {
