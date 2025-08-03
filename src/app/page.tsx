@@ -112,7 +112,7 @@ export default function Home() {
                                   toast({
                                       title: 'Item Already Picked',
                                       description: `Already picked: ${productToPick.name}`,
-                                      icon: <Info className="h-5 w-5 text-accent" />
+                                      icon: <Info className="h-5 w-5 text-blue-500" />
                                   });
                               } else {
                                 handlePick(productToPick.sku);
@@ -262,7 +262,7 @@ export default function Home() {
   const getScanButtonLabel = () => {
     if (isScanMode) return 'Close Scanner';
     if (products.length > 0) return 'Pick by Scan';
-    return 'Scan';
+    return 'Scan to Add';
   }
 
   return (
@@ -290,11 +290,11 @@ export default function Home() {
           <div className="inline-flex items-center gap-4">
              <ShoppingBasket className="w-12 h-12 text-primary" />
             <h1 className="text-5xl font-bold tracking-tight text-primary">
-              Store mobile<span className="text-foreground">ULTRA</span>
+              Morri<span className="text-foreground">Cards</span>
             </h1>
           </div>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Scan EANs or enter SKUs to build your picking list.
+            Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
           </p>
         </header>
 

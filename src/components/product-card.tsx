@@ -34,7 +34,7 @@ const DataRow = ({ icon, label, value }: { icon: React.ReactNode, label: string,
 export default function ProductCard({ product, layout, onPick }: ProductCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const stockColor = product.stockQuantity > 20 ? 'bg-primary' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
+  const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
   const placeholderImage = `https://placehold.co/400x400.png`;
   const imageUrl = product.imageUrl;
 
@@ -192,7 +192,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
         <Card className={cn(
             "w-full transition-all duration-300 flex flex-col", 
             layout === 'list' && "flex-row",
-            product.picked ? 'bg-muted/50 opacity-60' : 'hover:shadow-xl hover:-translate-y-1'
+            product.picked ? 'bg-muted/50 opacity-60' : 'bg-card hover:shadow-xl hover:-translate-y-1'
         )}>
             {product.picked && (
                  <div className="absolute top-2 right-2 z-10 p-1 bg-primary text-primary-foreground rounded-full">
