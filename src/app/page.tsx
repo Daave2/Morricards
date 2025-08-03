@@ -114,7 +114,7 @@ export default function Home() {
     
     toast({
         title: 'Undo Successful',
-        description: 'The last item has been unpicked.',
+        description: 'The item has been unpicked.',
         icon: <Undo2 className="h-5 w-5 text-blue-500" />
     });
   }, [toast]);
@@ -134,7 +134,7 @@ export default function Home() {
                 description: `Picked: ${productToUpdate.name}`,
                 icon: <Check className="h-5 w-5 text-primary" />,
                 action: (
-                    <ToastAction altText="Undo" onClick={() => handleUndoPick(sku)}>
+                    <ToastAction altText="Undo" onClick={() => handleUndoPick(productToUpdate.sku)}>
                         <Undo2 className="mr-1 h-4 w-4" />
                         Undo
                     </ToastAction>
