@@ -7,6 +7,7 @@ import * as z from 'zod';
 import type { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,8 @@ export default function Home() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [scannedSkus, setScannedSkus] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const { playSuccess, playError, playInfo } = useAudioFeedback();
+
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
@@ -105,6 +108,7 @@ export default function Home() {
                           const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
                           if (productToPick) {
                               if (productToPick.picked) {
+                                  playInfo();
                                   toast({
                                       title: 'Item Already Picked',
                                       description: `Already picked: ${productToPick.name}`,
@@ -112,6 +116,7 @@ export default function Home() {
                                   });
                               } else {
                                 handlePick(productToPick.sku);
+                                playSuccess();
                                 toast({
                                     title: 'Item Picked',
                                     description: `Picked: ${productToPick.name}`,
@@ -119,6 +124,7 @@ export default function Home() {
                                 });
                               }
                           } else {
+                              playError();
                               toast({
                                   variant: 'destructive',
                                   title: 'Item Not in List',
@@ -129,6 +135,7 @@ export default function Home() {
                           // Otherwise, we are in "list building mode"
                           const currentSkus = form.getValues('skus');
                           form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
+                          playSuccess();
                           toast({
                               title: 'Barcode Scanned',
                               description: `Added EAN: ${code}`,
