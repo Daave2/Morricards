@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -14,7 +14,7 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { operatorAgeCheck?: string } & FetchMorrisonsDataOutput[0]['productDetails'] };
 
 interface ProductCardProps {
   product: Product;
@@ -38,6 +38,8 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
   const placeholderImage = `https://placehold.co/400x400.png`;
   const imageUrl = product.imageUrl;
+  
+  const isAgeRestricted = product.productDetails?.operatorAgeCheck === 'Yes';
 
   const cardContent = (
       <>
@@ -62,13 +64,18 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
         )}
         <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
           <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-start gap-4', 'pb-2', layout === 'grid' && 'pt-0')}>
-             <div className="flex items-center space-x-3 pt-1">
+             <div className="flex flex-col items-center space-y-2 pt-1">
                 <Checkbox
                     id={`pick-${product.sku}`}
                     checked={product.picked}
                     onCheckedChange={() => onPick(product.sku)}
                     className="h-6 w-6"
                 />
+                <div className="flex gap-1.5 text-muted-foreground">
+                    {product.temperature === 'Chilled' && <ThermometerSnowflake className="h-4 w-4" title="Chilled" />}
+                    {product.temperature === 'Frozen' && <Snowflake className="h-4 w-4" title="Frozen" />}
+                    {isAgeRestricted && <AlertTriangle className="h-4 w-4 text-destructive" title="Age restricted" />}
+                </div>
             </div>
             {layout === 'list' && (
               <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
