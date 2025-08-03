@@ -276,7 +276,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <Card className={cn(
-            "w-full transition-all duration-300 flex flex-col", 
+            "w-full transition-all duration-300 flex flex-col relative", 
             layout === 'list' && "flex-row",
             product.picked ? 'bg-muted/50 opacity-60' : 'bg-card hover:shadow-xl hover:-translate-y-1',
             isAgeRestricted ? 'bg-red-50/50' : 
@@ -293,5 +293,3 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
-
-    
