@@ -182,31 +182,31 @@ export default function Home() {
                           if (productToPick) {
                               if (productToPick.picked) {
                                   playInfo();
-                                  toast({
+                                  setTimeout(() => toast({
                                       title: 'Item Already Picked',
                                       description: `Already picked: ${productToPick.name}`,
                                       icon: <Info className="h-5 w-5 text-blue-500" />
-                                  });
+                                  }), 0);
                               } else {
                                 handlePick(productToPick.sku);
                               }
                           } else {
                               playError();
-                              toast({
+                              setTimeout(() => toast({
                                   variant: 'destructive',
                                   title: 'Item Not in List',
                                   description: `Scanned item (EAN: ${code}) is not in the picking list.`,
-                              });
+                              }), 0);
                           }
                       } else {
                           // Otherwise, we are in "list building mode"
                           const currentSkus = form.getValues('skus');
                           form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
                           playSuccess();
-                          toast({
+                          setTimeout(() => toast({
                               title: 'Barcode Scanned',
                               description: `Added EAN: ${code}`,
-                          });
+                          }), 0);
                       }
                   }
                   if (error && !(error instanceof notFoundExceptionRef.current)) {
@@ -549,3 +549,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
