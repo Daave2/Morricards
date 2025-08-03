@@ -14,7 +14,7 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { operatorAgeCheck?: string } & FetchMorrisonsDataOutput[0]['productDetails'] };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
 
 interface ProductCardProps {
   product: Product;
@@ -39,7 +39,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   const placeholderImage = `https://placehold.co/400x400.png`;
   const imageUrl = product.imageUrl;
   
-  const isAgeRestricted = product.productDetails?.operatorAgeCheck === 'Yes';
+  const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
 
   const cardContent = (
       <>

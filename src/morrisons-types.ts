@@ -60,6 +60,9 @@ export interface components {
         perComp: string | null;
       }[];
       nutritionalHeading?: string;
+      productRestrictions?: {
+        operatorAgeCheck?: string;
+      }
     };
     StockPayload: {
       stockPosition?: ({
