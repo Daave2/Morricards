@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -43,8 +44,8 @@ const toastVariants = cva(
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants> & { icon?: React.ReactNode }
->(({ className, variant, icon, ...props }, ref) => {
+    VariantProps<typeof toastVariants>
+>(({ className, variant, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
       ref={ref}
@@ -127,3 +128,5 @@ export {
   ToastClose,
   ToastAction,
 }
+
+    

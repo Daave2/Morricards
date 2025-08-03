@@ -15,11 +15,12 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2 } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { ToastAction } from '@/components/ui/toast';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
 
@@ -37,7 +38,8 @@ export default function Home() {
   const [isScanMode, setIsScanMode] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [scannedSkus, setScannedSkus] = useState<Set<string>>(new Set());
-  const { toast } = useToast();
+  const [lastPickedSku, setLastPickedSku] = useState<string | null>(null);
+  const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
 
 
@@ -70,15 +72,50 @@ export default function Home() {
     }
   }, []);
 
+  const handleUndoPick = useCallback(() => {
+    if (!lastPickedSku) return;
+
+    setProducts(prevProducts =>
+        prevProducts.map(p =>
+            p.sku === lastPickedSku ? { ...p, picked: false } : p
+        )
+    );
+    toast({
+        title: 'Undo Successful',
+        description: 'The last item has been unpicked.',
+        icon: <Undo2 className="h-5 w-5 text-blue-500" />
+    });
+    setLastPickedSku(null);
+  }, [lastPickedSku, toast]);
+
   const handlePick = useCallback((sku: string) => {
     setProducts(prevProducts => {
         const productToUpdate = prevProducts.find(p => p.sku === sku || p.scannedSku === sku);
         if (!productToUpdate) return prevProducts;
 
+        const isPicking = !productToUpdate.picked;
+        
+        if (isPicking) {
+            setLastPickedSku(sku);
+            dismiss(); // Dismiss previous toasts
+            playSuccess();
+            toast({
+                title: 'Item Picked',
+                description: `Picked: ${productToUpdate.name}`,
+                icon: <Check className="h-5 w-5 text-primary" />,
+                action: (
+                    <ToastAction altText="Undo" onClick={handleUndoPick}>
+                        <Undo2 className="mr-1 h-4 w-4" />
+                        Undo
+                    </ToastAction>
+                ),
+            });
+        }
+
         const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
         return updatedProducts;
     });
-  }, []);
+  }, [handleUndoPick, toast, playSuccess, dismiss]);
   
   useEffect(() => {
     async function setupCamera() {
@@ -117,12 +154,6 @@ export default function Home() {
                                   });
                               } else {
                                 handlePick(productToPick.sku);
-                                playSuccess();
-                                toast({
-                                    title: 'Item Picked',
-                                    description: `Picked: ${productToPick.name}`,
-                                    icon: <Check className="h-5 w-5 text-primary" />
-                                });
                               }
                           } else {
                               playError();
@@ -447,3 +478,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
