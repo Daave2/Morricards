@@ -15,12 +15,23 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2 } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2 } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ToastAction } from '@/components/ui/toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
 
@@ -28,6 +39,8 @@ const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
+
+const LOCAL_STORAGE_KEY = 'morricards-products';
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -42,11 +55,31 @@ export default function Home() {
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
 
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<any>();
   const notFoundExceptionRef = useRef<any>(null);
+
+  // Load products from local storage on initial render
+  useEffect(() => {
+    try {
+      const savedProducts = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedProducts) {
+        setProducts(JSON.parse(savedProducts));
+      }
+    } catch (error) {
+      console.error("Failed to load products from local storage", error);
+    }
+  }, []);
+
+  // Save products to local storage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+    } catch (error) {
+      console.error("Failed to save products to local storage", error);
+    }
+  }, [products]);
 
 
   useEffect(() => {
@@ -216,7 +249,7 @@ export default function Home() {
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
     setIsLoading(true);
-    setProducts([]);
+    // Don't clear products here to allow adding to existing list
     const { data, error } = await getProductData(values);
 
     if (error) {
@@ -226,16 +259,22 @@ export default function Home() {
         description: error,
       });
     } else if (data) {
-      if (data.length === 0) {
+       if (data.length === 0) {
         toast({
-          title: 'No products found',
+          title: 'No new products found',
           description: 'Could not find any products for the given SKUs.',
         });
+      } else {
+        // Merge new products with existing ones, avoiding duplicates
+        setProducts(prevProducts => {
+            const existingSkus = new Set(prevProducts.map(p => p.sku));
+            const newProducts = data.filter(p => !existingSkus.has(p.sku));
+            return [...prevProducts, ...newProducts.map(p => ({ ...p, picked: false }))]
+        });
+        form.setValue('skus', ''); // Clear SKU input after successful fetch
       }
-      setProducts(data.map(p => ({ ...p, picked: false })));
     }
     setIsLoading(false);
-    // Reset session-specific scanned SKUs after list is built or scanner is closed
     if (isScanMode) setIsScanMode(false);
     setScannedSkus(new Set());
   }
@@ -299,6 +338,17 @@ export default function Home() {
     return 'Scan to Add';
   }
 
+  const handleResetList = () => {
+    setProducts([]);
+    setFilterQuery('');
+    setSortConfig('walkSequence-asc');
+    form.reset();
+    toast({
+        title: 'List Cleared',
+        description: 'The picking list has been successfully cleared.',
+    });
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {isScanMode && (
@@ -334,7 +384,7 @@ export default function Home() {
 
         <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
           <CardHeader>
-            <CardTitle>Create Picking List</CardTitle>
+            <CardTitle>Create or Add to Picking List</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -387,7 +437,7 @@ export default function Home() {
                       Fetching Data...
                     </>
                   ) : (
-                    'Get Picking List'
+                    'Get/Add to Picking List'
                   )}
                 </Button>
               </form>
@@ -437,6 +487,25 @@ export default function Home() {
                                 <List className="h-5 w-5"/>
                             </Button>
                         </div>
+                         <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="icon">
+                                <Trash2 className="h-5 w-5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action will permanently clear your entire picking list. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleResetList}>Clear List</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
             </div>
