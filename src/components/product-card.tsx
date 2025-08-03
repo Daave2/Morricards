@@ -41,24 +41,26 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   const cardContent = (
       <>
         {layout === 'grid' && (
-          <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
-            <div className="relative aspect-square w-full cursor-pointer group/image">
-               <div className="absolute top-2 right-2 z-10 p-1.5 bg-background/70 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity">
-                    <Expand className="h-4 w-4" />
+           <div className="p-4 flex justify-center">
+            <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
+              <div className="relative aspect-square w-32 h-32 cursor-pointer group/image border rounded-lg overflow-hidden">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity">
+                    <Expand className="h-6 w-6 text-white" />
                 </div>
-              <Image
-                src={imageUrl || placeholderImage}
-                alt={product.name}
-                fill
-                className="object-cover rounded-t-lg"
-                data-ai-hint="product image"
-                unoptimized
-              />
-            </div>
-          </ImageModal>
+                <Image
+                  src={imageUrl || placeholderImage}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  data-ai-hint="product image"
+                  unoptimized
+                />
+              </div>
+            </ImageModal>
+          </div>
         )}
         <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
-          <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-start gap-4', 'pb-2')}>
+          <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-start gap-4', 'pb-2', layout === 'grid' && 'pt-0')}>
              <div className="flex items-center space-x-3 pt-1">
                 <Checkbox
                     id={`pick-${product.sku}`}
