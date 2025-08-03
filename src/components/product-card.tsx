@@ -157,9 +157,16 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                   <span>Stock record: <strong>{product.stockQuantity}</strong></span>
                   <div className={`h-2.5 w-2.5 rounded-full ${stockColor}`} title={`Stock level: ${product.stockQuantity}`}></div>
               </div>
-              <div className="flex items-center gap-3 text-sm">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  <span>Location: <strong>{product.location.standard || 'None'}</strong></span>
+              <div className="flex items-start gap-3 text-sm">
+                  <MapPin className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="flex-grow">
+                      <span>Location: <strong>{product.location.standard || 'None'}</strong></span>
+                      {product.location.secondary && (
+                          <div className="text-xs text-muted-foreground">
+                              Secondary: {product.location.secondary}
+                          </div>
+                      )}
+                  </div>
               </div>
               <div className="flex items-center gap-3 text-sm">
                   <PoundSterling className="h-5 w-5 text-primary" />
@@ -284,7 +291,3 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
-
-    
-
-    

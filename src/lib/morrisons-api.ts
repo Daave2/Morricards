@@ -36,6 +36,7 @@ export type FetchMorrisonsDataOutput = {
   stockUnit?: string;
   location: {
       standard?: string;
+      secondary?: string;
       promotional?: string;
   };
   temperature?: string;
@@ -125,18 +126,23 @@ function niceLoc(raw: components['schemas']['Location']): string {
     return parts.join(', ');
 }
 
-function simplifyLocations(lst?: components['schemas']['Location'][]): string {
-    if (!lst || lst.length === 0) return "";
-    return lst.map(niceLoc).join('; ');
+function simplifyLocations(lst?: components['schemas']['Location'][]): string[] {
+    if (!lst || lst.length === 0) return [];
+    return lst.map(niceLoc);
 }
 
-function extractLocationBits(pi: PriceIntegrity | null): { std: string, promo: string, walk: string } {
+function extractLocationBits(pi: PriceIntegrity | null): { std: string, secondary?: string, promo: string, walk: string } {
     if (!pi || !pi.space) return { std: "", promo: "", walk: "" };
+    
     const stdLocs = pi.space.standardSpace?.locations;
-    const promo = simplifyLocations(pi.space.promotionalSpace?.locations);
+    const [std, secondary] = simplifyLocations(stdLocs);
+
+    const promoLocs = pi.space.promotionalSpace?.locations;
+    const [promo] = simplifyLocations(promoLocs);
+    
     const walk = stdLocs && stdLocs.length > 0 && stdLocs[0].storeWalkSequence ? stdLocs[0].storeWalkSequence.toString() : "";
-    const std = simplifyLocations(stdLocs);
-    return { std, promo, walk };
+    
+    return { std: std || "", secondary, promo: promo || "", walk };
 }
 
 
@@ -157,7 +163,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
 
         const pi = await getPi(input.locationId, stockSku || sku);
-        const { std: stdLoc, promo: promoLoc, walk } = extractLocationBits(pi);
+        const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
 
         const stockPosition = stockPayload?.stockPosition?.[0];
 
@@ -176,6 +182,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             stockUnit: stockPosition?.unitofMeasure,
             location: {
                 standard: stdLoc,
+                secondary: secondaryLoc,
                 promotional: promoLoc,
             },
             temperature: product.temperatureRegime,
