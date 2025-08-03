@@ -63,6 +63,14 @@ export interface components {
       nutritionalHeading?: string;
       productRestrictions?: {
         operatorAgeCheck?: string;
+      };
+      brand?: string;
+      countryOfOrigin?: string;
+      productMarketing?: string;
+      beersWinesSpirits?: {
+        alcoholByVolume?: string;
+        tastingNotes?: string;
+        volumeInLitres?: string;
       }
     };
     StockPayload: {

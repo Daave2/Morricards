@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -15,7 +15,7 @@ import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
+type Product = FetchMorrisonsDataOutput[0] & { productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
 
 interface ProductCardProps {
   product: Product;
@@ -23,12 +23,14 @@ interface ProductCardProps {
   onPick: (sku: string) => void;
 }
 
-const DataRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string | number | null }) => {
+const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null, valueClassName?: string }) => {
     if (value === undefined || value === null || value === '') return null;
     return (
         <div className="flex items-start gap-3">
-            <div className="w-5 h-5 text-muted-foreground flex-shrink-0">{icon}</div>
-            <span><strong>{label}:</strong> {value}</span>
+            <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
+            <div className='flex-grow'>
+                <span className="font-bold">{label}:</span> <span className={cn(valueClassName)}>{value}</span>
+            </div>
         </div>
     );
 }
@@ -41,6 +43,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   const imageUrl = product.imageUrl;
   
   const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
+  const bws = product.productDetails.beersWinesSpirits;
 
   const cardContent = (
       <>
@@ -97,7 +100,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-1 text-xs cursor-default">
+                                    <div className="flex items-center gap-1.5 text-xs cursor-default">
                                         <ThermometerSnowflake className="h-4 w-4" />
                                         <span>Chilled</span>
                                     </div>
@@ -112,7 +115,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-1 text-xs cursor-default">
+                                    <div className="flex items-center gap-1.5 text-xs cursor-default">
                                         <Snowflake className="h-4 w-4" />
                                         <span>Frozen</span>
                                     </div>
@@ -127,7 +130,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-1 text-xs text-destructive cursor-default">
+                                    <div className="flex items-center gap-1.5 text-xs text-destructive cursor-default">
                                         <AlertTriangle className="h-4 w-4" />
                                         <span>Age Restricted</span>
                                     </div>
@@ -166,6 +169,8 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
               <div className={cn("px-6 pb-4", layout === 'list' && 'px-4')}>
                   <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
+                        <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
                         <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                         <DataRow icon={<Footprints />} label="Walk Sequence" value={product.walkSequence} />
                         <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
@@ -173,6 +178,27 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                         <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
                         <DataRow icon={<Info />} label="Status" value={product.status} />
                       </div>
+
+                      {product.productDetails.productMarketing && <Separator />}
+                      {product.productDetails.productMarketing && (
+                        <div className='italic text-xs'>
+                           {product.productDetails.productMarketing}
+                        </div>
+                      )}
+
+
+                      { bws && <Separator /> }
+                      { bws && (
+                          <div>
+                            <h4 className="font-bold mb-2 flex items-center gap-2"><GlassWater className="h-5 w-5" /> Beers, Wines & Spirits</h4>
+                            <div className="space-y-2">
+                                <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={`${bws.alcoholByVolume}%`} />
+                                <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} valueClassName='text-xs italic' />
+                                <DataRow icon={<Info />} label="Volume" value={`${bws.volumeInLitres}L`} />
+                            </div>
+                          </div>
+                      )}
+
 
                       { (product.productDetails.ingredients?.length || product.productDetails.allergenInfo?.length) && <Separator /> }
                       
@@ -215,10 +241,9 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                         </div>
                       )}
 
-
                       <details className="pt-2 text-xs">
-                          <summary className="cursor-pointer">Raw Data</summary>
-                          <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48">
+                          <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                          <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">
                               {JSON.stringify(product, null, 2)}
                           </pre>
                       </details>
@@ -255,3 +280,4 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
+
