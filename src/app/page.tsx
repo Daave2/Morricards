@@ -134,7 +134,7 @@ export default function Home() {
             setLastPickedSku(sku);
             setTimeout(() => dismiss(), 0); // Dismiss previous toasts safely
             playSuccess();
-            toast({
+            setTimeout(() => toast({
                 title: 'Item Picked',
                 description: `Picked: ${productToUpdate.name}`,
                 icon: <Check className="h-5 w-5 text-primary" />,
@@ -144,13 +144,13 @@ export default function Home() {
                         Undo
                     </ToastAction>
                 ),
-            });
+            }), 0);
         }
 
         const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
         return [...updatedProducts];
     });
-  }, [handleUndoPick, toast, playSuccess, dismiss]);
+  }, [handleUndoPick, playSuccess, dismiss, toast]);
   
   useEffect(() => {
     async function setupCamera() {
@@ -550,4 +550,5 @@ export default function Home() {
   );
 }
 
+    
     
