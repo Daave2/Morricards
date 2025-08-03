@@ -356,8 +356,8 @@ export default function Home() {
 
         { (products.length > 0 || isLoading) && 
             <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-                    <div className="relative w-full md:w-auto md:flex-grow max-w-xs">
+                <div className="flex flex-wrap gap-4 justify-between items-center">
+                    <div className="relative w-full sm:w-auto sm:flex-grow max-w-xs">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input 
                             placeholder="Filter by name..."
@@ -366,7 +366,7 @@ export default function Home() {
                             className="pl-10"
                         />
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                         <Button 
                             variant={isScanMode ? "destructive" : "outline"}
                             onClick={handleScanButtonClick}
@@ -375,7 +375,7 @@ export default function Home() {
                              {getScanButtonLabel()}
                           </Button>
                         <Select value={sortConfig} onValueChange={setSortConfig}>
-                            <SelectTrigger className="w-[200px]">
+                            <SelectTrigger className="w-full sm:w-[200px]">
                                 <SelectValue placeholder="Sort by..." />
                             </SelectTrigger>
                             <SelectContent>
