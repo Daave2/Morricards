@@ -78,21 +78,21 @@ function getProduct(sku: string): Promise<Product | null> {
 }
 
 function candidateStockSkus(prod: Product, primarySku: string): string[] {
-    const skus = [primarySku];
+    const skus = new Set<string>([primarySku]);
     if (prod.packComponents) {
         for (const pc of prod.packComponents) {
             if (pc.itemNumber) {
-                skus.push(pc.itemNumber.toString());
+                skus.add(pc.itemNumber.toString());
             }
         }
     }
-    return skus;
+    return Array.from(skus);
 }
 
 async function tryStock(loc: string, skus: string[]): Promise<{ sku: string | null, payload: StockPayload | null }> {
     for (const s of skus) {
         const payload = await fetchJson<StockPayload>(`${BASE_STOCK}/${loc}/items/${s}?apikey=${API_KEY}`);
-        if (payload) {
+        if (payload?.stockPosition && payload.stockPosition.length > 0 && payload.stockPosition[0].qty !== undefined) {
             return { sku: s, payload };
         }
     }
@@ -133,9 +133,9 @@ function simplifyLocations(lst?: components['schemas']['Location'][]): string {
 function extractLocationBits(pi: PriceIntegrity | null): { std: string, promo: string, walk: string } {
     if (!pi || !pi.space) return { std: "", promo: "", walk: "" };
     const stdLocs = pi.space.standardSpace?.locations;
-    const std = simplifyLocations(stdLocs);
     const promo = simplifyLocations(pi.space.promotionalSpace?.locations);
     const walk = stdLocs && stdLocs.length > 0 && stdLocs[0].storeWalkSequence ? stdLocs[0].storeWalkSequence.toString() : "";
+    const std = simplifyLocations(stdLocs);
     return { std, promo, walk };
 }
 
@@ -172,7 +172,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
                 regular: prices?.[0]?.regularPrice,
                 promotional: promos?.[0]?.marketingAttributes?.offerValue,
             },
-            stockQuantity: stockPosition?.qty || 0,
+            stockQuantity: stockPosition?.qty ?? 0,
             stockUnit: stockPosition?.unitofMeasure,
             location: {
                 standard: stdLoc,
