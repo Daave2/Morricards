@@ -108,14 +108,14 @@ export default function Home() {
                                   toast({
                                       title: 'Item Already Picked',
                                       description: `Already picked: ${productToPick.name}`,
-                                      icon: <Info className="h-5 w-5 text-blue-500" />
+                                      icon: <Info className="h-5 w-5 text-accent" />
                                   });
                               } else {
                                 handlePick(productToPick.sku);
                                 toast({
                                     title: 'Item Picked',
                                     description: `Picked: ${productToPick.name}`,
-                                    icon: <Check className="h-5 w-5 text-green-500" />
+                                    icon: <Check className="h-5 w-5 text-primary" />
                                 });
                               }
                           } else {
