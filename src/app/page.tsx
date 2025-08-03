@@ -132,7 +132,7 @@ export default function Home() {
         
         if (isPicking) {
             setLastPickedSku(sku);
-            dismiss(); // Dismiss previous toasts
+            setTimeout(() => dismiss(), 0); // Dismiss previous toasts safely
             playSuccess();
             toast({
                 title: 'Item Picked',
