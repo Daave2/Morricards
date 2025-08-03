@@ -44,6 +44,8 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   
   const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
   const bws = product.productDetails.beersWinesSpirits;
+  const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
+
 
   const cardContent = (
       <>
@@ -187,7 +189,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                       )}
 
 
-                      { bws && (
+                      { hasBwsDetails && (
                           <>
                             <Separator />
                             <div>
@@ -282,3 +284,5 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
+
+    
