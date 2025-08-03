@@ -266,7 +266,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       {isScanMode && (
           <div className="sticky top-0 z-50 bg-black p-4 shadow-lg">
               <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-lg overflow-hidden border-2 border-primary">
@@ -315,7 +315,7 @@ export default function Home() {
                         <div className="relative">
                           <Textarea
                             placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                            className="min-h-[120px] resize-y pr-24"
+                            className="min-h-[120px] resize-y pr-32"
                             {...field}
                           />
                           <Button 
