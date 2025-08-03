@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'MorriCards',
-  description: 'Find product information from Morrisons stores.',
+  title: 'Store mobile ULTRA',
+  description: 'Your friendly shopping assistant.',
 };
 
 export default function RootLayout({
