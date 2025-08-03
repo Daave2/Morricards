@@ -13,6 +13,7 @@ import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
 
@@ -71,11 +72,6 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                     onCheckedChange={() => onPick(product.sku)}
                     className="h-6 w-6"
                 />
-                <div className="flex gap-1.5 text-muted-foreground">
-                    {product.temperature === 'Chilled' && <ThermometerSnowflake className="h-4 w-4" title="Chilled" />}
-                    {product.temperature === 'Frozen' && <Snowflake className="h-4 w-4" title="Frozen" />}
-                    {isAgeRestricted && <AlertTriangle className="h-4 w-4 text-destructive" title="Age restricted" />}
-                </div>
             </div>
             {layout === 'list' && (
               <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
@@ -96,8 +92,55 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
             )}
             <div className='flex-grow'>
                 <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-2">
+                    {product.temperature === 'Chilled' && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1 text-xs cursor-default">
+                                        <ThermometerSnowflake className="h-4 w-4" />
+                                        <span>Chilled</span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>This item is chilled and requires refrigeration.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                    {product.temperature === 'Frozen' && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1 text-xs cursor-default">
+                                        <Snowflake className="h-4 w-4" />
+                                        <span>Frozen</span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>This item is frozen.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                    {isAgeRestricted && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1 text-xs text-destructive cursor-default">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <span>Age Restricted</span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Age verification is required for this item.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                </div>
                 {product.price.promotional && (
-                    <CardDescription className="pt-1">
+                    <CardDescription className="pt-2">
                         <Badge variant="destructive" className="bg-accent text-accent-foreground">{product.price.promotional}</Badge>
                     </CardDescription>
                 )}
