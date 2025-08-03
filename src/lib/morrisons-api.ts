@@ -104,6 +104,19 @@ function getPi(loc: string, sku: string): Promise<PriceIntegrity | null> {
     return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`);
 }
 
+const AISLE_NAME_MAP: Record<string, string> = {
+  '70': 'Seasonal',
+  '78': 'Food to order',
+  '85': 'Market Street',
+  '88': 'Deli',
+  '91': 'Produce Area',
+  '94': 'Produce',
+  '95': 'Back Promos',
+  '96': 'Middle Promos',
+  '97': 'Checkouts',
+};
+
+
 function niceLoc(raw: components['schemas']['Location']): string {
     const sideRe = /^([LR])(\d+)$/i;
     const aisle = raw.aisle || "";
@@ -118,7 +131,13 @@ function niceLoc(raw: components['schemas']['Location']): string {
     }
     
     const parts: string[] = [];
-    if (aisle) parts.push(`Aisle ${aisle}`);
+    if (aisle) {
+        if (AISLE_NAME_MAP[aisle]) {
+            parts.push(AISLE_NAME_MAP[aisle]);
+        } else {
+            parts.push(`Aisle ${aisle}`);
+        }
+    }
     if (side) parts.push(`${side} bay ${bay}`);
     else if (bay) parts.push(`Bay ${bay}`);
     if (shelf) parts.push(`shelf ${shelf}`);
