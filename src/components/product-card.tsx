@@ -278,7 +278,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
         <Card className={cn(
             "w-full transition-all duration-300 flex flex-col relative", 
             layout === 'list' && "flex-row",
-            product.picked ? 'bg-muted/50 opacity-60' : 'bg-card hover:shadow-xl hover:-translate-y-1',
+            product.picked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
             isAgeRestricted ? 'bg-red-50/50' : 
             product.temperature === 'Chilled' ? 'bg-teal-50/50' :
             product.temperature === 'Frozen' ? 'bg-sky-50/50' : ''
@@ -293,3 +293,5 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
+
+    
