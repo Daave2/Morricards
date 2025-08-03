@@ -75,11 +75,13 @@ export default function Home() {
   const handleUndoPick = useCallback(() => {
     if (!lastPickedSku) return;
 
-    setProducts(prevProducts =>
-        prevProducts.map(p =>
-            p.sku === lastPickedSku ? { ...p, picked: false } : p
-        )
-    );
+    setProducts(prevProducts => {
+      const newProducts = prevProducts.map(p =>
+        p.sku === lastPickedSku ? { ...p, picked: false } : p
+      );
+      return [...newProducts]; 
+    });
+    
     toast({
         title: 'Undo Successful',
         description: 'The last item has been unpicked.',
@@ -113,7 +115,7 @@ export default function Home() {
         }
 
         const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
-        return updatedProducts;
+        return [...updatedProducts];
     });
   }, [handleUndoPick, toast, playSuccess, dismiss]);
   
@@ -478,5 +480,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
