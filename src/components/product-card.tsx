@@ -154,16 +154,16 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
           <CardContent className={cn('flex-grow', layout === 'list' ? 'p-4 pt-0 grid grid-cols-3 gap-4 items-center' : 'p-6 pt-0 space-y-3')}>
               <div className="flex items-center gap-3 text-sm">
                   <Boxes className="h-5 w-5 text-primary" />
-                  <span>Stock: <strong>{product.stockQuantity}</strong> {product.stockUnit}</span>
+                  <span>Stock record: <strong>{product.stockQuantity}</strong></span>
                   <div className={`h-2.5 w-2.5 rounded-full ${stockColor}`} title={`Stock level: ${product.stockQuantity}`}></div>
               </div>
               <div className="flex items-center gap-3 text-sm">
                   <MapPin className="h-5 w-5 text-primary" />
-                  <span>Location: <strong>{product.location.standard || 'N/A'}</strong></span>
+                  <span>Location: <strong>{product.location.standard || 'None'}</strong></span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                   <PoundSterling className="h-5 w-5 text-primary" />
-                  <span>Price: <strong>{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
+                  <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
           </CardContent>
 
@@ -284,5 +284,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
+
+    
 
     
