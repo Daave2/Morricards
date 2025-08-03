@@ -51,7 +51,6 @@ export default function Home() {
   const [isScanMode, setIsScanMode] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [scannedSkus, setScannedSkus] = useState<Set<string>>(new Set());
-  const [lastPickedSku, setLastPickedSku] = useState<string | null>(null);
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
 
@@ -105,12 +104,10 @@ export default function Home() {
     }
   }, []);
 
-  const handleUndoPick = useCallback(() => {
-    if (!lastPickedSku) return;
-
+  const handleUndoPick = useCallback((skuToUndo: string) => {
     setProducts(prevProducts => {
       const newProducts = prevProducts.map(p =>
-        p.sku === lastPickedSku ? { ...p, picked: false } : p
+        p.sku === skuToUndo ? { ...p, picked: false } : p
       );
       return [...newProducts]; 
     });
@@ -120,8 +117,7 @@ export default function Home() {
         description: 'The last item has been unpicked.',
         icon: <Undo2 className="h-5 w-5 text-blue-500" />
     });
-    setLastPickedSku(null);
-  }, [lastPickedSku, toast]);
+  }, [toast]);
 
   const handlePick = useCallback((sku: string) => {
     setProducts(prevProducts => {
@@ -131,7 +127,6 @@ export default function Home() {
         const isPicking = !productToUpdate.picked;
         
         if (isPicking) {
-            setLastPickedSku(sku);
             setTimeout(() => dismiss(), 0); // Dismiss previous toasts safely
             playSuccess();
             setTimeout(() => toast({
@@ -139,7 +134,7 @@ export default function Home() {
                 description: `Picked: ${productToUpdate.name}`,
                 icon: <Check className="h-5 w-5 text-primary" />,
                 action: (
-                    <ToastAction altText="Undo" onClick={handleUndoPick}>
+                    <ToastAction altText="Undo" onClick={() => handleUndoPick(sku)}>
                         <Undo2 className="mr-1 h-4 w-4" />
                         Undo
                     </ToastAction>
@@ -551,4 +546,6 @@ export default function Home() {
 }
 
     
+    
+
     
