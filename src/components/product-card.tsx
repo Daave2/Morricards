@@ -46,7 +46,6 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
   const bws = product.productDetails.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
 
-
   const cardContent = (
       <>
         {layout === 'grid' && (
@@ -279,7 +278,10 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
         <Card className={cn(
             "w-full transition-all duration-300 flex flex-col", 
             layout === 'list' && "flex-row",
-            product.picked ? 'bg-muted/50 opacity-60' : 'bg-card hover:shadow-xl hover:-translate-y-1'
+            product.picked ? 'bg-muted/50 opacity-60' : 'bg-card hover:shadow-xl hover:-translate-y-1',
+            isAgeRestricted ? 'bg-red-50/50' : 
+            product.temperature === 'Chilled' ? 'bg-teal-50/50' :
+            product.temperature === 'Frozen' ? 'bg-sky-50/50' : ''
         )}>
             {product.picked && (
                  <div className="absolute top-2 right-2 z-10 p-1 bg-primary text-primary-foreground rounded-full">
@@ -291,3 +293,5 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
+
+    
