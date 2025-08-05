@@ -355,38 +355,31 @@ export default function AvailabilityPage() {
     const html = head + body + tail;
 
     try {
-        if (navigator.clipboard && window.ClipboardItem) {
-            const item = new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }) });
-            await navigator.clipboard.write([item]);
-            toast({ title: "Copied for Email", description: "Rich HTML table copied to clipboard." });
+        const tmp = document.createElement("div");
+        tmp.style.position = "fixed";
+        tmp.style.left = "-9999px";
+        tmp.innerHTML = html;
+        document.body.appendChild(tmp);
+        
+        const range = document.createRange();
+        range.selectNodeContents(tmp);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        
+        const success = document.execCommand("copy");
+        
+        sel?.removeAllRanges();
+        document.body.removeChild(tmp);
+
+        if (success) {
+            toast({ title: "Copied for Email", description: "HTML table copied to clipboard." });
         } else {
-            throw new Error("ClipboardItem API not available.");
+            throw new Error("Copy command was unsuccessful.");
         }
-    } catch (err) {
-        // Fallback for older browsers or if the modern API fails
-        try {
-            const tmp = document.createElement("div");
-            tmp.style.position = "fixed";
-            tmp.style.left = "-9999px";
-            tmp.innerHTML = html;
-            document.body.appendChild(tmp);
-            
-            const range = document.createRange();
-            range.selectNodeContents(tmp);
-            const sel = window.getSelection();
-            sel?.removeAllRanges();
-            sel?.addRange(range);
-            
-            document.execCommand("copy");
-            
-            sel?.removeAllRanges();
-            document.body.removeChild(tmp);
-            
-            toast({ title: "Copied for Email", description: "HTML table copied using fallback method." });
-        } catch (copyError) {
-            console.error("HTML copy failed:", copyError);
-            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
-        }
+    } catch (copyError) {
+        console.error("HTML copy failed:", copyError);
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
     }
   };
   
