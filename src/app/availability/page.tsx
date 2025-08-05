@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -146,9 +146,28 @@ export default function AvailabilityPage() {
         playError();
         toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for EAN: ${decodedText}` });
     } else {
+        const product = data[0];
+        
+        if (!product.location.standard) {
+            playError();
+            toast({ 
+                variant: 'destructive', 
+                title: 'Item Not Ranged', 
+                description: `${product.name} does not seem to be ranged at this store.`,
+                icon: <AlertTriangle className="h-5 w-5" />
+            });
+            return;
+        }
+
         playSuccess();
-        setScannedProduct(data[0]);
-        reasonForm.reset();
+        setScannedProduct(product);
+        
+        let defaultReason = '';
+        if (product.stockQuantity === 0) {
+            defaultReason = 'No Stock';
+        }
+
+        reasonForm.reset({ reason: defaultReason, comment: '' });
         setIsModalOpen(true);
     }
   }, [form, toast, playSuccess, playError, reasonForm]);
@@ -264,7 +283,7 @@ export default function AvailabilityPage() {
                       />
                       <div className="text-sm space-y-1">
                         <p className="font-bold">{scannedProduct.name}</p>
-                        <p className="text-lg">Stock: <span className="font-bold text-2xl text-primary">{scannedProduct.stockQuantity}</span></p>
+                        <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{scannedProduct.stockQuantity}</span></p>
                         <p>Location: <span className="font-semibold">{scannedProduct.location.standard || 'N/A'}</span></p>
                       </div>
                   </div>
@@ -283,6 +302,7 @@ export default function AvailabilityPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="No Stock">No Stock</SelectItem>
                         <SelectItem value="Low Stock">Low Stock</SelectItem>
                         <SelectItem value="Early Sellout">Early Sellout</SelectItem>
                         <SelectItem value="Too Much Stock">Too Much Stock</SelectItem>
