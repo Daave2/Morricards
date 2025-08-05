@@ -314,16 +314,12 @@ export default function AvailabilityPage() {
   }
 
   const handleCopyHtml = () => {
-    const locationId = form.getValues('locationId');
-    const baseUrl = window.location.origin;
-
     const styles = {
         table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
         th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2; font-weight: bold;',
         td: 'border: 1px solid #dddddd; text-align: left; padding: 8px;',
         tr_even: 'background-color: #f9f9f9;',
-        img: 'width: 60px; height: 60px; object-fit: cover; border-radius: 4px;',
-        a: 'color: #0066cc; text-decoration: none;'
+        img: 'width: 60px; height: 60px; object-fit: cover; border-radius: 4px;'
     };
 
     const html = `
@@ -340,19 +336,17 @@ export default function AvailabilityPage() {
                 </tr>
             </thead>
             <tbody>
-                ${reportedItems.map((p, index) => {
-                    const dynamicLink = `${baseUrl}/?skus=${p.sku}&location=${locationId}`;
-                    return `
+                ${reportedItems.map((p, index) => `
                     <tr style="${index % 2 === 0 ? styles.tr_even : ''}">
                         <td style="${styles.td}"><img src="${p.imageUrl || 'https://placehold.co/100x100.png'}" alt="${p.name}" style="${styles.img}" /></td>
-                        <td style="${styles.td}"><a href="${dynamicLink}" style="${styles.a}">${p.sku}</a></td>
+                        <td style="${styles.td}">${p.sku}</td>
                         <td style="${styles.td}">${p.name}</td>
                         <td style="${styles.td}">${p.stockQuantity}</td>
                         <td style="${styles.td}">${p.location.standard || 'N/A'}</td>
                         <td style="${styles.td}">${p.reason}</td>
                         <td style="${styles.td}">${p.comment || ''}</td>
                     </tr>
-                `}).join('')}
+                `).join('')}
             </tbody>
         </table>
     `;
