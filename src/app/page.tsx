@@ -221,7 +221,7 @@ export default function Home() {
     return () => {
         stopScanner();
     };
-  }, [isScanMode, handlePick, playInfo, playSuccess, toast, form]);
+  }, [isScanMode, handlePick, playInfo, playSuccess, toast, form, products]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
