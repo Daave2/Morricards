@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { Result, DecodeHintType } from '@zxing/library';
 
@@ -10,17 +11,16 @@ type Props = {
   scanDelayMs?: number;
 };
 
-export default function ZXingScanner({
+const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
   onResult,
   onError,
   scanDelayMs = 500,
-}: Props) {
+}, ref) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  
-  // This ref will hold the MediaStream object to ensure we can clean it up properly.
   const streamRef = useRef<MediaStream | null>(null);
+  const isScanningRef = useRef(true);
 
   const hints = useMemo(() => {
     const h = new Map();
@@ -29,22 +29,24 @@ export default function ZXingScanner({
   }, []);
   
   const stopScan = useCallback(() => {
-    // Stop the ZXing decoder controls
     if (controlsRef.current) {
         controlsRef.current.stop();
         controlsRef.current = null;
     }
-    // Manually stop all tracks on the stream
     if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
+    }
+    if (videoRef.current) {
+        videoRef.current.srcObject = null;
     }
   }, []);
 
   const startScan = useCallback(async () => {
     if (!videoRef.current) return;
     
-    stopScan(); // Ensure any previous streams are stopped before starting a new one.
+    stopScan();
+    isScanningRef.current = true;
 
     try {
       if (!readerRef.current) {
@@ -60,7 +62,6 @@ export default function ZXingScanner({
         },
       };
 
-      // Get the media stream ourselves.
       streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
 
       if (!videoRef.current) {
@@ -68,16 +69,14 @@ export default function ZXingScanner({
           return;
       }
       
-      // Assign the stream to the video element.
       videoRef.current.srcObject = streamRef.current;
+      await videoRef.current.play();
 
-      // Start decoding from the video element.
       controlsRef.current = await readerRef.current.decodeFromVideoElement(
         videoRef.current,
         (result, err) => {
-          if (result) {
-            // Once we have a result, stop the scan immediately to prevent rapid re-scans
-            // and call the onResult callback.
+          if (result && isScanningRef.current) {
+            isScanningRef.current = false;
             stopScan();
             onResult?.(result.getText(), result);
           }
@@ -89,20 +88,20 @@ export default function ZXingScanner({
     } catch (e: any) {
       console.error("Scanner start error:", e);
       onError?.(e?.message || String(e));
-      stopScan(); // Clean up on error.
+      stopScan();
     }
   }, [hints, onResult, onError, scanDelayMs, stopScan]);
 
+  useImperativeHandle(ref, () => ({
+    start: startScan
+  }));
+  
   useEffect(() => {
     startScan();
-    
-    // The returned function from useEffect is the cleanup function.
-    // This will be called when the component unmounts.
     return () => {
       stopScan();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount and unmount.
+  }, [startScan, stopScan]);
 
   return (
       <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
@@ -118,4 +117,8 @@ export default function ZXingScanner({
         </div>
       </div>
   );
-}
+});
+
+ZXingScanner.displayName = 'ZXingScanner';
+
+export default ZXingScanner;

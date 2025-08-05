@@ -126,9 +126,8 @@ export default function AvailabilityPage() {
   const handleScanSuccess = useCallback(async (text: string) => {
     const sku = text.split(',')[0].trim();
     if (!sku) return;
-
-    // Temporarily hide scanner to show loading state
-    setIsScanMode(false);
+    
+    setIsScanMode(false); // Close scanner on scan
     
     const locationId = form.getValues('locationId');
     if (!locationId) {
@@ -146,6 +145,7 @@ export default function AvailabilityPage() {
     if (error || !data || data.length === 0) {
         playError();
         toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for EAN: ${sku}` });
+        setIsScanMode(true); // Re-open scanner on error
     } else {
         const product = data[0];
         
@@ -157,6 +157,7 @@ export default function AvailabilityPage() {
                 description: `${product.name} does not seem to be ranged at this store.`,
                 icon: <AlertTriangle className="h-5 w-5" />
             });
+            setIsScanMode(true); // Re-open scanner on logical error
         } else {
           playSuccess();
           setScannedProduct(product);
@@ -182,6 +183,14 @@ export default function AvailabilityPage() {
       });
     }
   }
+  
+  const handleModalOpenChange = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+      // Re-open scanner when modal is closed
+      setIsScanMode(true);
+    }
+  }
 
   const handleReasonSubmit = (values: z.infer<typeof ReasonSchema>) => {
       if (!scannedProduct) return;
@@ -194,7 +203,7 @@ export default function AvailabilityPage() {
 
       setReportedItems(prev => [newReportedItem, ...prev]);
       toast({ title: 'Item Reported', description: `${scannedProduct.name} has been added to the report list.` });
-      setIsModalOpen(false);
+      handleModalOpenChange(false);
       setScannedProduct(null);
   }
 
@@ -322,7 +331,7 @@ export default function AvailabilityPage() {
         </div>
       )}
       
-       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+       <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
         <DialogContent className="sm:max-w-[425px]">
           <Form {...reasonForm}>
             <form onSubmit={reasonForm.handleSubmit(handleReasonSubmit)} className="space-y-4">
@@ -612,5 +621,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    

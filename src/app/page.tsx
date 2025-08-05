@@ -56,6 +56,7 @@ export default function Home() {
   const { playSuccess, playError, playInfo } = useAudioFeedback();
 
   const productsRef = useRef(products);
+  const scannerRef = useRef<{ start: () => void } | null>(null);
 
   // Keep the ref updated with the latest products state
   useEffect(() => {
@@ -165,6 +166,11 @@ export default function Home() {
                 toast({ title: 'Barcode Scanned', description: `Added EAN: ${sku}` });
             }
         }
+
+        // Restart scanning after a short delay
+        setTimeout(() => {
+            scannerRef.current?.start();
+        }, 500);
   }, [form, handlePick, playInfo, playSuccess, toast]);
 
   const handleScanError = (message: string) => {
@@ -284,7 +290,7 @@ export default function Home() {
             </div>
              <div className="p-4 bg-background/80 backdrop-blur-sm">
                 <div className="w-full max-w-md mx-auto">
-                    <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
+                    <ZXingScanner ref={scannerRef} onResult={handleScanResult} onError={handleScanError} />
                 </div>
             </div>
         </div>
@@ -477,5 +483,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
