@@ -124,10 +124,11 @@ export default function AvailabilityPage() {
   }, []);
   
   const handleScanSuccess = useCallback(async (decodedText: string) => {
-    if (!decodedText || scannedSkusRef.current.has(decodedText)) return;
+    const sku = decodedText.split(',')[0].trim();
+    if (!sku || scannedSkusRef.current.has(sku)) return;
     
-    scannedSkusRef.current.add(decodedText);
-    setTimeout(() => scannedSkusRef.current.delete(decodedText), 3000);
+    scannedSkusRef.current.add(sku);
+    setTimeout(() => scannedSkusRef.current.delete(sku), 3000);
 
     const locationId = form.getValues('locationId');
     if (!locationId) {
@@ -138,13 +139,13 @@ export default function AvailabilityPage() {
     
     setIsLoading(true);
 
-    const { data, error } = await getProductData({ locationId, skus: [decodedText] });
+    const { data, error } = await getProductData({ locationId, skus: [sku] });
 
     setIsLoading(false);
 
     if (error || !data || data.length === 0) {
         playError();
-        toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for EAN: ${decodedText}` });
+        toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for EAN: ${sku}` });
     } else {
         const product = data[0];
         
@@ -297,8 +298,8 @@ export default function AvailabilityPage() {
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
-    tempDiv.innerHTML = html;
     document.body.appendChild(tempDiv);
+    tempDiv.innerHTML = html;
     
     const range = document.createRange();
     range.selectNodeContents(tempDiv);
@@ -559,3 +560,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
