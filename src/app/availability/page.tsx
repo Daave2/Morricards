@@ -346,7 +346,7 @@ export default function AvailabilityPage() {
     <div className="min-h-screen bg-background">
       {isScanMode && (
          <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-md mx-auto relative p-4">
+            <div className="w-full max-w-md mx-auto relative p-0">
                  <ZXingScanner 
                     ref={scannerRef}
                     onResult={(text) => handleScanSuccess(text)} 
@@ -510,17 +510,14 @@ export default function AvailabilityPage() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         
         <div>
-          <header className="text-center mb-12">
-            <div className="inline-flex items-center gap-4">
-               <ServerCrash className="w-12 h-12 text-primary" />
-              <h1 className="text-5xl font-bold tracking-tight text-primary">
-                Availability <span className="text-foreground">Report</span>
+          <header className="text-center mb-8">
+            <div className="inline-flex items-center gap-3">
+               <ServerCrash className="w-8 h-8 text-primary" />
+              <h1 className="text-3xl font-bold tracking-tight text-primary">
+                Availability Report
               </h1>
             </div>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Scan products and report availability issues to the supply chain team.
-            </p>
-             <Button variant="link" asChild className="mt-2">
+             <Button variant="link" asChild className="mt-1 text-sm">
                 <Link href="/">
                     <LinkIcon className="mr-2 h-4 w-4" />
                     Go to Picking List
@@ -528,21 +525,18 @@ export default function AvailabilityPage() {
             </Button>
           </header>
           
-          <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
-            <CardHeader>
-              <CardTitle>Item Details</CardTitle>
-            </CardHeader>
-            <CardContent>
+           <Card className="max-w-4xl mx-auto mb-8 shadow-md">
+            <CardContent className="p-4">
               <Form {...form}>
-                <form className="space-y-6">
+                <form className="flex flex-col sm:flex-row items-center gap-4">
                   <FormField
                     control={form.control}
                     name="locationId"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Store Location ID</FormLabel>
+                      <FormItem className="w-full sm:w-auto sm:flex-grow">
+                        <FormLabel className="sr-only">Store Location ID</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., 218" {...field} />
+                          <Input placeholder="Store ID e.g., 218" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -550,7 +544,7 @@ export default function AvailabilityPage() {
                   />
                    <Button
                       type="button"
-                      className="w-full"
+                      className="w-full sm:w-auto flex-shrink-0"
                       variant='outline'
                       onClick={handleScanButtonClick}
                       disabled={isLoading}
@@ -566,6 +560,7 @@ export default function AvailabilityPage() {
               </Form>
             </CardContent>
           </Card>
+
 
           {reportedItems.length > 0 && 
               <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
@@ -639,5 +634,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
