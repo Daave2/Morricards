@@ -3,7 +3,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
-import { BarcodeFormat, DecodeHintType, Result } from '@zxing/library';
+import { DecodeHintType, Result } from '@zxing/library';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
@@ -44,23 +44,10 @@ export default function ZXingScanner({
   const [zoomMin, setZoomMin] = useState<number>(1);
   const [zoomMax, setZoomMax] = useState<number>(1);
 
-  // decode hints: restrict to 2D formats; add 1D if needed
+  // By removing the POSSIBLE_FORMATS hint, the scanner will default to all supported formats.
+  // This avoids a build-time error in Next.js caused by a problematic import within the @zxing/library.
   const hints = useMemo(() => {
     const h = new Map();
-    const formats = [
-      BarcodeFormat.QR_CODE,
-      BarcodeFormat.DATA_MATRIX,
-      BarcodeFormat.PDF_417,
-      BarcodeFormat.AZTEC,
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-      BarcodeFormat.CODE_39,
-      BarcodeFormat.CODE_128,
-      BarcodeFormat.ITF
-    ];
-    h.set(DecodeHintType.POSSIBLE_FORMATS, formats);
     h.set(DecodeHintType.TRY_HARDER, true);
     return h;
   }, []);
