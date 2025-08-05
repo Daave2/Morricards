@@ -16,12 +16,13 @@ import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
-type Product = FetchMorrisonsDataOutput[0] & { productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
 
 interface ProductCardProps {
   product: Product;
   layout: 'grid' | 'list';
-  onPick: (sku: string) => void;
+  onPick?: (sku: string) => void;
+  isPicker?: boolean;
 }
 
 const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null, valueClassName?: string }) => {
@@ -36,15 +37,15 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     );
 }
 
-export default function ProductCard({ product, layout, onPick }: ProductCardProps) {
+export default function ProductCard({ product, layout, onPick, isPicker = false }: ProductCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   
-  // No internal isPicked state to ensure single source of truth from parent
   const isPicked = product.picked;
 
   const handlePick = () => {
-    // onPick now handles all logic
-    onPick(product.sku);
+    if (onPick) {
+      onPick(product.sku);
+    }
   }
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
@@ -78,15 +79,17 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
         )}
         <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
           <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-start gap-4', 'pb-2', layout === 'grid' && 'pt-0')}>
-             <div className="flex flex-col items-center space-y-2 pt-1">
-                <Checkbox
-                    id={`pick-${product.sku}`}
-                    checked={isPicked}
-                    onCheckedChange={handlePick}
-                    className="h-6 w-6"
-                    aria-label={`Pick ${product.name}`}
-                />
-            </div>
+             {isPicker && (
+                <div className="flex flex-col items-center space-y-2 pt-1">
+                    <Checkbox
+                        id={`pick-${product.sku}`}
+                        checked={isPicked}
+                        onCheckedChange={handlePick}
+                        className="h-6 w-6"
+                        aria-label={`Pick ${product.name}`}
+                    />
+                </div>
+            )}
             {layout === 'list' && (
               <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
                 <div className="relative aspect-square w-24 h-24 flex-shrink-0 cursor-pointer group/image">
@@ -290,12 +293,12 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
             className={cn(
                 "w-full transition-all duration-300 flex flex-col relative", 
                 layout === 'list' && "flex-row",
-                isPicked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
+                isPicker && isPicked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
                 isAgeRestricted ? 'bg-red-50/50' : 
                 product.temperature === 'Chilled' ? 'bg-teal-50/50' :
                 product.temperature === 'Frozen' ? 'bg-sky-50/50' : ''
             )}>
-            {isPicked && (
+            {isPicker && isPicked && (
                  <div className="absolute top-2 right-2 z-10 p-1 bg-primary text-primary-foreground rounded-full">
                     <CheckCircle2 className="h-5 w-5" />
                 </div>

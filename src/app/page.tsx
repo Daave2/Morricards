@@ -15,12 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2 } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ToastAction } from '@/components/ui/toast';
+import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -207,6 +208,7 @@ export default function Home() {
     } else {
         stopScanner();
     }
+    
     return () => {
         stopScanner();
     };
@@ -331,9 +333,15 @@ export default function Home() {
                 Store mobile <span className="text-foreground">ULTRA</span>
               </h1>
             </div>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
             </p>
+            <Button variant="link" asChild className="mt-2">
+                <Link href="/availability">
+                    <LinkIcon className="mr-2 h-4 w-4" />
+                    Go to Availability Checker
+                </Link>
+            </Button>
           </header>
           
           <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
@@ -465,7 +473,7 @@ export default function Home() {
               </div>
           }
 
-          {isLoading ? (
+          {isLoading && products.length === 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {Array.from({ length: 8 }).map((_, i) => (
                   <Card key={i} className="w-full">
@@ -485,7 +493,7 @@ export default function Home() {
           ) : sortedAndFilteredProducts.length > 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {sortedAndFilteredProducts.map((product) => (
-                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} />
+                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker />
               ))}
             </div>
           ) : !isLoading && products.length > 0 ? (
