@@ -176,9 +176,11 @@ export default function Home() {
 
         // Restart scanning after a short delay
         setTimeout(() => {
-            scannerRef.current?.start();
+            if (isScanMode) {
+              scannerRef.current?.start();
+            }
         }, 2000);
-  }, [form, handlePick, playInfo, playSuccess, toast]);
+  }, [form, handlePick, playInfo, playSuccess, toast, isScanMode]);
 
   const handleScanError = (message: string) => {
     if (!message.toLowerCase().includes('not found')) {
@@ -507,5 +509,3 @@ export default function Home() {
       </main>
     </div>
   );
-
-    
