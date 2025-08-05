@@ -44,7 +44,6 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string };
@@ -402,10 +401,10 @@ export default function AvailabilityPage() {
                               <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
                               <div className="grid grid-cols-1 gap-3">
                                  {scannedProduct.lastStockChange?.lastCountDateTime && (
-                                    <DataRow 
-                                        icon={<History />} 
-                                        label="Last Stock Event" 
-                                        value={`${scannedProduct.lastStockChange.inventoryAction} of ${scannedProduct.lastStockChange.qty} by ${scannedProduct.lastStockChange.createdBy} at ${format(new Date(scannedProduct.lastStockChange.lastCountDateTime), 'dd/MM/yy HH:mm')}`}
+                                    <DataRow
+                                        icon={<History />}
+                                        label="Last Stock Event"
+                                        value={`${scannedProduct.lastStockChange.inventoryAction} of ${scannedProduct.lastStockChange.qty} by ${scannedProduct.lastStockChange.createdBy} at ${scannedProduct.lastStockChange.lastCountDateTime}`}
                                     />
                                   )}
                                  <DataRow icon={<Layers />} label="Storage" value={scannedProduct.productDetails.storage?.join(', ')} />
@@ -663,5 +662,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    

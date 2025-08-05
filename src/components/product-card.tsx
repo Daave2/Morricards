@@ -15,7 +15,6 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { format, differenceInDays } from 'date-fns';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
 
@@ -199,7 +198,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{lastStockChangeEvent.inventoryAction} of {lastStockChangeEvent.qty} by {lastStockChangeEvent.createdBy}</p>
-                        <p>On: {format(new Date(lastStockChangeEvent.lastCountDateTime), 'dd/MM/yy HH:mm')}</p>
+                        <p>On: {lastStockChangeEvent.lastCountDateTime}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -225,10 +224,10 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                           <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
                              {product.lastStockChange?.lastCountDateTime && (
-                                <DataRow 
-                                    icon={<History />} 
-                                    label="Last Stock Event" 
-                                    value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${format(new Date(product.lastStockChange.lastCountDateTime), 'dd/MM/yy HH:mm')}`}
+                                <DataRow
+                                    icon={<History />}
+                                    label="Last Stock Event"
+                                    value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
                                 />
                               )}
                              <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
@@ -360,5 +359,3 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
-
-    
