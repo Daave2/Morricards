@@ -322,7 +322,7 @@ export default function Home() {
         {isScanMode && (
           <div className="sticky top-0 z-50 py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
             <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border relative bg-black">
-                <video ref={videoRef} className="w-full rounded-md" />
+                <video ref={videoRef} className="w-full aspect-video rounded-md" />
                 <div className="absolute inset-0 border-4 border-primary/50 rounded-lg pointer-events-none" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%)' }}></div>
                 {hasFlash && (
                     <Button 
