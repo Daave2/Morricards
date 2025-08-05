@@ -5,7 +5,6 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import QrScanner from 'qr-scanner';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -44,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import ZXingScanner from '@/components/ZXingScanner';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string };
@@ -87,15 +87,9 @@ export default function AvailabilityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
-  const [scannerError, setScannerError] = useState<string | null>(null);
-  const [hasFlash, setHasFlash] = useState(false);
-  const [isFlashOn, setIsFlashOn] = useState(false);
   
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
-
-  const scannerRef = useRef<QrScanner | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -129,16 +123,17 @@ export default function AvailabilityPage() {
     }
   }, [reportedItems]);
 
-  const handleScanSuccess = useCallback(async (result: QrScanner.ScanResult) => {
-    scannerRef.current?.stop();
-    const sku = result.data.split(',')[0].trim();
+  const handleScanSuccess = useCallback(async (text: string) => {
+    const sku = text.split(',')[0].trim();
     if (!sku) return;
 
+    // Temporarily hide scanner to show loading state
+    setIsScanMode(false);
+    
     const locationId = form.getValues('locationId');
     if (!locationId) {
         playError();
         toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID before scanning.' });
-        setIsScanMode(false);
         return;
     }
     
@@ -176,53 +171,18 @@ export default function AvailabilityPage() {
           setIsMoreInfoOpen(false);
         }
     }
-    setIsScanMode(false);
   }, [form, playError, toast, playSuccess, reasonForm]);
 
-
-  useEffect(() => {
-    if (isScanMode && videoRef.current) {
-      const qrScanner = new QrScanner(
-        videoRef.current,
-        handleScanSuccess,
-        {
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          preferredCamera: "environment",
-        }
-      );
-      scannerRef.current = qrScanner;
-
-      const startScanner = async () => {
-        try {
-          await qrScanner.start();
-          const flashState = await qrScanner.hasFlash();
-          setHasFlash(flashState);
-          setScannerError(null);
-        } catch (error: any) {
-          console.error(error);
-          setScannerError(error.message || 'Failed to start scanner.');
-          setIsScanMode(false);
-          toast({
-            variant: 'destructive',
-            title: 'Scanner Error',
-            description: error.message || 'Could not access the camera. Please check permissions.',
-          });
-        }
-      };
-
-      startScanner();
-
-      return () => {
-        setIsFlashOn(false);
-        setHasFlash(false);
-        qrScanner.destroy();
-        scannerRef.current = null;
-      };
+  const handleScanError = (message: string) => {
+    if (!message.toLowerCase().includes('not found')) {
+      toast({
+        variant: 'destructive',
+        title: 'Scanner Error',
+        description: message,
+      });
     }
-  }, [isScanMode, handleScanSuccess, toast]);
+  }
 
-  
   const handleReasonSubmit = (values: z.infer<typeof ReasonSchema>) => {
       if (!scannedProduct) return;
       
@@ -240,13 +200,6 @@ export default function AvailabilityPage() {
 
   const handleScanButtonClick = () => {
     setIsScanMode(prev => !prev);
-  }
-
-   const toggleFlash = async () => {
-      if (scannerRef.current && hasFlash) {
-          await scannerRef.current.toggleFlash();
-          setIsFlashOn(scannerRef.current.isFlashOn());
-      }
   }
 
   const handleClearList = () => {
@@ -497,31 +450,7 @@ export default function AvailabilityPage() {
       </Dialog>
       
       <main className="container mx-auto px-4 py-8 md:py-12">
-        {isScanMode && (
-          <div className="sticky top-0 z-50 py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
-            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border relative bg-black aspect-video max-h-[25vh]">
-                <video ref={videoRef} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 border-4 border-primary/50 rounded-lg pointer-events-none" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%)' }}></div>
-                 {hasFlash && (
-                    <Button 
-                        onClick={toggleFlash} 
-                        variant="secondary" 
-                        size="icon" 
-                        className="absolute bottom-4 right-4 rounded-full h-12 w-12"
-                    >
-                        <Zap className={cn("h-6 w-6", isFlashOn ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
-                    </Button>
-                )}
-            </div>
-          </div>
-        )}
-        {scannerError && !isScanMode && (
-             <Alert variant="destructive" className="max-w-4xl mx-auto mb-8">
-                 <CameraOff className="h-4 w-4" />
-                 <AlertTitle>Scanner Error</AlertTitle>
-                 <AlertDescription>{scannerError}</AlertDescription>
-             </Alert>
-         )}
+        
         <div className={isScanMode ? 'pt-4' : ''}>
           <header className="text-center mb-12">
             <div className="inline-flex items-center gap-4">
@@ -561,6 +490,13 @@ export default function AvailabilityPage() {
                       </FormItem>
                     )}
                   />
+                   {isScanMode && (
+                        <ZXingScanner 
+                            onResult={(text) => handleScanSuccess(text)} 
+                            onError={handleScanError} 
+                            className="max-w-md mx-auto"
+                        />
+                   )}
                    <Button
                       type="button"
                       className="w-full"
@@ -662,7 +598,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
-
-    

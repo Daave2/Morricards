@@ -5,7 +5,6 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import QrScanner from 'qr-scanner';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -34,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils';
+import ZXingScanner from '@/components/ZXingScanner';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
 
@@ -51,15 +51,10 @@ export default function Home() {
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [isScanMode, setIsScanMode] = useState(false);
-  const [scannerError, setScannerError] = useState<string | null>(null);
-  const [hasFlash, setHasFlash] = useState(false);
-  const [isFlashOn, setIsFlashOn] = useState(false);
-
+  
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
 
-  const scannerRef = useRef<QrScanner | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const productsRef = useRef(products);
 
   // Keep the ref updated with the latest products state
@@ -147,8 +142,8 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  const handleScanResult = useCallback((result: QrScanner.ScanResult) => {
-        const sku = result.data.split(',')[0].trim();
+  const handleScanResult = useCallback((text: string) => {
+        const sku = text.split(',')[0].trim();
         if (!sku) return;
 
         const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
@@ -172,48 +167,15 @@ export default function Home() {
         }
   }, [form, handlePick, playInfo, playSuccess, toast]);
 
-  useEffect(() => {
-    if (isScanMode && videoRef.current) {
-      const qrScanner = new QrScanner(
-        videoRef.current,
-        handleScanResult,
-        {
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          preferredCamera: "environment",
-        }
-      );
-      scannerRef.current = qrScanner;
-
-      const startScanner = async () => {
-        try {
-          await qrScanner.start();
-          const flashState = await qrScanner.hasFlash();
-          setHasFlash(flashState);
-          setScannerError(null);
-        } catch (error: any) {
-          console.error(error);
-          setScannerError(error.message || 'Failed to start scanner.');
-          setIsScanMode(false);
-          toast({
-            variant: 'destructive',
-            title: 'Scanner Error',
-            description: error.message || 'Could not access the camera. Please check permissions.',
-          });
-        }
-      };
-
-      startScanner();
-
-      return () => {
-        setIsFlashOn(false);
-        setHasFlash(false);
-        qrScanner.destroy();
-        scannerRef.current = null;
-      };
+  const handleScanError = (message: string) => {
+    if (!message.toLowerCase().includes('not found')) {
+      toast({
+        variant: 'destructive',
+        title: 'Scanner Error',
+        description: message,
+      });
     }
-  }, [isScanMode, handleScanResult, toast]);
-  
+  };
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
     setIsLoading(true);
@@ -292,13 +254,6 @@ export default function Home() {
     setIsScanMode(prev => !prev);
   }
 
-  const toggleFlash = async () => {
-      if (scannerRef.current && hasFlash) {
-          await scannerRef.current.toggleFlash();
-          setIsFlashOn(scannerRef.current.isFlashOn());
-      }
-  }
-
   const getScanButtonLabel = () => {
     if (isScanMode) return 'Close Scanner';
     if (products.length > 0) return 'Pick by Scan';
@@ -319,31 +274,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:py-12">
-        {isScanMode && (
-          <div className="sticky top-0 z-50 py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
-            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border relative bg-black aspect-video max-h-[25vh]">
-                <video ref={videoRef} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 border-4 border-primary/50 rounded-lg pointer-events-none" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%)' }}></div>
-                {hasFlash && (
-                    <Button 
-                        onClick={toggleFlash} 
-                        variant="secondary" 
-                        size="icon" 
-                        className="absolute bottom-4 right-4 rounded-full h-12 w-12"
-                    >
-                        <Zap className={cn("h-6 w-6", isFlashOn ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
-                    </Button>
-                )}
-            </div>
-          </div>
-        )}
-         {scannerError && !isScanMode && (
-             <Alert variant="destructive" className="max-w-4xl mx-auto mb-8">
-                 <CameraOff className="h-4 w-4" />
-                 <AlertTitle>Scanner Error</AlertTitle>
-                 <AlertDescription>{scannerError}</AlertDescription>
-             </Alert>
-         )}
         <div className={isScanMode ? 'pt-4' : ''}>
           <header className="text-center mb-12">
             <div className="inline-flex items-center gap-4">
@@ -394,6 +324,11 @@ export default function Home() {
                             {...field}
                           />
                         </FormControl>
+                         {isScanMode && (
+                            <div className="pt-4">
+                                <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
+                            </div>
+                         )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -531,7 +466,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    
