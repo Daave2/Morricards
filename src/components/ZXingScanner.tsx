@@ -72,9 +72,6 @@ export default function ZXingScanner({
   const stopScan = useCallback(() => {
     controlsRef.current?.stop();
     controlsRef.current = null;
-    if (readerRef.current) {
-        readerRef.current.reset();
-    }
   }, []);
 
   useEffect(() => {
