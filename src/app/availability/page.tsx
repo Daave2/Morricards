@@ -188,7 +188,7 @@ export default function AvailabilityPage() {
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
-    if (!lowerMessage.includes('not found') && !lowerMessage.includes('no multifunction readers')) {
+    if (!lowerMessage.includes('not found') && !lowerMessage.includes('no multiformat readers')) {
       toast({
         variant: 'destructive',
         title: 'Scanner Error',
