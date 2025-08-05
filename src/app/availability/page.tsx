@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { type Html5QrcodeScanner } from 'html5-qrcode';
+import QrScanner from 'qr-scanner';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -37,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +67,6 @@ const ReasonSchema = z.object({
 });
 
 
-const SCANNER_CONTAINER_ID = 'qr-reader-availability';
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 
 const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
@@ -88,12 +88,15 @@ export default function AvailabilityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
-
+  const [scannerError, setScannerError] = useState<string | null>(null);
+  const [hasFlash, setHasFlash] = useState(false);
+  const [isFlashOn, setIsFlashOn] = useState(false);
+  
   const { toast } = useToast();
-  const { playSuccess, playError, playInfo } = useAudioFeedback();
+  const { playSuccess, playError } = useAudioFeedback();
 
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const scannedSkusRef = useRef<Set<string>>(new Set());
+  const scannerRef = useRef<QrScanner | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -127,30 +130,16 @@ export default function AvailabilityPage() {
     }
   }, [reportedItems]);
 
-
-  const stopScanner = useCallback(() => {
-    if (scannerRef.current) {
-        try {
-            scannerRef.current.clear();
-        } catch (error) {
-            console.warn("Ignoring error during scanner cleanup:", error);
-        } finally {
-            scannerRef.current = null;
-        }
-    }
-  }, []);
-  
-  const handleScanSuccess = useCallback(async (decodedText: string) => {
-    const sku = decodedText.split(',')[0].trim();
-    if (!sku || scannedSkusRef.current.has(sku)) return;
-    
-    scannedSkusRef.current.add(sku);
-    setTimeout(() => scannedSkusRef.current.delete(sku), 3000);
+  const handleScanSuccess = useCallback(async (result: QrScanner.ScanResult) => {
+    scannerRef.current?.stop();
+    const sku = result.data.split(',')[0].trim();
+    if (!sku) return;
 
     const locationId = form.getValues('locationId');
     if (!locationId) {
         playError();
         toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID before scanning.' });
+        setIsScanMode(false);
         return;
     }
     
@@ -174,62 +163,65 @@ export default function AvailabilityPage() {
                 description: `${product.name} does not seem to be ranged at this store.`,
                 icon: <AlertTriangle className="h-5 w-5" />
             });
-            return;
-        }
+        } else {
+          playSuccess();
+          setScannedProduct(product);
+          
+          let defaultReason = '';
+          if (product.stockQuantity === 0) {
+              defaultReason = 'No Stock';
+          }
 
-        playSuccess();
-        setScannedProduct(product);
-        
-        let defaultReason = '';
-        if (product.stockQuantity === 0) {
-            defaultReason = 'No Stock';
+          reasonForm.reset({ reason: defaultReason, comment: '' });
+          setIsModalOpen(true);
+          setIsMoreInfoOpen(false);
         }
-
-        reasonForm.reset({ reason: defaultReason, comment: '' });
-        setIsModalOpen(true);
-        setIsMoreInfoOpen(false);
     }
-  }, [form, toast, playSuccess, playError, reasonForm]);
+    setIsScanMode(false);
+  }, [form, playError, toast, playSuccess, reasonForm]);
+
 
   useEffect(() => {
-    if (isScanMode) {
-      const startScanner = () => {
-        if (!document.getElementById(SCANNER_CONTAINER_ID)) {
-          requestAnimationFrame(startScanner);
-          return;
+    if (isScanMode && videoRef.current) {
+      const qrScanner = new QrScanner(
+        videoRef.current,
+        handleScanSuccess,
+        {
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          maxScansPerSecond: 2,
         }
-        
-        import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
-          const onScanFailure = (error: any) => {};
-          
-          if (!scannerRef.current) {
-              scannerRef.current = new Html5QrcodeScanner(
-                SCANNER_CONTAINER_ID,
-                { 
-                  fps: 10,
-                  qrbox: { width: 300, height: 120 },
-                  rememberLastUsedCamera: true,
-                  verbose: true,
-                  showTorchButtonIfSupported: true,
-                },
-                true
-              );
-          }
-          scannerRef.current.render(handleScanSuccess, onScanFailure);
-        }).catch(err => {
-          console.error("Failed to load html5-qrcode library", err);
-          toast({ variant: 'destructive', title: 'Scanner Error', description: 'Could not load the barcode scanner.'})
-        });
-      };
-      startScanner();
-    } else {
-        stopScanner();
-    }
+      );
+      scannerRef.current = qrScanner;
 
-    return () => {
-      stopScanner();
-    };
-  }, [isScanMode, handleScanSuccess, toast, stopScanner]);
+      const startScanner = async () => {
+        try {
+          await qrScanner.start();
+          const flashState = await qrScanner.hasFlash();
+          setHasFlash(flashState);
+          setScannerError(null);
+        } catch (error: any) {
+          console.error(error);
+          setScannerError(error.message || 'Failed to start scanner.');
+          setIsScanMode(false);
+          toast({
+            variant: 'destructive',
+            title: 'Scanner Error',
+            description: error.message || 'Could not access the camera. Please check permissions.',
+          });
+        }
+      };
+
+      startScanner();
+
+      return () => {
+        setIsFlashOn(false);
+        setHasFlash(false);
+        qrScanner.destroy();
+        scannerRef.current = null;
+      };
+    }
+  }, [isScanMode, handleScanSuccess, toast]);
 
   
   const handleReasonSubmit = (values: z.infer<typeof ReasonSchema>) => {
@@ -248,12 +240,14 @@ export default function AvailabilityPage() {
   }
 
   const handleScanButtonClick = () => {
-    if (isScanMode) {
-      setIsScanMode(false);
-    } else {
-      scannedSkusRef.current = new Set();
-      setIsScanMode(true);
-    }
+    setIsScanMode(prev => !prev);
+  }
+
+   const toggleFlash = async () => {
+      if (scannerRef.current && hasFlash) {
+          await scannerRef.current.toggleFlash();
+          setIsFlashOn(scannerRef.current.isFlashOn());
+      }
   }
 
   const handleClearList = () => {
@@ -505,12 +499,30 @@ export default function AvailabilityPage() {
       
       <main className="container mx-auto px-4 py-8 md:py-12">
         {isScanMode && (
-          <div className="sticky top-0 z-50 py-4 bg-background -mx-4 px-4 mb-4">
-            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border h-[200px] flex items-center justify-center bg-black [&>span]:hidden">
-              <div id={SCANNER_CONTAINER_ID} className="w-[350px] h-[350px]"></div>
+          <div className="sticky top-0 z-50 py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
+            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border relative bg-black">
+                <video ref={videoRef} className="w-full aspect-video rounded-md" />
+                <div className="absolute inset-0 border-4 border-primary/50 rounded-lg pointer-events-none" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%)' }}></div>
+                 {hasFlash && (
+                    <Button 
+                        onClick={toggleFlash} 
+                        variant="secondary" 
+                        size="icon" 
+                        className="absolute bottom-4 right-4 rounded-full h-12 w-12"
+                    >
+                        <Zap className={cn("h-6 w-6", isFlashOn ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
+                    </Button>
+                )}
             </div>
           </div>
         )}
+        {scannerError && !isScanMode && (
+             <Alert variant="destructive" className="max-w-4xl mx-auto mb-8">
+                 <CameraOff className="h-4 w-4" />
+                 <AlertTitle>Scanner Error</AlertTitle>
+                 <AlertDescription>{scannerError}</AlertDescription>
+             </Alert>
+         )}
         <div className={isScanMode ? 'pt-4' : ''}>
           <header className="text-center mb-12">
             <div className="inline-flex items-center gap-4">
