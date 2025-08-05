@@ -296,19 +296,55 @@ export default function AvailabilityPage() {
         </table>
     `;
 
-    try {
-        const blob = new Blob([html], { type: 'text/html' });
-        const clipboardItem = new ClipboardItem({ 'text/html': blob });
-        navigator.clipboard.write([clipboardItem]).then(() => {
-            toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
-        }).catch(err => {
-            console.error("Clipboard API error:", err);
-            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
-        });
-    } catch (error) {
-        console.error("Error creating blob/clipboard item:", error);
-        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not prepare data for clipboard.'});
+    // Modern API with fallback
+    if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+        try {
+            const blob = new Blob([html], { type: 'text/html' });
+            const clipboardItem = new ClipboardItem({ 'text/html': blob });
+            navigator.clipboard.write([clipboardItem]).then(() => {
+                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
+            }).catch(err => {
+                 console.error("Clipboard API error, trying fallback:", err);
+                 copyHtmlWithFallback(html); // Fallback for browsers that fail
+            });
+        } catch(e) {
+            console.error("Error creating blob/clipboard item, trying fallback:", e);
+            copyHtmlWithFallback(html); // Fallback for browsers that don't support ClipboardItem
+        }
+    } else {
+        copyHtmlWithFallback(html); // Fallback for older browsers
     }
+  }
+
+  const copyHtmlWithFallback = (html: string) => {
+    const el = document.createElement('div');
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+    el.innerHTML = html;
+    document.body.appendChild(el);
+    
+    const selection = window.getSelection();
+    const range = document.createRange();
+    if(selection && range) {
+        range.selectNode(el);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        try {
+            const success = document.execCommand('copy');
+            if (success) {
+                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
+            } else {
+                toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
+            }
+        } catch (err) {
+            console.error('Fallback copy failed', err);
+            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
+        }
+
+        selection.removeAllRanges();
+    }
+    document.body.removeChild(el);
   }
 
 
@@ -540,4 +576,5 @@ export default function AvailabilityPage() {
       </main>
     </div>
   );
-}
+
+    
