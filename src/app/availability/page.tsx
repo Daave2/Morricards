@@ -149,7 +149,7 @@ export default function AvailabilityPage() {
     } else {
         const product = data[0];
         
-        if (!product.location.standard) {
+        if (!product.location.standard && product.stockQuantity === 0) {
             playError();
             toast({ 
                 variant: 'destructive', 
@@ -560,6 +560,8 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
 
     
 
