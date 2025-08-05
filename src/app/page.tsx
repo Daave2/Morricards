@@ -386,7 +386,7 @@ export default function Home() {
 
           { (products.length > 0 || isLoading) && 
               <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
-                  <div className="flex flex-wrap gap-4 justify-between items-center">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
                       <div className="relative w-full sm:w-auto sm:flex-grow max-w-xs">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <Input 
@@ -396,7 +396,7 @@ export default function Home() {
                               className="pl-10"
                           />
                       </div>
-                      <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4 w-full sm:w-auto">
                           <Button 
                               variant={"outline"}
                               onClick={handleScanButtonClick}
@@ -489,5 +489,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     

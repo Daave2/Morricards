@@ -550,9 +550,9 @@ export default function AvailabilityPage() {
 
           {reportedItems.length > 0 && 
               <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
-                  <CardHeader className="flex-row items-center justify-between">
+                  <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                           <Button variant="outline" size="sm" onClick={handleCopyHtml}>
                               <Mail className="mr-2 h-4 w-4" />
                               Copy for Email
@@ -630,5 +630,7 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
 
     
