@@ -491,11 +491,12 @@ export default function AvailabilityPage() {
                     )}
                   />
                    {isScanMode && (
-                        <ZXingScanner 
-                            onResult={(text) => handleScanSuccess(text)} 
-                            onError={handleScanError} 
-                            className="max-w-md mx-auto"
-                        />
+                        <div className="w-full max-w-md mx-auto">
+                           <ZXingScanner 
+                                onResult={(text) => handleScanSuccess(text)} 
+                                onError={handleScanError} 
+                            />
+                        </div>
                    )}
                    <Button
                       type="button"

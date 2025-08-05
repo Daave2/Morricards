@@ -326,7 +326,9 @@ export default function Home() {
                         </FormControl>
                          {isScanMode && (
                             <div className="pt-4">
+                               <div className="w-full max-w-md mx-auto">
                                 <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
+                               </div>
                             </div>
                          )}
                         <FormMessage />
