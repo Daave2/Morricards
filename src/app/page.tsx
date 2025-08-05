@@ -147,6 +147,7 @@ export default function Home() {
           setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
+            videoRef.current.play(); // Explicitly play the video
             
             // Start scanning
             codeReaderRef.current?.decodeFromVideoElement(videoRef.current, (result, error, controls) => {
@@ -510,5 +511,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
