@@ -188,7 +188,7 @@ export default function Home() {
            // After a short delay, allow the same barcode to be scanned again if needed.
           setTimeout(() => {
             scannedSkusRef.current.delete(decodedText);
-          }, 1500); // Increased delay slightly
+          }, 1500); 
         };
 
         const onScanFailure = (error: any) => {
@@ -218,6 +218,7 @@ export default function Home() {
         stopScanner();
     }
 
+    // This is the cleanup function for the useEffect hook
     return () => {
         stopScanner();
     };
@@ -516,3 +517,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
