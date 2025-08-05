@@ -280,7 +280,7 @@ export default function AvailabilityPage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a reason..." />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="Low Stock">Low Stock</SelectItem>
