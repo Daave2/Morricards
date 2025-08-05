@@ -47,6 +47,7 @@ const LOCAL_STORAGE_KEY = 'morricards-products';
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSkuCount, setLoadingSkuCount] = useState(0);
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
@@ -190,8 +191,24 @@ export default function Home() {
   };
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
+    const existingSkus = new Set(products.map(p => p.sku));
+    const newSkus = values.skus
+      .split(/[\s,]+/)
+      .map(s => s.trim())
+      .filter(s => s && !existingSkus.has(s));
+
+    if (newSkus.length === 0) {
+      toast({
+        title: 'No new SKUs to add',
+        description: 'All entered SKUs are already in the list.',
+      });
+      return;
+    }
+    
+    setLoadingSkuCount(newSkus.length);
     setIsLoading(true);
-    const { data, error } = await getProductData(values);
+
+    const { data, error } = await getProductData({...values, skus: newSkus});
 
     if (error) {
       toast({
@@ -207,14 +224,15 @@ export default function Home() {
         });
       } else {
         setProducts(prevProducts => {
-            const existingSkus = new Set(prevProducts.map(p => p.sku));
-            const newProducts = data.filter(p => !existingSkus.has(p.sku));
-            return [...prevProducts, ...newProducts.map(p => ({ ...p, picked: false }))]
+            const updatedExistingSkus = new Set(prevProducts.map(p => p.sku));
+            const uniqueNewProducts = data.filter(p => !updatedExistingSkus.has(p.sku));
+            return [...prevProducts, ...uniqueNewProducts.map(p => ({ ...p, picked: false }))]
         });
         form.setValue('skus', '');
       }
     }
     setIsLoading(false);
+    setLoadingSkuCount(0);
     if (isScanMode) setIsScanMode(false);
   }
 
@@ -281,12 +299,28 @@ export default function Home() {
         description: 'The picking list has been successfully cleared.',
     });
   }
+  
+  const skeletons = Array.from({ length: loadingSkuCount }).map((_, i) => (
+    <Card key={`skeleton-${i}`} className="w-full">
+         <Skeleton className="aspect-square w-full" />
+        <CardHeader>
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-5/6" />
+        </CardContent>
+    </Card>
+  ));
+
 
   return (
     <div className="min-h-screen bg-background">
       {isScanMode && (
          <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-md mx-auto relative">
+            <div className="w-full max-w-md mx-auto relative p-0">
                 <ZXingScanner 
                     ref={scannerRef} 
                     onResult={handleScanResult} 
@@ -449,26 +483,14 @@ export default function Home() {
 
           {isLoading && products.length === 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
-              {Array.from({ length: 8 }).map((_, i) => (
-                  <Card key={i} className="w-full">
-                       <Skeleton className="aspect-square w-full" />
-                      <CardHeader>
-                          <Skeleton className="h-6 w-3/4" />
-                          <Skeleton className="h-4 w-1/2" />
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                          <Skeleton className="h-5 w-full" />
-                          <Skeleton className="h-5 w-full" />
-                          <Skeleton className="h-5 w-5/6" />
-                      </CardContent>
-                  </Card>
-              ))}
+                {skeletons}
             </div>
-          ) : sortedAndFilteredProducts.length > 0 ? (
+          ) : sortedAndFilteredProducts.length > 0 || loadingSkuCount > 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {sortedAndFilteredProducts.map((product) => (
                 <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker />
               ))}
+              {isLoading && skeletons}
             </div>
           ) : !isLoading && products.length > 0 ? (
               <div className="text-center py-16 text-muted-foreground">
@@ -485,4 +507,5 @@ export default function Home() {
       </main>
     </div>
   );
-}
+
+    
