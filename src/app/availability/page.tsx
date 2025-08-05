@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -635,5 +636,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
