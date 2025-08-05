@@ -1,0 +1,14 @@
+diff --git a/node_modules/qr-scanner/package.json b/node_modules/qr-scanner/package.json
+index 5c3d4f4..2785aad 100644
+--- a/node_modules/qr-scanner/package.json
++++ b/node_modules/qr-scanner/package.json
+@@ -9,7 +9,8 @@
+     "url": "https://github.com/nimiq/qr-scanner"
+   },
+   "main": "qr-scanner.umd.min.js",
+-  "module": "qr-scanner.min.js",
++  "browser": "qr-scanner.min.js",
++  "module": "qr-scanner.legacy.min.js",
+   "types": "qr-scanner.d.ts",
+   "files": [
+     "qr-scanner.min.js",
