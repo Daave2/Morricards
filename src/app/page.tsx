@@ -203,7 +203,6 @@ export default function Home() {
                             fps: 10,
                             qrbox: { width: 250, height: 100 },
                             rememberLastUsedCamera: true,
-                            supportedScanTypes: [],
                             showTorchButtonIfSupported: true,
                         },
                         false
@@ -522,5 +521,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     

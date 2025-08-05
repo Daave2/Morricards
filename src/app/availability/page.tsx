@@ -209,7 +209,6 @@ export default function AvailabilityPage() {
                   fps: 10,
                   qrbox: { width: 300, height: 120 },
                   rememberLastUsedCamera: true,
-                  supportedScanTypes: [],
                   verbose: false,
                   showTorchButtonIfSupported: true,
                 },
@@ -652,3 +651,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
