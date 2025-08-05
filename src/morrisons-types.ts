@@ -39,15 +39,37 @@ export interface components {
       customerFriendlyDescription?: string;
       status?: string;
       temperatureRegime?: string;
+      standardUnitOfMeasure?: string,
+      manuallyStoreOrderedItem?: string,
+      uepItem?: boolean,
+      storage?: string[],
       dimensions?: {
         weight?: number;
       };
       productFlags?: {
         perishableInd?: boolean;
+        orderableInd?: boolean;
+        inventoryInd?: boolean;
+        sellableInd?: boolean;
+        merchandiseInd?: boolean;
       };
       packComponents?: ({
           itemNumber?: number;
         })[];
+      packs?: ({
+          packNumber?: string;
+          packQuantity?: number;
+      })[];
+      commercialHierarchy?: {
+          divisionName?: string;
+          groupName?: string;
+          className?: string;
+          subclassName?: string;
+      };
+      productLife?: {
+          minimumCPCAcceptanceLife?: number;
+          minimumCFCAcceptanceLife?: number;
+      };
       imageUrl?: ({
           url?: string;
         })[];

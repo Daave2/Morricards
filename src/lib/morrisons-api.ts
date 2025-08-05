@@ -198,7 +198,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
                 promotional: promos?.[0]?.marketingAttributes?.offerValue,
             },
             stockQuantity: stockPosition?.qty ?? 0,
-            stockUnit: stockPosition?.unitofMeasure,
+            stockUnit: stockPosition?.unitofMeasure || product.standardUnitOfMeasure,
             location: {
                 standard: stdLoc,
                 secondary: secondaryLoc,

@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -68,7 +68,7 @@ const ReasonSchema = z.object({
 const SCANNER_CONTAINER_ID = 'qr-reader';
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 
-const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null, valueClassName?: string }) => {
+const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
     if (value === undefined || value === null || value === '') return null;
     return (
         <div className="flex items-start gap-3">
@@ -87,8 +87,6 @@ export default function AvailabilityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
-  const [htmlToCopy, setHtmlToCopy] = useState('');
-  const [showCopyDialog, setShowCopyDialog] = useState(false);
 
   const { toast } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -314,14 +312,12 @@ export default function AvailabilityPage() {
         </table>
     `;
     
-    // Create a temporary element to hold the HTML
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
     document.body.appendChild(tempDiv);
     tempDiv.innerHTML = html;
 
-    // Select the content of the temporary element
     const range = document.createRange();
     range.selectNodeContents(tempDiv);
     const selection = window.getSelection();
@@ -330,7 +326,6 @@ export default function AvailabilityPage() {
         selection.addRange(range);
     }
     
-    // Attempt to copy the selection to the clipboard
     try {
         const successful = document.execCommand('copy');
         if (successful) {
@@ -339,10 +334,9 @@ export default function AvailabilityPage() {
              toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
         }
     } catch (err) {
-        console.error('Fallback copy failed:', err);
+        console.error('Copy failed:', err);
         toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
     } finally {
-        // Clean up: remove the temporary element and clear the selection
         document.body.removeChild(tempDiv);
         if (window.getSelection()) {
             window.getSelection()?.removeAllRanges();
@@ -376,7 +370,7 @@ export default function AvailabilityPage() {
                           data-ai-hint="product image"
                           unoptimized
                         />
-                        <div className="text-sm space-y-1">
+                        <div className="text-sm space-y-1 flex-grow">
                           <p className="font-bold">{scannedProduct.name}</p>
                            {scannedProduct.price.promotional && (
                               <div className="pt-1">
@@ -390,14 +384,40 @@ export default function AvailabilityPage() {
                     </div>
                      <CollapsibleContent>
                         <div className="border-t p-4 space-y-3 text-xs text-muted-foreground overflow-y-auto max-h-60">
-                            <DataRow icon={<Crown />} label="Brand" value={scannedProduct.productDetails.brand} />
-                            <DataRow icon={<Globe />} label="Country of Origin" value={scannedProduct.productDetails.countryOfOrigin} />
-                            <DataRow icon={<Barcode />} label="SKU" value={`${scannedProduct.sku} (EAN: ${scannedProduct.scannedSku}) ${scannedProduct.stockSkuUsed ? `(Stock SKU: ${scannedProduct.stockSkuUsed})` : ''}`} />
-                            <DataRow icon={<Footprints />} label="Walk Sequence" value={scannedProduct.walkSequence} />
-                            <DataRow icon={<Tag />} label="Promo Location" value={scannedProduct.location.promotional} />
-                            <DataRow icon={<Thermometer />} label="Temperature" value={scannedProduct.temperature} />
-                            <DataRow icon={<Weight />} label="Weight" value={scannedProduct.weight ? `${scannedProduct.weight} kg` : null} />
-                            <DataRow icon={<Info />} label="Status" value={scannedProduct.status} />
+                           <div className="grid grid-cols-1 gap-3">
+                                <DataRow icon={<Barcode />} label="SKU" value={`${scannedProduct.sku} (EAN: ${scannedProduct.scannedSku}) ${scannedProduct.stockSkuUsed ? `(Stock SKU: ${scannedProduct.stockSkuUsed})` : ''}`} />
+                                <DataRow icon={<Info />} label="Status" value={scannedProduct.status} />
+                                <DataRow icon={<Footprints />} label="Walk Sequence" value={scannedProduct.walkSequence} />
+                                <DataRow icon={<Tag />} label="Promo Location" value={scannedProduct.location.promotional} />
+                                <DataRow icon={<Crown />} label="Brand" value={scannedProduct.productDetails.brand} />
+                                <DataRow icon={<Globe />} label="Country of Origin" value={scannedProduct.productDetails.countryOfOrigin} />
+                                <DataRow icon={<Thermometer />} label="Temperature" value={scannedProduct.temperature} />
+                                <DataRow icon={<Weight />} label="Weight" value={scannedProduct.weight ? `${scannedProduct.weight} kg` : null} />
+                            </div>
+
+                            <Separator />
+                            <div>
+                              <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
+                              <div className="grid grid-cols-1 gap-3">
+                                 <DataRow icon={<Layers />} label="Storage" value={scannedProduct.productDetails.storage?.join(', ')} />
+                                 <DataRow icon={<Layers />} label="Pack Info" value={scannedProduct.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
+                                 <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={scannedProduct.productDetails.productLife ? `${scannedProduct.productDetails.productLife.minimumCPCAcceptanceLife} / ${scannedProduct.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
+                                 <DataRow icon={<Flag />} label="Perishable" value={scannedProduct.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
+                                 <DataRow icon={<Flag />} label="Manual Order" value={scannedProduct.productDetails.manuallyStoreOrderedItem} />
+                              </div>
+                            </div>
+                            
+                            {scannedProduct.productDetails.commercialHierarchy && (
+                                <>
+                                <Separator />
+                                <div>
+                                    <h4 className="font-bold mb-3 flex items-center gap-2"><Building2 className="h-5 w-5" /> Classification</h4>
+                                    <p className="text-xs">
+                                        {scannedProduct.productDetails.commercialHierarchy.divisionName} &rarr; {scannedProduct.productDetails.commercialHierarchy.groupName} &rarr; {scannedProduct.productDetails.commercialHierarchy.className} &rarr; {scannedProduct.productDetails.commercialHierarchy.subclassName}
+                                    </p>
+                                </div>
+                                </>
+                            )}
                              <details className="pt-2">
                                 <summary className="cursor-pointer font-semibold">Raw Data</summary>
                                 <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">

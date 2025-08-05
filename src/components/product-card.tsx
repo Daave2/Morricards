@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -25,7 +25,7 @@ interface ProductCardProps {
   isPicker?: boolean;
 }
 
-const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null, valueClassName?: string }) => {
+const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
     if (value === undefined || value === null || value === '') return null;
     return (
         <div className="flex items-start gap-3">
@@ -166,7 +166,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
           <CardContent className={cn('flex-grow', layout === 'list' ? 'p-4 pt-0 grid grid-cols-3 gap-4 items-center' : 'p-6 pt-0 space-y-3')}>
               <div className="flex items-center gap-3 text-sm">
                   <Boxes className="h-5 w-5 text-primary" />
-                  <span>Stock record: <strong>{product.stockQuantity}</strong></span>
+                  <span>Stock record: <strong>{product.stockQuantity} {product.stockUnit}</strong></span>
                   <div className={`h-2.5 w-2.5 rounded-full ${stockColor}`} title={`Stock level: ${product.stockQuantity}`}></div>
               </div>
               <div className="flex items-start gap-3 text-sm">
@@ -190,15 +190,39 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
               <div className={cn("px-6 pb-4 overflow-y-auto max-h-96", layout === 'list' && 'px-4')}>
                   <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
-                        <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
                         <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
+                        <DataRow icon={<Info />} label="Status" value={product.status} />
                         <DataRow icon={<Footprints />} label="Walk Sequence" value={product.walkSequence} />
                         <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
+                        <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
+                        <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
                         <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
                         <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
-                        <DataRow icon={<Info />} label="Status" value={product.status} />
                       </div>
+
+                      <Separator />
+                        <div>
+                          <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                             <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
+                             <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
+                             <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
+                             <DataRow icon={<Flag />} label="Perishable" value={product.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
+                             <DataRow icon={<Flag />} label="Manual Order" value={product.productDetails.manuallyStoreOrderedItem} />
+                          </div>
+                        </div>
+
+                      {product.productDetails.commercialHierarchy && (
+                          <>
+                          <Separator />
+                          <div>
+                              <h4 className="font-bold mb-3 flex items-center gap-2"><Building2 className="h-5 w-5" /> Classification</h4>
+                              <p className="text-xs">
+                                {product.productDetails.commercialHierarchy.divisionName} &rarr; {product.productDetails.commercialHierarchy.groupName} &rarr; {product.productDetails.commercialHierarchy.className} &rarr; {product.productDetails.commercialHierarchy.subclassName}
+                              </p>
+                          </div>
+                          </>
+                      )}
 
                       {product.productDetails.productMarketing && <Separator />}
                       {product.productDetails.productMarketing && (
@@ -308,5 +332,3 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
-
-    
