@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import type { BrowserMultiFormatReader, NotFoundException, IScannerControls } from '@zxing/library';
+import { Html5QrcodeScanner, type QrCodeSuccessCallback } from 'html5-qrcode';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -41,6 +41,7 @@ const FormSchema = z.object({
 });
 
 const LOCAL_STORAGE_KEY = 'morricards-products';
+const SCANNER_CONTAINER_ID = 'qr-reader';
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -49,15 +50,11 @@ export default function Home() {
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [isScanMode, setIsScanMode] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [scannedSkus, setScannedSkus] = useState<Set<string>>(new Set());
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
-  const controlsRef = useRef<IScannerControls | null>(null);
-  const notFoundExceptionRef = useRef<any>(null);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannedSkusRef = useRef<Set<string>>(new Set());
 
   // Load products from local storage on initial render
   useEffect(() => {
@@ -79,14 +76,6 @@ export default function Home() {
       console.error("Failed to save products to local storage", error);
     }
   }, [products]);
-
-
-  useEffect(() => {
-    import('@zxing/library').then(ZXing => {
-        codeReaderRef.current = new ZXing.BrowserMultiFormatReader();
-        notFoundExceptionRef.current = ZXing.NotFoundException;
-    });
-  }, []);
 
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -141,72 +130,66 @@ export default function Home() {
   }, [handleUndoPick, playSuccess, dismiss, toast]);
   
    useEffect(() => {
-    if (isScanMode && codeReaderRef.current && videoRef.current) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(stream => {
-          setHasCameraPermission(true);
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play(); // Explicitly play the video
-            
-            // Start scanning
-            codeReaderRef.current?.decodeFromVideoElement(videoRef.current, (result, error, controls) => {
-              controlsRef.current = controls;
-              if (result) {
-                const code = result.getText();
-                if (scannedSkus.has(code)) return;
+    if (isScanMode) {
+      const onScanSuccess: QrCodeSuccessCallback = (decodedText, decodedResult) => {
+        if (scannedSkusRef.current.has(decodedText)) return;
+        scannedSkusRef.current.add(decodedText);
 
-                setScannedSkus(prev => new Set(prev).add(code));
-
-                if (products.length > 0) {
-                  const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
-                  if (productToPick) {
-                    if (productToPick.picked) {
-                      playInfo();
-                      toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
-                    } else {
-                      handlePick(productToPick.sku);
-                    }
-                  } else {
-                    playError();
-                    toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${code}) is not in the picking list.` });
-                  }
-                } else {
-                  const currentSkus = form.getValues('skus');
-                  form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
-                  playSuccess();
-                  toast({ title: 'Barcode Scanned', description: `Added EAN: ${code}` });
-                }
-              }
-              if (error && !(error instanceof notFoundExceptionRef.current)) {
-                console.error('Barcode scan error:', error);
-              }
-            });
+        if (products.length > 0) {
+          const productToPick = products.find(p => p.sku === decodedText || p.scannedSku === decodedText);
+          if (productToPick) {
+            if (productToPick.picked) {
+              playInfo();
+              toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
+            } else {
+              handlePick(productToPick.sku);
+            }
+          } else {
+            playError();
+            toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${decodedText}) is not in the picking list.` });
           }
-        })
-        .catch(err => {
-          console.error('Error getting media stream:', err);
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings.',
-          });
-          setIsScanMode(false);
+        } else {
+          const currentSkus = form.getValues('skus');
+          form.setValue('skus', currentSkus ? `${currentSkus}, ${decodedText}` : decodedText, { shouldValidate: true });
+          playSuccess();
+          toast({ title: 'Barcode Scanned', description: `Added EAN: ${decodedText}` });
+        }
+      };
+
+      const onScanFailure = (error: any) => {
+        // We can ignore errors, as they happen continuously when no code is found.
+        // The library handles this gracefully.
+      };
+
+      scannerRef.current = new Html5QrcodeScanner(
+        SCANNER_CONTAINER_ID,
+        { 
+          fps: 10,
+          qrbox: { width: 250, height: 150 },
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [], // Scan all supported types
+        },
+        /* verbose= */ false
+      );
+      scannerRef.current.render(onScanSuccess, onScanFailure);
+    } else {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(error => {
+          console.error("Failed to clear html5-qrcode-scanner.", error);
         });
+        scannerRef.current = null;
+      }
     }
 
     return () => {
-      if (controlsRef.current) {
-        controlsRef.current.stop();
-        controlsRef.current = null;
-      }
-      if (videoRef.current?.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(error => {
+          console.error("Failed to clear html5-qrcode-scanner on cleanup.", error);
+        });
+        scannerRef.current = null;
       }
     };
-  }, [isScanMode, handlePick, playError, playInfo, playSuccess, products, form, toast, scannedSkus]);
+  }, [isScanMode, form, handlePick, playError, playInfo, playSuccess, products, toast]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -238,7 +221,6 @@ export default function Home() {
     }
     setIsLoading(false);
     if (isScanMode) setIsScanMode(false);
-    setScannedSkus(new Set());
   }
 
   const sortedAndFilteredProducts = useMemo(() => {
@@ -289,7 +271,7 @@ export default function Home() {
     if (isScanMode) {
       setIsScanMode(false);
     } else {
-      setScannedSkus(new Set()); // Reset session scanned SKUs each time scanner is opened
+      scannedSkusRef.current = new Set(); // Reset session scanned SKUs
       setIsScanMode(true);
     }
   }
@@ -313,24 +295,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {isScanMode && (
-          <div className="sticky top-0 z-50 bg-black p-4 shadow-lg">
-              <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-lg overflow-hidden border-2 border-primary">
-                  <video ref={videoRef} className="w-full h-full object-cover" muted autoPlay playsInline />
-                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-3/4 h-1/2 border-y-2 border-dashed border-red-500 opacity-75" />
-                  </div>
-              </div>
-              { hasCameraPermission === false && (
-                <Alert variant="destructive" className="mt-4 max-w-4xl mx-auto">
-                  <AlertTitle>Camera Access Required</AlertTitle>
-                  <AlertDescription>
-                    Please allow camera access in your browser settings to use the scanner.
-                  </AlertDescription>
-                </Alert>
-              )}
-          </div>
-      )}
       <main className="container mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-12">
           <div className="inline-flex items-center gap-4">
@@ -343,6 +307,14 @@ export default function Home() {
             Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
           </p>
         </header>
+        
+        {isScanMode && (
+          <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
+            <CardContent className="p-4">
+              <div id={SCANNER_CONTAINER_ID} className="w-full"></div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
           <CardHeader>
