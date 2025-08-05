@@ -38,22 +38,13 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
 
 export default function ProductCard({ product, layout, onPick }: ProductCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isPicked, setIsPicked] = useState(product.picked);
-
-  // Sync with parent prop
-  useEffect(() => {
-      setIsPicked(product.picked);
-  }, [product.picked]);
-
+  
+  // No internal isPicked state to ensure single source of truth from parent
+  const isPicked = product.picked;
 
   const handlePick = () => {
-    const newPickedState = !isPicked;
-    setIsPicked(newPickedState);
-    
-    // Allow animation to play before triggering re-sort in parent
-    setTimeout(() => {
-        onPick(product.sku);
-    }, 300);
+    // onPick now handles all logic
+    onPick(product.sku);
   }
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
@@ -93,6 +84,7 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
                     checked={isPicked}
                     onCheckedChange={handlePick}
                     className="h-6 w-6"
+                    aria-label={`Pick ${product.name}`}
                 />
             </div>
             {layout === 'list' && (
@@ -293,14 +285,16 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <Card className={cn(
-            "w-full transition-all duration-300 flex flex-col relative", 
-            layout === 'list' && "flex-row",
-            isPicked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
-            isAgeRestricted ? 'bg-red-50/50' : 
-            product.temperature === 'Chilled' ? 'bg-teal-50/50' :
-            product.temperature === 'Frozen' ? 'bg-sky-50/50' : ''
-        )}>
+        <Card 
+            data-sku={product.sku}
+            className={cn(
+                "w-full transition-all duration-300 flex flex-col relative", 
+                layout === 'list' && "flex-row",
+                isPicked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
+                isAgeRestricted ? 'bg-red-50/50' : 
+                product.temperature === 'Chilled' ? 'bg-teal-50/50' :
+                product.temperature === 'Frozen' ? 'bg-sky-50/50' : ''
+            )}>
             {isPicked && (
                  <div className="absolute top-2 right-2 z-10 p-1 bg-primary text-primary-foreground rounded-full">
                     <CheckCircle2 className="h-5 w-5" />
@@ -311,3 +305,5 @@ export default function ProductCard({ product, layout, onPick }: ProductCardProp
     </Collapsible>
   );
 }
+
+    

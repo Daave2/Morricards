@@ -102,39 +102,54 @@ export default function Home() {
   }, [toast]);
 
   const handlePick = useCallback((sku: string) => {
-    setProducts(prevProducts => {
-        const productToUpdate = prevProducts.find(p => p.sku === sku || p.scannedSku === sku);
-        if (!productToUpdate) return prevProducts;
+    const productCard = document.querySelector(`[data-sku="${sku}"]`);
+    if (productCard) {
+        productCard.classList.add('picked-animation');
+    }
 
-        const isPicking = !productToUpdate.picked;
-        
-        if (isPicking) {
-            setTimeout(() => dismiss(), 0); // Dismiss previous toasts safely
-            playSuccess();
-            setTimeout(() => toast({
-                title: 'Item Picked',
-                description: `Picked: ${productToUpdate.name}`,
-                icon: <Check className="h-5 w-5 text-primary" />,
-                action: (
-                    <ToastAction altText="Undo" onClick={() => handleUndoPick(productToUpdate.sku)}>
-                        <Undo2 className="mr-1 h-4 w-4" />
-                        Undo
-                    </ToastAction>
-                ),
-            }), 0);
-        }
+    requestAnimationFrame(() => {
+        setProducts(prevProducts => {
+            const productToUpdate = prevProducts.find(p => p.sku === sku || p.scannedSku === sku);
+            if (!productToUpdate) return prevProducts;
 
-        const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
-        return [...updatedProducts];
+            const isPicking = !productToUpdate.picked;
+            
+            if (isPicking) {
+                // We show toast feedback outside of the state update to avoid delays
+            }
+
+            const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
+            return [...updatedProducts];
+        });
     });
-  }, [handleUndoPick, playSuccess, dismiss, toast]);
+
+    // Provide immediate feedback, not tied to the state update
+    const productToUpdate = products.find(p => p.sku === sku || p.scannedSku === sku);
+    if(productToUpdate && !productToUpdate.picked) {
+        setTimeout(() => dismiss(), 0);
+        playSuccess();
+        setTimeout(() => toast({
+            title: 'Item Picked',
+            description: `Picked: ${productToUpdate.name}`,
+            icon: <Check className="h-5 w-5 text-primary" />,
+            action: (
+                <ToastAction altText="Undo" onClick={() => handleUndoPick(productToUpdate.sku)}>
+                    <Undo2 className="mr-1 h-4 w-4" />
+                    Undo
+                </ToastAction>
+            ),
+        }), 0);
+    }
+
+  }, [products, handleUndoPick, playSuccess, dismiss, toast]);
   
    useEffect(() => {
     if (isScanMode) {
       // Dynamically import the library
       import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
         const onScanSuccess = (decodedText: string) => {
-          if (scannedSkusRef.current.has(decodedText)) return;
+          if (!decodedText || scannedSkusRef.current.has(decodedText)) return;
+          
           scannedSkusRef.current.add(decodedText);
 
           const productToPick = products.find(p => p.sku === decodedText || p.scannedSku === decodedText);
@@ -159,7 +174,7 @@ export default function Home() {
            // After a short delay, allow the same barcode to be scanned again if needed.
           setTimeout(() => {
             scannedSkusRef.current.delete(decodedText);
-          }, 2000);
+          }, 1500); // Increased delay slightly
         };
 
         const onScanFailure = (error: any) => {
@@ -493,5 +508,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     
