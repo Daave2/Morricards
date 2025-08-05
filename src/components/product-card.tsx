@@ -58,18 +58,6 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
 
   const lastStockChangeEvent = product.lastStockChange;
-  let isRecentChange = false;
-  if (lastStockChangeEvent?.lastCountDateTime) {
-      try {
-        const changeDate = new Date(lastStockChangeEvent.lastCountDateTime);
-        const now = new Date();
-        if (differenceInDays(now, changeDate) <= 3) {
-            isRecentChange = true;
-        }
-      } catch(e) {
-        // Ignore invalid date
-      }
-  }
 
 
   const cardContent = (
@@ -200,13 +188,13 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                   <PoundSterling className="h-5 w-5 text-primary" />
                   <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
-               {isRecentChange && lastStockChangeEvent && lastStockChangeEvent.lastCountDateTime && (
+               {lastStockChangeEvent && lastStockChangeEvent.lastCountDateTime && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-3 text-sm text-blue-600 cursor-default">
                             <History className="h-5 w-5" />
-                            <span>Recent stock event</span>
+                            <span>Last stock event</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
