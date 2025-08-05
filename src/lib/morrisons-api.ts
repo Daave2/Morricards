@@ -182,59 +182,61 @@ function extractLocationBits(pi: PriceIntegrity | null): { std: string, secondar
 export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promise<FetchMorrisonsDataOutput> {
   console.log(`Fetching data for SKUs: ${input.skus.join(', ')} at location: ${input.locationId}`);
 
-  const results: FetchMorrisonsDataOutput = [];
-
-  for (const sku of input.skus) {
+  const productPromises = input.skus.map(async (sku) => {
     try {
-        const product = await getProduct(sku);
-        if (!product) {
-            console.warn(`Product not found for SKU: ${sku}`);
-            continue;
-        }
+      const product = await getProduct(sku);
+      if (!product) {
+        console.warn(`Product not found for SKU: ${sku}`);
+        return null;
+      }
 
-        const stockCandidates = candidateStockSkus(product, sku);
-        const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
+      const stockCandidates = candidateStockSkus(product, sku);
+      const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
 
-        const finalSku = stockSku || sku;
-        const pi = await getPi(input.locationId, finalSku);
-        const stockHistory = await getStockHistory(input.locationId, finalSku);
+      const finalSku = stockSku || sku;
+      const piPromise = getPi(input.locationId, finalSku);
+      const stockHistoryPromise = getStockHistory(input.locationId, finalSku);
+      
+      const [pi, stockHistory] = await Promise.all([piPromise, stockHistoryPromise]);
 
-        const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
+      const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
 
-        const stockPosition = stockPayload?.stockPosition?.[0];
+      const stockPosition = stockPayload?.stockPosition?.[0];
 
-        const prices = pi?.prices;
-        const promos = pi?.promotions;
+      const prices = pi?.prices;
+      const promos = pi?.promotions;
 
-        results.push({
-            sku: product.itemNumber || sku,
-            scannedSku: sku,
-            name: product.customerFriendlyDescription || product.tillDescription || product.itemDescription || 'Unknown Product',
-            price: {
-                regular: prices?.[0]?.regularPrice,
-                promotional: promos?.[0]?.marketingAttributes?.offerValue,
-            },
-            stockQuantity: stockPosition?.qty ?? 0,
-            stockUnit: stockPosition?.unitofMeasure || product.standardUnitOfMeasure,
-            location: {
-                standard: stdLoc,
-                secondary: secondaryLoc,
-                promotional: promoLoc,
-            },
-            temperature: product.temperatureRegime,
-            weight: product.dimensions?.weight,
-            status: product.status,
-            stockSkuUsed: stockSku === sku ? undefined : stockSku || undefined,
-            imageUrl: (product as any).imageUrl?.[0]?.url,
-            walkSequence: walk,
-            productDetails: product,
-            lastStockChange: stockHistory || undefined,
-        });
-
+      return {
+        sku: product.itemNumber || sku,
+        scannedSku: sku,
+        name: product.customerFriendlyDescription || product.tillDescription || product.itemDescription || 'Unknown Product',
+        price: {
+          regular: prices?.[0]?.regularPrice,
+          promotional: promos?.[0]?.marketingAttributes?.offerValue,
+        },
+        stockQuantity: stockPosition?.qty ?? 0,
+        stockUnit: stockPosition?.unitofMeasure || product.standardUnitOfMeasure,
+        location: {
+          standard: stdLoc,
+          secondary: secondaryLoc,
+          promotional: promoLoc,
+        },
+        temperature: product.temperatureRegime,
+        weight: product.dimensions?.weight,
+        status: product.status,
+        stockSkuUsed: stockSku === sku ? undefined : stockSku || undefined,
+        imageUrl: (product as any).imageUrl?.[0]?.url,
+        walkSequence: walk,
+        productDetails: product,
+        lastStockChange: stockHistory || undefined,
+      };
     } catch (error) {
-        console.error(`Failed to process SKU ${sku}:`, error);
+      console.error(`Failed to process SKU ${sku}:`, error);
+      return null;
     }
-  }
+  });
 
-  return results;
+  const results = await Promise.all(productPromises);
+  
+  return results.filter((result): result is NonNullable<typeof result> => result !== null);
 }
