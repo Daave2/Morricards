@@ -20,7 +20,6 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const isScanningRef = useRef(true);
 
   const hints = useMemo(() => {
     const h = new Map();
@@ -46,7 +45,6 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
     if (!videoRef.current) return;
     
     stopScan();
-    isScanningRef.current = true;
 
     try {
       if (!readerRef.current) {
@@ -70,8 +68,7 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
       }
       
       videoRef.current.srcObject = streamRef.current;
-      // The play() method returns a Promise which can be interrupted.
-      // We catch and ignore the interruption error.
+      
       try {
         await videoRef.current.play();
       } catch (playError) {
@@ -80,13 +77,13 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
         }
       }
 
+      let isScanning = true;
 
       controlsRef.current = await readerRef.current.decodeFromVideoElement(
         videoRef.current,
         (result, err) => {
-          if (result && isScanningRef.current) {
-            isScanningRef.current = false;
-            // No need to call stopScan() here, as the parent component will re-open it.
+          if (result && isScanning) {
+            isScanning = false; // Immediately stop further processing
             onResult?.(result.getText(), result);
           }
           if (err && !(err.name === 'NotFoundException')) {
@@ -106,7 +103,8 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
   }));
   
   useEffect(() => {
-    startScan();
+    // This effect now only handles cleanup when the component unmounts.
+    // startScan is initiated by the parent component via the ref.
     return () => {
       stopScan();
     };

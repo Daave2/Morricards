@@ -170,7 +170,7 @@ export default function Home() {
         // Restart scanning after a short delay
         setTimeout(() => {
             scannerRef.current?.start();
-        }, 500);
+        }, 1000);
   }, [form, handlePick, playInfo, playSuccess, toast]);
 
   const handleScanError = (message: string) => {
