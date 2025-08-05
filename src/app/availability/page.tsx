@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2 } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -43,6 +43,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import ZXingScanner from '@/components/ZXingScanner';
+import { ToastAction } from '@/components/ui/toast';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -87,8 +88,9 @@ export default function AvailabilityPage() {
   const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
+  const [lastDeletedItem, setLastDeletedItem] = useState<{ item: ReportedItem; index: number } | null>(null);
   
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
 
   const scannerRef = useRef<{ start: () => void } | null>(null);
@@ -239,12 +241,43 @@ export default function AvailabilityPage() {
       setIsMoreInfoOpen(false);
   }
 
+  const handleUndoDelete = useCallback(() => {
+    if (lastDeletedItem) {
+      const { item, index } = lastDeletedItem;
+      setReportedItems(prev => {
+        const newItems = [...prev];
+        newItems.splice(index, 0, item);
+        return newItems;
+      });
+      setLastDeletedItem(null);
+      dismiss();
+      toast({
+        title: 'Action Undone',
+        description: `${item.name} has been restored to the report list.`
+      })
+    }
+  }, [lastDeletedItem, dismiss, toast]);
+
   const handleDeleteItem = (e: React.MouseEvent, reportId: string) => {
     e.stopPropagation(); // Prevent card's onClick from firing
+    
+    const itemIndex = reportedItems.findIndex(item => item.reportId === reportId);
+    if (itemIndex === -1) return;
+
+    const itemToDelete = reportedItems[itemIndex];
+    setLastDeletedItem({ item: itemToDelete, index: itemIndex });
+
     setReportedItems(prev => prev.filter(item => item.reportId !== reportId));
+
     toast({
         title: 'Item Removed',
         description: 'The item has been removed from the report list.',
+        action: (
+          <ToastAction altText="Undo" onClick={handleUndoDelete}>
+              <Undo2 className="mr-1 h-4 w-4" />
+              Undo
+          </ToastAction>
+      ),
     });
   }
 
@@ -646,6 +679,8 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
 
     
 
