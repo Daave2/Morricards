@@ -198,11 +198,7 @@ export default function Home() {
         scannerRef.current = null;
       }
     };
-  // NOTE: Do not add `products`, `handlePick`, etc. to the dependency array.
-  // This is intentional to prevent the scanner from re-initializing on every state change,
-  // which would cause a flicker and make continuous scanning impossible.
-  // We use refs to access the latest values of these functions and state inside the callbacks.
-  }, [isScanMode]);
+  }, [isScanMode, products, handlePick, playInfo, playSuccess, toast, form]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -311,7 +307,7 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         {isScanMode && (
           <div className="sticky top-0 z-50 py-4 bg-background -mx-4 px-4 mb-4">
-            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border h-[200px] flex items-center justify-center bg-black">
+            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border h-[200px] flex items-center justify-center bg-black [&>span]:hidden">
               <div id={SCANNER_CONTAINER_ID} className="w-[350px] h-[350px]"></div>
             </div>
           </div>
@@ -497,3 +493,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
