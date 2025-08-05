@@ -170,7 +170,7 @@ export default function Home() {
           SCANNER_CONTAINER_ID,
           { 
             fps: 10,
-            qrbox: { width: 300, height: 100 },
+            qrbox: { width: 250, height: 150 },
             rememberLastUsedCamera: true,
             supportedScanTypes: [], // Scan all supported types
           },
@@ -318,8 +318,8 @@ export default function Home() {
         </header>
         
         {isScanMode && (
-          <div className="max-w-2xl mx-auto mb-8 rounded-lg overflow-hidden shadow-lg border">
-            <div id={SCANNER_CONTAINER_ID} className="w-full aspect-video bg-black"></div>
+          <div className="max-w-xl mx-auto mb-8 rounded-lg overflow-hidden shadow-lg border h-[250px] flex items-center justify-center bg-black">
+            <div id={SCANNER_CONTAINER_ID} className="w-[400px] h-[400px]"></div>
           </div>
         )}
 
