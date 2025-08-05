@@ -23,10 +23,12 @@ export default function ImageModal({ src, alt, children }: ImageModalProps) {
             fill
             className="object-contain"
             data-ai-hint="product image large"
-unoptimized
+
           />
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+    

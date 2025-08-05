@@ -74,7 +74,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                   fill
                   className="object-cover"
                   data-ai-hint="product image"
-                  unoptimized
+                  
                 />
               </div>
             </ImageModal>
@@ -105,7 +105,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                     fill
                     className="object-cover rounded-md"
                     data-ai-hint="product image"
-                    unoptimized
+                    
                   />
                 </div>
               </ImageModal>
@@ -359,3 +359,5 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
+
+    
