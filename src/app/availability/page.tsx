@@ -209,10 +209,10 @@ export default function AvailabilityPage() {
                   fps: 10,
                   qrbox: { width: 300, height: 120 },
                   rememberLastUsedCamera: true,
-                  verbose: false,
+                  verbose: true,
                   showTorchButtonIfSupported: true,
                 },
-                false
+                true
               );
           }
           scannerRef.current.render(handleScanSuccess, onScanFailure);
@@ -651,5 +651,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    

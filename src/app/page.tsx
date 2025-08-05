@@ -205,7 +205,7 @@ export default function Home() {
                             rememberLastUsedCamera: true,
                             showTorchButtonIfSupported: true,
                         },
-                        false
+                        true
                     );
                 }
                 scannerRef.current.render(onScanSuccess, onScanFailure);
@@ -521,7 +521,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    
