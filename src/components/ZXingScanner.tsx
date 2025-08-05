@@ -70,14 +70,23 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
       }
       
       videoRef.current.srcObject = streamRef.current;
-      await videoRef.current.play();
+      // The play() method returns a Promise which can be interrupted.
+      // We catch and ignore the interruption error.
+      try {
+        await videoRef.current.play();
+      } catch (playError) {
+        if ((playError as Error).name !== 'AbortError') {
+          console.error('Video play error:', playError);
+        }
+      }
+
 
       controlsRef.current = await readerRef.current.decodeFromVideoElement(
         videoRef.current,
         (result, err) => {
           if (result && isScanningRef.current) {
             isScanningRef.current = false;
-            stopScan();
+            // No need to call stopScan() here, as the parent component will re-open it.
             onResult?.(result.getText(), result);
           }
           if (err && !(err.name === 'NotFoundException')) {
