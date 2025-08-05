@@ -71,6 +71,7 @@ export default function AvailabilityPage() {
   const [isScanMode, setIsScanMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [htmlForCopy, setHtmlForCopy] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -257,38 +258,6 @@ export default function AvailabilityPage() {
     });
   }
 
-  const copyHtmlWithFallback = (html: string) => {
-    const el = document.createElement('div');
-    el.style.position = 'absolute';
-    el.style.left = '-9999px';
-    el.innerHTML = html;
-    document.body.appendChild(el);
-    
-    const selection = window.getSelection();
-    const range = document.createRange();
-    if(selection && range) {
-        range.selectNode(el);
-        selection.removeAllRanges();
-        selection.addRange(range);
-
-        try {
-            const success = document.execCommand('copy');
-            if (success) {
-                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
-            } else {
-                toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
-            }
-        } catch (err) {
-            console.error('Fallback copy failed', err);
-            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
-        }
-
-        selection.removeAllRanges();
-    }
-    document.body.removeChild(el);
-  }
-
-
   const handleCopyHtml = () => {
     const styles = {
         table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
@@ -328,7 +297,6 @@ export default function AvailabilityPage() {
         </table>
     `;
 
-    // Modern API with fallback
     if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
         try {
             const blob = new Blob([html], { type: 'text/html' });
@@ -336,15 +304,16 @@ export default function AvailabilityPage() {
             navigator.clipboard.write([clipboardItem]).then(() => {
                 toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
             }).catch(err => {
-                 console.error("Clipboard API error, trying fallback:", err);
-                 copyHtmlWithFallback(html); // Fallback for browsers that fail
+                console.error("Clipboard API error, showing fallback dialog:", err);
+                setHtmlForCopy(html);
             });
         } catch(e) {
-            console.error("Error creating blob/clipboard item, trying fallback:", e);
-            copyHtmlWithFallback(html); // Fallback for browsers that don't support ClipboardItem
+            console.error("Error creating blob/clipboard item, showing fallback dialog:", e);
+            setHtmlForCopy(html);
         }
     } else {
-        copyHtmlWithFallback(html); // Fallback for older browsers
+        console.log("Clipboard API not supported, showing fallback dialog.")
+        setHtmlForCopy(html);
     }
   }
 
@@ -426,6 +395,26 @@ export default function AvailabilityPage() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={!!htmlForCopy} onOpenChange={(isOpen) => !isOpen && setHtmlForCopy(null)}>
+        <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>Copy HTML for Email</DialogTitle>
+                <DialogDescription>
+                    Automatic copy failed. Please manually copy the HTML code below.
+                </DialogDescription>
+            </DialogHeader>
+            <Textarea
+                readOnly
+                value={htmlForCopy || ''}
+                className="h-64 text-xs font-mono"
+                onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+            <DialogFooter>
+                <Button onClick={() => setHtmlForCopy(null)}>Close</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
       
@@ -577,4 +566,3 @@ export default function AvailabilityPage() {
     </div>
   );
 
-    
