@@ -384,7 +384,7 @@ export default function AvailabilityPage() {
                         </div>
                     </div>
                      <CollapsibleContent>
-                        <div className="border-t p-4 space-y-3 text-xs text-muted-foreground">
+                        <div className="border-t p-4 space-y-3 text-xs text-muted-foreground overflow-y-auto max-h-60">
                             <DataRow icon={<Crown />} label="Brand" value={scannedProduct.productDetails.brand} />
                             <DataRow icon={<Globe />} label="Country of Origin" value={scannedProduct.productDetails.countryOfOrigin} />
                             <DataRow icon={<Barcode />} label="SKU" value={`${scannedProduct.sku} (EAN: ${scannedProduct.scannedSku}) ${scannedProduct.stockSkuUsed ? `(Stock SKU: ${scannedProduct.stockSkuUsed})` : ''}`} />
