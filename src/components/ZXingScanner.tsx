@@ -19,9 +19,7 @@ export default function ZXingScanner({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-
-  // We don't need all the extra state from the example, just the essentials
-  // to make the scanner work in the app context.
+  const isScanningRef = useRef(true);
 
   const hints = useMemo(() => {
     const h = new Map();
@@ -39,6 +37,7 @@ export default function ZXingScanner({
   }, []);
 
   const startScan = useCallback(async () => {
+    isScanningRef.current = true;
     if (!videoRef.current) return;
     try {
       if (!readerRef.current) {
@@ -61,8 +60,8 @@ export default function ZXingScanner({
         constraints,
         videoRef.current,
         (result, err) => {
-          if (result) {
-            // Once we have a result, stop the scan and notify the parent.
+          if (result && isScanningRef.current) {
+            isScanningRef.current = false;
             stopScan();
             onResult?.(result.getText(), result);
           }
