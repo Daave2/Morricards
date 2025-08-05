@@ -138,7 +138,7 @@ export default function AvailabilityPage() {
     
     setIsLoading(true);
 
-    const { data, error } = await getProductData({ locationId, skus: decodedText });
+    const { data, error } = await getProductData({ locationId, skus: [decodedText] });
 
     setIsLoading(false);
 
@@ -262,9 +262,9 @@ export default function AvailabilityPage() {
                         data-ai-hint="product image"
                         unoptimized
                       />
-                      <div className="text-sm">
+                      <div className="text-sm space-y-1">
                         <p className="font-bold">{scannedProduct.name}</p>
-                        <p>Stock: <span className="font-semibold">{scannedProduct.stockQuantity}</span></p>
+                        <p className="text-lg">Stock: <span className="font-bold text-2xl text-primary">{scannedProduct.stockQuantity}</span></p>
                         <p>Location: <span className="font-semibold">{scannedProduct.location.standard || 'N/A'}</span></p>
                       </div>
                   </div>
