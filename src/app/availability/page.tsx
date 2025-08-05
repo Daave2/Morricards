@@ -316,9 +316,10 @@ export default function AvailabilityPage() {
   const handleCopyHtml = () => {
     const styles = {
         table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
-        th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2;',
+        th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2; font-weight: bold;',
         td: 'border: 1px solid #dddddd; text-align: left; padding: 8px;',
-        img: 'width: 50px; height: 50px; object-fit: cover; border-radius: 4px;'
+        tr_even: 'background-color: #f9f9f9;',
+        img: 'width: 60px; height: 60px; object-fit: cover; border-radius: 4px;'
     };
 
     const html = `
@@ -328,20 +329,26 @@ export default function AvailabilityPage() {
                     <th style="${styles.th}">Image</th>
                     <th style="${styles.th}">SKU</th>
                     <th style="${styles.th}">Name</th>
+                    <th style="${styles.th}">Status</th>
                     <th style="${styles.th}">Stock</th>
                     <th style="${styles.th}">Location</th>
+                    <th style="${styles.th}">Walk</th>
+                    <th style="${styles.th}">Temp</th>
                     <th style="${styles.th}">Reason</th>
                     <th style="${styles.th}">Comment</th>
                 </tr>
             </thead>
             <tbody>
-                ${reportedItems.map(p => `
-                    <tr>
+                ${reportedItems.map((p, index) => `
+                    <tr style="${index % 2 === 0 ? styles.tr_even : ''}">
                         <td style="${styles.td}"><img src="${p.imageUrl || 'https://placehold.co/100x100.png'}" alt="${p.name}" style="${styles.img}" /></td>
                         <td style="${styles.td}">${p.sku}</td>
                         <td style="${styles.td}">${p.name}</td>
+                        <td style="${styles.td}">${p.status || 'N/A'}</td>
                         <td style="${styles.td}">${p.stockQuantity}</td>
-                        <td style="${styles.td}">${p.location.standard}</td>
+                        <td style="${styles.td}">${p.location.standard || 'N/A'}</td>
+                        <td style="${styles.td}">${p.walkSequence || 'N/A'}</td>
+                        <td style="${styles.td}">${p.temperature || 'N/A'}</td>
                         <td style="${styles.td}">${p.reason}</td>
                         <td style="${styles.td}">${p.comment || ''}</td>
                     </tr>
@@ -350,35 +357,39 @@ export default function AvailabilityPage() {
         </table>
     `;
     
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    document.body.appendChild(tempDiv);
-    tempDiv.innerHTML = html;
-
-    const range = document.createRange();
-    range.selectNodeContents(tempDiv);
-    const selection = window.getSelection();
-    if (selection) {
-        selection.removeAllRanges();
-        selection.addRange(range);
-    }
-    
     try {
-        const successful = document.execCommand('copy');
-        if (successful) {
+        const blob = new Blob([html], { type: 'text/html' });
+        const clipboardItem = new ClipboardItem({ 'text/html': blob });
+        navigator.clipboard.write([clipboardItem]).then(() => {
             toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
-        } else {
-             toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
-        }
+        }, (err) => {
+            console.error('Async clipboard write failed:', err);
+            // Fallback for browsers that don't support writing HTML to clipboard
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            document.body.appendChild(tempDiv);
+            const range = document.createRange();
+            range.selectNodeContents(tempDiv);
+            const selection = window.getSelection();
+            if (selection) {
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+            try {
+                document.execCommand('copy');
+                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
+            } catch (e) {
+                toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
+            } finally {
+                document.body.removeChild(tempDiv);
+                 if (window.getSelection()) {
+                    window.getSelection()?.removeAllRanges();
+                }
+            }
+        });
     } catch (err) {
-        console.error('Copy failed:', err);
-        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
-    } finally {
-        document.body.removeChild(tempDiv);
-        if (window.getSelection()) {
-            window.getSelection()?.removeAllRanges();
-        }
+      console.error('Clipboard API failed:', err);
+      toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
     }
   }
 
