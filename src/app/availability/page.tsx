@@ -46,7 +46,7 @@ import { Separator } from '@/components/ui/separator';
 import ZXingScanner from '@/components/ZXingScanner';
 
 type Product = FetchMorrisonsDataOutput[0];
-type ReportedItem = Product & { reason: string; comment?: string };
+type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
@@ -87,6 +87,7 @@ export default function AvailabilityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
   
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
@@ -169,6 +170,7 @@ export default function AvailabilityPage() {
         } else {
           playSuccess();
           setScannedProduct(product);
+          setEditingItem(null);
           
           let defaultReason = '';
           if (product.stockQuantity === 0) {
@@ -195,24 +197,47 @@ export default function AvailabilityPage() {
   const handleModalOpenChange = (open: boolean) => {
     setIsModalOpen(open);
     if (!open) {
-      // Re-open scanner when modal is closed
-      setIsScanMode(true);
+      setScannedProduct(null);
+      setEditingItem(null);
+      // Re-open scanner when modal is closed, but only if we were in scan mode before
+      if (!editingItem) {
+          setIsScanMode(true);
+      }
     }
   }
 
   const handleReasonSubmit = (values: z.infer<typeof ReasonSchema>) => {
-      if (!scannedProduct) return;
-      
-      const newReportedItem: ReportedItem = {
-          ...scannedProduct,
-          reason: values.reason,
-          comment: values.comment,
-      };
+      if (editingItem) {
+        // We are editing an existing item
+        const updatedItem: ReportedItem = {
+            ...editingItem,
+            reason: values.reason,
+            comment: values.comment,
+        };
+        setReportedItems(prev => prev.map(item => item.reportId === editingItem.reportId ? updatedItem : item));
+        toast({ title: 'Item Updated', description: `${editingItem.name} has been updated.` });
 
-      setReportedItems(prev => [newReportedItem, ...prev]);
-      toast({ title: 'Item Reported', description: `${scannedProduct.name} has been added to the report list.` });
+      } else if (scannedProduct) {
+        // We are adding a new item
+         const newReportedItem: ReportedItem = {
+            ...scannedProduct,
+            reportId: `${scannedProduct.sku}-${Date.now()}`,
+            reason: values.reason,
+            comment: values.comment,
+        };
+        setReportedItems(prev => [newReportedItem, ...prev]);
+        toast({ title: 'Item Reported', description: `${scannedProduct.name} has been added to the report list.` });
+      }
+      
       handleModalOpenChange(false);
+  }
+  
+  const handleEditItem = (item: ReportedItem) => {
+      setEditingItem(item);
       setScannedProduct(null);
+      reasonForm.reset({ reason: item.reason, comment: item.comment || '' });
+      setIsModalOpen(true);
+      setIsMoreInfoOpen(false);
   }
 
   const handleScanButtonClick = () => {
@@ -315,6 +340,7 @@ export default function AvailabilityPage() {
     }
   }
 
+  const productForModal = editingItem || scannedProduct;
 
   return (
     <div className="min-h-screen bg-background">
@@ -338,18 +364,18 @@ export default function AvailabilityPage() {
           <Form {...reasonForm}>
             <form onSubmit={reasonForm.handleSubmit(handleReasonSubmit)} className="space-y-4">
               <DialogHeader>
-                <DialogTitle>Report Item</DialogTitle>
+                <DialogTitle>{editingItem ? 'Edit Report' : 'Report Item'}</DialogTitle>
                 <DialogDescription>
-                  Select a reason for reporting this item. This will be sent to the supply chain team.
+                  {editingItem ? 'Update the reason for reporting this item.' : 'Select a reason for reporting this item. This will be sent to the supply chain team.'}
                 </DialogDescription>
               </DialogHeader>
 
-              {scannedProduct && (
+              {productForModal && (
                   <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen}>
                     <div className="flex items-start gap-4 p-4 rounded-md border bg-muted/50">
                         <Image
-                          src={scannedProduct.imageUrl || `https://placehold.co/100x100.png`}
-                          alt={scannedProduct.name}
+                          src={productForModal.imageUrl || `https://placehold.co/100x100.png`}
+                          alt={productForModal.name}
                           width={80}
                           height={80}
                           className="rounded-md object-cover"
@@ -357,56 +383,56 @@ export default function AvailabilityPage() {
                           unoptimized
                         />
                         <div className="text-sm space-y-1 flex-grow">
-                          <p className="font-bold">{scannedProduct.name}</p>
-                           {scannedProduct.price.promotional && (
+                          <p className="font-bold">{productForModal.name}</p>
+                           {productForModal.price.promotional && (
                               <div className="pt-1">
-                                <Badge variant="destructive" className="bg-accent text-accent-foreground">{scannedProduct.price.promotional}</Badge>
+                                <Badge variant="destructive" className="bg-accent text-accent-foreground">{productForModal.price.promotional}</Badge>
                               </div>
                             )}
-                          <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{scannedProduct.stockQuantity}</span></p>
-                          <div>Location: <span className="font-semibold">{scannedProduct.location.standard || 'N/A'}</span></div>
-                          {scannedProduct.location.secondary && <div>Secondary: <span className="font-semibold">{scannedProduct.location.secondary}</span></div>}
+                          <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{productForModal.stockQuantity}</span></p>
+                          <div>Location: <span className="font-semibold">{productForModal.location.standard || 'N/A'}</span></div>
+                          {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
                         </div>
                     </div>
                      <CollapsibleContent>
                         <div className="border-t p-4 space-y-3 text-xs text-muted-foreground overflow-y-auto max-h-60">
                            <div className="grid grid-cols-1 gap-3">
-                                <DataRow icon={<Barcode />} label="SKU" value={`${scannedProduct.sku} (EAN: ${scannedProduct.scannedSku}) ${scannedProduct.stockSkuUsed ? `(Stock SKU: ${scannedProduct.stockSkuUsed})` : ''}`} />
-                                <DataRow icon={<Info />} label="Status" value={scannedProduct.status} />
-                                <DataRow icon={<Footprints />} label="Walk Sequence" value={scannedProduct.walkSequence} />
-                                <DataRow icon={<Tag />} label="Promo Location" value={scannedProduct.location.promotional} />
-                                <DataRow icon={<Crown />} label="Brand" value={scannedProduct.productDetails.brand} />
-                                <DataRow icon={<Globe />} label="Country of Origin" value={scannedProduct.productDetails.countryOfOrigin} />
-                                <DataRow icon={<Thermometer />} label="Temperature" value={scannedProduct.temperature} />
-                                <DataRow icon={<Weight />} label="Weight" value={scannedProduct.weight ? `${scannedProduct.weight} kg` : null} />
+                                <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
+                                <DataRow icon={<Info />} label="Status" value={productForModal.status} />
+                                <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
+                                <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
+                                <DataRow icon={<Crown />} label="Brand" value={productForModal.productDetails.brand} />
+                                <DataRow icon={<Globe />} label="Country of Origin" value={productForModal.productDetails.countryOfOrigin} />
+                                <DataRow icon={<Thermometer />} label="Temperature" value={productForModal.temperature} />
+                                <DataRow icon={<Weight />} label="Weight" value={productForModal.weight ? `${productForModal.weight} kg` : null} />
                             </div>
 
                             <Separator />
                             <div>
                               <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
                               <div className="grid grid-cols-1 gap-3">
-                                 {scannedProduct.lastStockChange?.lastCountDateTime && (
+                                 {productForModal.lastStockChange?.lastCountDateTime && (
                                     <DataRow
                                         icon={<History />}
                                         label="Last Stock Event"
-                                        value={`${scannedProduct.lastStockChange.inventoryAction} of ${scannedProduct.lastStockChange.qty} by ${scannedProduct.lastStockChange.createdBy} at ${scannedProduct.lastStockChange.lastCountDateTime}`}
+                                        value={`${productForModal.lastStockChange.inventoryAction} of ${productForModal.lastStockChange.qty} by ${productForModal.lastStockChange.createdBy} at ${productForModal.lastStockChange.lastCountDateTime}`}
                                     />
                                   )}
-                                 <DataRow icon={<Layers />} label="Storage" value={scannedProduct.productDetails.storage?.join(', ')} />
-                                 <DataRow icon={<Layers />} label="Pack Info" value={scannedProduct.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
-                                 <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={scannedProduct.productDetails.productLife ? `${scannedProduct.productDetails.productLife.minimumCPCAcceptanceLife} / ${scannedProduct.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
-                                 <DataRow icon={<Flag />} label="Perishable" value={scannedProduct.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
-                                 <DataRow icon={<Flag />} label="Manual Order" value={scannedProduct.productDetails.manuallyStoreOrderedItem} />
+                                 <DataRow icon={<Layers />} label="Storage" value={productForModal.productDetails.storage?.join(', ')} />
+                                 <DataRow icon={<Layers />} label="Pack Info" value={productForModal.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
+                                 <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={productForModal.productDetails.productLife ? `${productForModal.productDetails.productLife.minimumCPCAcceptanceLife} / ${productForModal.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
+                                 <DataRow icon={<Flag />} label="Perishable" value={productForModal.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
+                                 <DataRow icon={<Flag />} label="Manual Order" value={productForModal.productDetails.manuallyStoreOrderedItem} />
                               </div>
                             </div>
                             
-                            {scannedProduct.productDetails.commercialHierarchy && (
+                            {productForModal.productDetails.commercialHierarchy && (
                                 <>
                                 <Separator />
                                 <div>
                                     <h4 className="font-bold mb-3 flex items-center gap-2"><Building2 className="h-5 w-5" /> Classification</h4>
                                     <p className="text-xs">
-                                        {scannedProduct.productDetails.commercialHierarchy.divisionName} &rarr; {scannedProduct.productDetails.commercialHierarchy.groupName} &rarr; {scannedProduct.productDetails.commercialHierarchy.className} &rarr; {scannedProduct.productDetails.commercialHierarchy.subclassName}
+                                        {productForModal.productDetails.commercialHierarchy.divisionName} &rarr; {productForModal.productDetails.commercialHierarchy.groupName} &rarr; {productForModal.productDetails.commercialHierarchy.className} &rarr; {productForModal.productDetails.commercialHierarchy.subclassName}
                                     </p>
                                 </div>
                                 </>
@@ -414,7 +440,7 @@ export default function AvailabilityPage() {
                              <details className="pt-2">
                                 <summary className="cursor-pointer font-semibold">Raw Data</summary>
                                 <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">
-                                    {JSON.stringify(scannedProduct, null, 2)}
+                                    {JSON.stringify(productForModal, null, 2)}
                                 </pre>
                             </details>
                         </div>
@@ -474,7 +500,7 @@ export default function AvailabilityPage() {
               </div>
 
               <DialogFooter>
-                <Button type="submit">Add to Report</Button>
+                <Button type="submit">{editingItem ? 'Update Report' : 'Add to Report'}</Button>
               </DialogFooter>
             </form>
           </Form>
@@ -578,8 +604,8 @@ export default function AvailabilityPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {reportedItems.map((item, index) => (
-                        <div key={`${item.sku}-${index}`} className="flex items-start gap-4 p-4 border rounded-lg">
+                      {reportedItems.map((item) => (
+                        <div key={item.reportId} onClick={() => handleEditItem(item)} className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                            <Image
                               src={item.imageUrl || `https://placehold.co/100x100.png`}
                               alt={item.name}
@@ -613,3 +639,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
