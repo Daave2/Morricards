@@ -187,6 +187,7 @@ export default function AvailabilityPage() {
                 rememberLastUsedCamera: true,
                 supportedScanTypes: [],
                 verbose: false,
+                showTorchButtonIfSupported: true,
               },
               false
             );
@@ -239,10 +240,9 @@ export default function AvailabilityPage() {
   }
 
   const handleCopyData = () => {
-    const tsv = 'SKU\tEAN\tName\tStock\tLocation\tReason\tComment\n' + reportedItems.map(p => 
+    const tsv = 'SKU\tName\tStock\tLocation\tReason\tComment\n' + reportedItems.map(p => 
         [
             p.sku,
-            p.scannedSku,
             p.name.replace(/\s+/g, ' '),
             p.stockQuantity,
             p.location.standard,

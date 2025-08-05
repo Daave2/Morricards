@@ -159,11 +159,12 @@ export default function Home() {
     if (isScanMode) {
       import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
         const onScanSuccess = (decodedText: string) => {
-          if (!decodedText || scannedSkusRef.current.has(decodedText)) return;
+          const sku = decodedText.split(',')[0].trim();
+          if (!sku || scannedSkusRef.current.has(sku)) return;
           
-          scannedSkusRef.current.add(decodedText);
+          scannedSkusRef.current.add(sku);
 
-          const productToPick = productsRef.current.find(p => p.sku === decodedText || p.scannedSku === decodedText);
+          const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
           if (productToPick) {
             if (productToPick.picked) {
               playInfo();
@@ -173,17 +174,17 @@ export default function Home() {
             }
           } else {
               const currentSkus = form.getValues('skus');
-              if (currentSkus.split(/[\s,]+/).find(s => s.trim() === decodedText)) {
+              if (currentSkus.split(/[\s,]+/).find(s => s.trim() === sku)) {
                 playInfo();
-                toast({ title: 'EAN Already in List', description: `EAN ${decodedText} is already in the text box.` });
+                toast({ title: 'EAN Already in List', description: `EAN ${sku} is already in the text box.` });
               } else {
-                form.setValue('skus', currentSkus ? `${currentSkus}, ${decodedText}` : decodedText, { shouldValidate: true });
+                form.setValue('skus', currentSkus ? `${currentSkus}, ${sku}` : sku, { shouldValidate: true });
                 playSuccess();
-                toast({ title: 'Barcode Scanned', description: `Added EAN: ${decodedText}` });
+                toast({ title: 'Barcode Scanned', description: `Added EAN: ${sku}` });
               }
           }
           setTimeout(() => {
-            scannedSkusRef.current.delete(decodedText);
+            scannedSkusRef.current.delete(sku);
           }, 3000); 
         };
 
@@ -197,6 +198,7 @@ export default function Home() {
                 qrbox: { width: 250, height: 100 },
                 rememberLastUsedCamera: true,
                 supportedScanTypes: [],
+                showTorchButtonIfSupported: true,
               },
               false
             );
