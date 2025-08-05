@@ -296,14 +296,19 @@ export default function AvailabilityPage() {
         </table>
     `;
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const clipboardItem = new ClipboardItem({ 'text/html': blob });
-
-    navigator.clipboard.write([clipboardItem]).then(() => {
-        toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
-    }).catch(err => {
-        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
-    });
+    try {
+        const blob = new Blob([html], { type: 'text/html' });
+        const clipboardItem = new ClipboardItem({ 'text/html': blob });
+        navigator.clipboard.write([clipboardItem]).then(() => {
+            toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
+        }).catch(err => {
+            console.error("Clipboard API error:", err);
+            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
+        });
+    } catch (error) {
+        console.error("Error creating blob/clipboard item:", error);
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not prepare data for clipboard.'});
+    }
   }
 
 
