@@ -60,10 +60,14 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
   const lastStockChangeEvent = product.lastStockChange;
   let isRecentChange = false;
   if (lastStockChangeEvent?.lastCountDateTime) {
-      const changeDate = new Date(lastStockChangeEvent.lastCountDateTime);
-      const now = new Date();
-      if (differenceInDays(now, changeDate) <= 3) {
-          isRecentChange = true;
+      try {
+        const changeDate = new Date(lastStockChangeEvent.lastCountDateTime);
+        const now = new Date();
+        if (differenceInDays(now, changeDate) <= 3) {
+            isRecentChange = true;
+        }
+      } catch(e) {
+        // Ignore invalid date
       }
   }
 
@@ -196,7 +200,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                   <PoundSterling className="h-5 w-5 text-primary" />
                   <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
-               {isRecentChange && lastStockChangeEvent && (
+               {isRecentChange && lastStockChangeEvent && lastStockChangeEvent.lastCountDateTime && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -207,7 +211,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{lastStockChangeEvent.inventoryAction} of {lastStockChangeEvent.qty} by {lastStockChangeEvent.createdBy}</p>
-                        <p>On: {format(new Date(lastStockChangeEvent.lastCountDateTime!), 'dd/MM/yy HH:mm')}</p>
+                        <p>On: {format(new Date(lastStockChangeEvent.lastCountDateTime), 'dd/MM/yy HH:mm')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -368,3 +372,5 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
+
+    
