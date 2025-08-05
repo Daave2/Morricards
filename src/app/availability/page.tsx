@@ -316,11 +316,11 @@ export default function AvailabilityPage() {
 
   const handleCopyHtml = () => {
     const styles = {
-        table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
-        th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2; font-weight: bold;',
-        td: 'border: 1px solid #dddddd; text-align: left; padding: 8px;',
-        tr_even: 'background-color: #f9f9f9;',
-        img: 'width: 60px; height: 60px; object-fit: cover; border-radius: 4px;'
+      table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
+      th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2; font-weight: bold;',
+      td: 'border: 1px solid #dddddd; text-align: left; padding: 8px;',
+      tr_even: 'background-color: #f9f9f9;',
+      img: 'width: 60px; height: 60px; object-fit: cover; border-radius: 4px;',
     };
 
     const html = `
@@ -351,43 +351,27 @@ export default function AvailabilityPage() {
             </tbody>
         </table>
     `;
+
+    function listener(e: ClipboardEvent) {
+      if (e.clipboardData) {
+        e.clipboardData.setData('text/html', html);
+        e.clipboardData.setData('text/plain', html);
+        e.preventDefault();
+      }
+    }
     
     try {
-        const blob = new Blob([html], { type: 'text/html' });
-        const clipboardItem = new ClipboardItem({ 'text/html': blob });
-        navigator.clipboard.write([clipboardItem]).then(() => {
-            toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
-        }, (err) => {
-            console.error('Async clipboard write failed:', err);
-            // Fallback for browsers that don't support writing HTML to clipboard
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            document.body.appendChild(tempDiv);
-            const range = document.createRange();
-            range.selectNodeContents(tempDiv);
-            const selection = window.getSelection();
-            if (selection) {
-                selection.removeAllRanges();
-                selection.addRange(range);
-            }
-            try {
-                document.execCommand('copy');
-                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
-            } catch (e) {
-                toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
-            } finally {
-                document.body.removeChild(tempDiv);
-                 if (window.getSelection()) {
-                    window.getSelection()?.removeAllRanges();
-                }
-            }
-        });
-    } catch (err) {
-      console.error('Clipboard API failed:', err);
+      document.addEventListener('copy', listener);
+      document.execCommand('copy');
+      toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
+    } catch (e) {
+      console.error('Copy failed', e);
       toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
+    } finally {
+      document.removeEventListener('copy', listener);
     }
-  }
-
+  };
+  
   const productForModal = editingItem || scannedProduct;
 
   return (
