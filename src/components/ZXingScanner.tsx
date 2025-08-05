@@ -83,9 +83,6 @@ export default function ZXingScanner({
     // Cleanup function to stop the scanner when the component unmounts
     return () => {
       stopScan();
-      if (readerRef.current) {
-        readerRef.current.reset();
-      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount and unmount
