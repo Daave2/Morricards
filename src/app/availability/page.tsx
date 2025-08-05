@@ -320,8 +320,8 @@ export default function AvailabilityPage() {
     <div className="min-h-screen bg-background">
       {isScanMode && (
          <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-md mx-auto relative">
-                <ZXingScanner 
+            <div className="w-full max-w-md mx-auto relative p-4">
+                 <ZXingScanner 
                     ref={scannerRef}
                     onResult={(text) => handleScanSuccess(text)} 
                     onError={handleScanError} 
@@ -577,43 +577,33 @@ export default function AvailabilityPage() {
                       </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="border rounded-md">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[80px]">Image</TableHead>
-                                    <TableHead>Product</TableHead>
-                                    <TableHead>Stock</TableHead>
-                                    <TableHead>Reason</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {reportedItems.map((item, index) => (
-                                    <TableRow key={`${item.sku}-${index}`}>
-                                        <TableCell>
-                                             <Image
-                                                src={item.imageUrl || `https://placehold.co/100x100.png`}
-                                                alt={item.name}
-                                                width={40}
-                                                height={40}
-                                                className="rounded-md object-cover"
-                                                data-ai-hint="product image small"
-                                                unoptimized
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="font-medium">{item.name}</div>
-                                            <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
-                                        </TableCell>
-                                        <TableCell>{item.stockQuantity}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={item.reason === 'Other' ? 'secondary' : 'default'}>{item.reason}</Badge>
-                                            {item.comment && <p className="text-xs text-muted-foreground mt-1">{item.comment}</p>}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                    <div className="space-y-4">
+                      {reportedItems.map((item, index) => (
+                        <div key={`${item.sku}-${index}`} className="flex items-start gap-4 p-4 border rounded-lg">
+                           <Image
+                              src={item.imageUrl || `https://placehold.co/100x100.png`}
+                              alt={item.name}
+                              width={64}
+                              height={64}
+                              className="rounded-md object-cover"
+                              data-ai-hint="product image small"
+                              unoptimized
+                          />
+                          <div className="flex-grow">
+                             <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-semibold">{item.name}</p>
+                                  <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
+                                </div>
+                                <Badge variant={item.reason === 'Other' ? 'secondary' : 'default'}>{item.reason}</Badge>
+                             </div>
+                             <div className="text-sm mt-2">
+                               <p><strong>Stock:</strong> {item.stockQuantity}</p>
+                               {item.comment && <p className="text-xs text-muted-foreground mt-1 bg-muted p-2 rounded-md"><strong>Comment:</strong> {item.comment}</p>}
+                             </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
               </Card>
