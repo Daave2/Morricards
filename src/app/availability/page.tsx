@@ -378,6 +378,11 @@ export default function AvailabilityPage() {
                         />
                         <div className="text-sm space-y-1">
                           <p className="font-bold">{scannedProduct.name}</p>
+                           {scannedProduct.price.promotional && (
+                              <div className="pt-1">
+                                <Badge variant="destructive" className="bg-accent text-accent-foreground">{scannedProduct.price.promotional}</Badge>
+                              </div>
+                            )}
                           <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{scannedProduct.stockQuantity}</span></p>
                           <div>Location: <span className="font-semibold">{scannedProduct.location.standard || 'N/A'}</span></div>
                           {scannedProduct.location.secondary && <div>Secondary: <span className="font-semibold">{scannedProduct.location.secondary}</span></div>}
