@@ -188,7 +188,7 @@ export default function Home() {
            // After a short delay, allow the same barcode to be scanned again if needed.
           setTimeout(() => {
             scannedSkusRef.current.delete(decodedText);
-          }, 1500); 
+          }, 3000); 
         };
 
         const onScanFailure = (error: any) => {
@@ -517,5 +517,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
