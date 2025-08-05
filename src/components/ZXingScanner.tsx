@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { Result, DecodeHintType } from '@zxing/library';
 
@@ -30,6 +30,13 @@ export default function ZXingScanner({
     h.set(DecodeHintType.TRY_HARDER, true);
     return h;
   }, []);
+  
+  const stopScan = useCallback(() => {
+    if (controlsRef.current) {
+        controlsRef.current.stop();
+        controlsRef.current = null;
+    }
+  }, []);
 
   const startScan = useCallback(async () => {
     if (!videoRef.current) return;
@@ -38,9 +45,8 @@ export default function ZXingScanner({
         readerRef.current = new BrowserMultiFormatReader(hints, scanDelayMs);
       }
       
-      // Stop any previous session
-      controlsRef.current?.stop();
-      controlsRef.current = null;
+      // Stop any previous session before starting a new one
+      stopScan();
       
       const constraints: MediaStreamConstraints = {
         audio: false,
@@ -56,6 +62,8 @@ export default function ZXingScanner({
         videoRef.current,
         (result, err) => {
           if (result) {
+            // Once we have a result, stop the scan and notify the parent.
+            stopScan();
             onResult?.(result.getText(), result);
           }
           if (err && !(err.name === 'NotFoundException')) {
@@ -67,20 +75,20 @@ export default function ZXingScanner({
       console.error("Scanner start error:", e);
       onError?.(e?.message || String(e));
     }
-  }, [hints, onResult, onError, scanDelayMs]);
-
-  const stopScan = useCallback(() => {
-    controlsRef.current?.stop();
-    controlsRef.current = null;
-  }, []);
+  }, [hints, onResult, onError, scanDelayMs, stopScan]);
 
   useEffect(() => {
     startScan();
+    
+    // Cleanup function to stop the scanner when the component unmounts
     return () => {
       stopScan();
+      if (readerRef.current) {
+        readerRef.current.reset();
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onResult, onError]);
+  }, []); // Only run on mount and unmount
 
   return (
       <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
