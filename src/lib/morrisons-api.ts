@@ -115,7 +115,7 @@ function getPi(loc: string, sku: string): Promise<PriceIntegrity | null> {
 }
 
 function getStockHistory(loc: string, sku: string): Promise<StockHistory | null> {
-    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, null);
+    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`);
 }
 
 const AISLE_NAME_MAP: Record<string, string> = {
