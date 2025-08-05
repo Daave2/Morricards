@@ -298,6 +298,13 @@ export default function Home() {
               <CardTitle>Create or Add to Picking List</CardTitle>
             </CardHeader>
             <CardContent>
+              {isScanMode && (
+                <div className="pb-4">
+                    <div className="w-full max-w-md mx-auto">
+                    <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
+                    </div>
+                </div>
+              )}
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
@@ -324,13 +331,6 @@ export default function Home() {
                             {...field}
                           />
                         </FormControl>
-                         {isScanMode && (
-                            <div className="pt-4">
-                               <div className="w-full max-w-md mx-auto">
-                                <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
-                               </div>
-                            </div>
-                         )}
                         <FormMessage />
                       </FormItem>
                     )}

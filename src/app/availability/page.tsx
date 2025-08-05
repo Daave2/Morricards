@@ -475,6 +475,16 @@ export default function AvailabilityPage() {
               <CardTitle>Scan Item to Report</CardTitle>
             </CardHeader>
             <CardContent>
+              {isScanMode && (
+                    <div className="pb-4">
+                       <div className="w-full max-w-md mx-auto">
+                           <ZXingScanner 
+                                onResult={(text) => handleScanSuccess(text)} 
+                                onError={handleScanError} 
+                            />
+                        </div>
+                    </div>
+               )}
               <Form {...form}>
                 <form className="space-y-6">
                   <FormField
@@ -490,14 +500,6 @@ export default function AvailabilityPage() {
                       </FormItem>
                     )}
                   />
-                   {isScanMode && (
-                        <div className="w-full max-w-md mx-auto">
-                           <ZXingScanner 
-                                onResult={(text) => handleScanSuccess(text)} 
-                                onError={handleScanError} 
-                            />
-                        </div>
-                   )}
                    <Button
                       type="button"
                       className="w-full"
