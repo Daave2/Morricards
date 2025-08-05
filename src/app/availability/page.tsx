@@ -526,8 +526,8 @@ export default function AvailabilityPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {reportedItems.map(item => (
-                                    <TableRow key={item.sku}>
+                                {reportedItems.map((item, index) => (
+                                    <TableRow key={`${item.sku}-${index}`}>
                                         <TableCell>
                                              <Image
                                                 src={item.imageUrl || `https://placehold.co/100x100.png`}
@@ -561,9 +561,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
