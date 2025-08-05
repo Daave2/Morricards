@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -40,6 +40,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string };
@@ -65,12 +68,27 @@ const ReasonSchema = z.object({
 const SCANNER_CONTAINER_ID = 'qr-reader';
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 
+const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null, valueClassName?: string }) => {
+    if (value === undefined || value === null || value === '') return null;
+    return (
+        <div className="flex items-start gap-3">
+            <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
+            <div className='flex-grow'>
+                <span className="font-bold">{label}:</span> <span className={cn(valueClassName)}>{value}</span>
+            </div>
+        </div>
+    );
+}
+
 export default function AvailabilityPage() {
   const [reportedItems, setReportedItems] = useState<ReportedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isScanMode, setIsScanMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [htmlToCopy, setHtmlToCopy] = useState('');
+  const [showCopyDialog, setShowCopyDialog] = useState(false);
 
   const { toast } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -149,7 +167,7 @@ export default function AvailabilityPage() {
     } else {
         const product = data[0];
         
-        if (!product.location.standard && product.stockQuantity === 0) {
+        if (!product.location.standard && product.stockQuantity <= 0) {
             playError();
             toast({ 
                 variant: 'destructive', 
@@ -170,6 +188,7 @@ export default function AvailabilityPage() {
 
         reasonForm.reset({ reason: defaultReason, comment: '' });
         setIsModalOpen(true);
+        setIsMoreInfoOpen(false);
     }
   }, [form, toast, playSuccess, playError, reasonForm]);
 
@@ -294,13 +313,15 @@ export default function AvailabilityPage() {
             </tbody>
         </table>
     `;
-
+    
+    // Create a temporary element to hold the HTML
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
     document.body.appendChild(tempDiv);
     tempDiv.innerHTML = html;
-    
+
+    // Select the content of the temporary element
     const range = document.createRange();
     range.selectNodeContents(tempDiv);
     const selection = window.getSelection();
@@ -309,27 +330,26 @@ export default function AvailabilityPage() {
         selection.addRange(range);
     }
     
+    // Attempt to copy the selection to the clipboard
     try {
         const successful = document.execCommand('copy');
         if (successful) {
             toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
         } else {
-            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
+             toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
         }
     } catch (err) {
-        console.error('Failed to copy HTML to clipboard', err);
+        console.error('Fallback copy failed:', err);
         toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
     } finally {
+        // Clean up: remove the temporary element and clear the selection
         document.body.removeChild(tempDiv);
-        if (window.getSelection) {
-            if (window.getSelection()?.empty) {  // Chrome
-              window.getSelection()?.empty();
-            } else if (window.getSelection()?.removeAllRanges) {  // Firefox
-              window.getSelection()?.removeAllRanges();
-            }
-          }
+        if (window.getSelection()) {
+            window.getSelection()?.removeAllRanges();
+        }
     }
   }
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -345,65 +365,95 @@ export default function AvailabilityPage() {
               </DialogHeader>
 
               {scannedProduct && (
-                  <div className="flex items-start gap-4 p-4 rounded-md border bg-muted/50">
-                      <Image
-                        src={scannedProduct.imageUrl || `https://placehold.co/100x100.png`}
-                        alt={scannedProduct.name}
-                        width={80}
-                        height={80}
-                        className="rounded-md object-cover"
-                        data-ai-hint="product image"
-                        unoptimized
-                      />
-                      <div className="text-sm space-y-1">
-                        <p className="font-bold">{scannedProduct.name}</p>
-                        <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{scannedProduct.stockQuantity}</span></p>
-                        <div>Location: <span className="font-semibold">{scannedProduct.location.standard || 'N/A'}</span></div>
-                        {scannedProduct.location.secondary && <div>Secondary: <span className="font-semibold">{scannedProduct.location.secondary}</span></div>}
-                      </div>
-                  </div>
+                  <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen}>
+                    <div className="flex items-start gap-4 p-4 rounded-md border bg-muted/50">
+                        <Image
+                          src={scannedProduct.imageUrl || `https://placehold.co/100x100.png`}
+                          alt={scannedProduct.name}
+                          width={80}
+                          height={80}
+                          className="rounded-md object-cover"
+                          data-ai-hint="product image"
+                          unoptimized
+                        />
+                        <div className="text-sm space-y-1">
+                          <p className="font-bold">{scannedProduct.name}</p>
+                          <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{scannedProduct.stockQuantity}</span></p>
+                          <div>Location: <span className="font-semibold">{scannedProduct.location.standard || 'N/A'}</span></div>
+                          {scannedProduct.location.secondary && <div>Secondary: <span className="font-semibold">{scannedProduct.location.secondary}</span></div>}
+                        </div>
+                    </div>
+                     <CollapsibleContent>
+                        <div className="border-t p-4 space-y-3 text-xs text-muted-foreground">
+                            <DataRow icon={<Crown />} label="Brand" value={scannedProduct.productDetails.brand} />
+                            <DataRow icon={<Globe />} label="Country of Origin" value={scannedProduct.productDetails.countryOfOrigin} />
+                            <DataRow icon={<Barcode />} label="SKU" value={`${scannedProduct.sku} (EAN: ${scannedProduct.scannedSku}) ${scannedProduct.stockSkuUsed ? `(Stock SKU: ${scannedProduct.stockSkuUsed})` : ''}`} />
+                            <DataRow icon={<Footprints />} label="Walk Sequence" value={scannedProduct.walkSequence} />
+                            <DataRow icon={<Tag />} label="Promo Location" value={scannedProduct.location.promotional} />
+                            <DataRow icon={<Thermometer />} label="Temperature" value={scannedProduct.temperature} />
+                            <DataRow icon={<Weight />} label="Weight" value={scannedProduct.weight ? `${scannedProduct.weight} kg` : null} />
+                            <DataRow icon={<Info />} label="Status" value={scannedProduct.status} />
+                             <details className="pt-2">
+                                <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                                <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">
+                                    {JSON.stringify(scannedProduct, null, 2)}
+                                </pre>
+                            </details>
+                        </div>
+                     </CollapsibleContent>
+                     <div className="border-t">
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full text-xs h-8 text-muted-foreground">
+                                {isMoreInfoOpen ? 'Show Less' : 'Show More'}
+                                <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isMoreInfoOpen && "rotate-180")} />
+                            </Button>
+                        </CollapsibleTrigger>
+                     </div>
+                  </Collapsible>
               )}
               
-              <FormField
-                control={reasonForm.control}
-                name="reason"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reason</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a reason..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="No Stock">No Stock</SelectItem>
-                        <SelectItem value="Low Stock">Low Stock</SelectItem>
-                        <SelectItem value="Early Sellout">Early Sellout</SelectItem>
-                        <SelectItem value="Too Much Stock">Too Much Stock</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="px-6 space-y-4">
+                <FormField
+                  control={reasonForm.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a reason..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="No Stock">No Stock</SelectItem>
+                          <SelectItem value="Low Stock">Low Stock</SelectItem>
+                          <SelectItem value="Early Sellout">Early Sellout</SelectItem>
+                          <SelectItem value="Too Much Stock">Too Much Stock</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {watchedReason === 'Other' && (
-                  <FormField
-                    control={reasonForm.control}
-                    name="comment"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Comment</FormLabel>
-                            <FormControl>
-                                <Textarea placeholder="Please provide more details..." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                  />
-              )}
+                {watchedReason === 'Other' && (
+                    <FormField
+                      control={reasonForm.control}
+                      name="comment"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Comment</FormLabel>
+                              <FormControl>
+                                  <Textarea placeholder="Please provide more details..." {...field} />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                    />
+                )}
+              </div>
 
               <DialogFooter>
                 <Button type="submit">Add to Report</Button>
