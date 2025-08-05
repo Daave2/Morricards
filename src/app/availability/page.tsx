@@ -329,11 +329,8 @@ export default function AvailabilityPage() {
                     <th style="${styles.th}">Image</th>
                     <th style="${styles.th}">SKU</th>
                     <th style="${styles.th}">Name</th>
-                    <th style="${styles.th}">Status</th>
                     <th style="${styles.th}">Stock</th>
                     <th style="${styles.th}">Location</th>
-                    <th style="${styles.th}">Walk</th>
-                    <th style="${styles.th}">Temp</th>
                     <th style="${styles.th}">Reason</th>
                     <th style="${styles.th}">Comment</th>
                 </tr>
@@ -344,11 +341,8 @@ export default function AvailabilityPage() {
                         <td style="${styles.td}"><img src="${p.imageUrl || 'https://placehold.co/100x100.png'}" alt="${p.name}" style="${styles.img}" /></td>
                         <td style="${styles.td}">${p.sku}</td>
                         <td style="${styles.td}">${p.name}</td>
-                        <td style="${styles.td}">${p.status || 'N/A'}</td>
                         <td style="${styles.td}">${p.stockQuantity}</td>
                         <td style="${styles.td}">${p.location.standard || 'N/A'}</td>
-                        <td style="${styles.td}">${p.walkSequence || 'N/A'}</td>
-                        <td style="${styles.td}">${p.temperature || 'N/A'}</td>
                         <td style="${styles.td}">${p.reason}</td>
                         <td style="${styles.td}">${p.comment || ''}</td>
                     </tr>
