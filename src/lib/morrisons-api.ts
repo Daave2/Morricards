@@ -9,6 +9,8 @@ const BEARER_TOKEN_DEFAULT = "l5rXP77Vno9GxqP0RA8351v5iJt8";
 const BASE_PRODUCT = "https://api.morrisons.com/product/v1/items";
 const BASE_STOCK = "https://api.morrisons.com/stock/v2/locations";
 const BASE_LOCN = "https://api.morrisons.com/priceintegrity/v1/locations";
+const BASE_STOCK_HISTORY = "https://api.morrisons.com/storemobileapp/v1/stores";
+
 
 const HEADERS_BASE = {
     "Accept": "application/json",
@@ -23,6 +25,13 @@ export interface FetchMorrisonsDataInput {
 type Product = components['schemas']['Product'];
 type StockPayload = components['schemas']['StockPayload'];
 type PriceIntegrity = components['schemas']['PriceIntegrity'];
+
+type StockHistory = {
+  lastCountDateTime?: string;
+  inventoryAction?: string;
+  qty?: number;
+  createdBy?: string;
+};
 
 export type FetchMorrisonsDataOutput = {
   sku: string;
@@ -46,6 +55,7 @@ export type FetchMorrisonsDataOutput = {
   imageUrl?: string;
   walkSequence?: string;
   productDetails: Product;
+  lastStockChange?: StockHistory;
 }[];
 
 async function fetchJson<T>(url: string, bearer: string | null = BEARER_TOKEN_DEFAULT): Promise<T | null> {
@@ -102,6 +112,10 @@ async function tryStock(loc: string, skus: string[]): Promise<{ sku: string | nu
 
 function getPi(loc: string, sku: string): Promise<PriceIntegrity | null> {
     return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`);
+}
+
+function getStockHistory(loc: string, sku: string): Promise<StockHistory | null> {
+    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, null);
 }
 
 const AISLE_NAME_MAP: Record<string, string> = {
@@ -181,7 +195,10 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const stockCandidates = candidateStockSkus(product, sku);
         const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
 
-        const pi = await getPi(input.locationId, stockSku || sku);
+        const finalSku = stockSku || sku;
+        const pi = await getPi(input.locationId, finalSku);
+        const stockHistory = await getStockHistory(input.locationId, finalSku);
+
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
 
         const stockPosition = stockPayload?.stockPosition?.[0];
@@ -211,6 +228,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             imageUrl: (product as any).imageUrl?.[0]?.url,
             walkSequence: walk,
             productDetails: product,
+            lastStockChange: stockHistory || undefined,
         });
 
     } catch (error) {

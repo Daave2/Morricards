@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string };
@@ -407,6 +408,13 @@ export default function AvailabilityPage() {
                             <div>
                               <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
                               <div className="grid grid-cols-1 gap-3">
+                                 {scannedProduct.lastStockChange?.lastCountDateTime && (
+                                    <DataRow 
+                                        icon={<History />} 
+                                        label="Last Stock Event" 
+                                        value={`${scannedProduct.lastStockChange.inventoryAction} of ${scannedProduct.lastStockChange.qty} by ${scannedProduct.lastStockChange.createdBy} at ${format(new Date(scannedProduct.lastStockChange.lastCountDateTime), 'dd/MM/yy HH:mm')}`}
+                                    />
+                                  )}
                                  <DataRow icon={<Layers />} label="Storage" value={scannedProduct.productDetails.storage?.join(', ')} />
                                  <DataRow icon={<Layers />} label="Pack Info" value={scannedProduct.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
                                  <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={scannedProduct.productDetails.productLife ? `${scannedProduct.productDetails.productLife.minimumCPCAcceptanceLife} / ${scannedProduct.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
@@ -644,4 +652,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
