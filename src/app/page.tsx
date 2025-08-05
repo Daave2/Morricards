@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils';
 import ZXingScanner from '@/components/ZXingScanner';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
 
@@ -58,6 +59,10 @@ export default function Home() {
 
   const productsRef = useRef(products);
   const scannerRef = useRef<{ start: () => void } | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
 
   useEffect(() => {
     if (isScanMode) {
@@ -99,6 +104,23 @@ export default function Home() {
       locationId: '218',
     },
   });
+
+  // Handle dynamic links
+  useEffect(() => {
+    const skusFromUrl = searchParams.get('skus');
+    const locationFromUrl = searchParams.get('location');
+
+    if (skusFromUrl && locationFromUrl) {
+      form.setValue('skus', skusFromUrl);
+      form.setValue('locationId', locationFromUrl);
+      onSubmit({ skus: skusFromUrl, locationId: locationFromUrl });
+      
+      // Clean the URL to avoid re-triggering on refresh
+      router.replace('/', undefined);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   
   const handleUndoPick = useCallback((skuToUndo: string) => {
     setProducts(prevProducts => {
@@ -524,5 +546,4 @@ export default function Home() {
       </main>
     </div>
   );
-
-    
+}
