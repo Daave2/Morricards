@@ -188,35 +188,6 @@ export default function AvailabilityPage() {
         {
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          calculateScanRegion: (video: HTMLVideoElement) => {
-              const videoRatio = video.videoWidth / video.videoHeight;
-              const canvasRatio = video.clientWidth / video.clientHeight;
-              let x, y, width, height;
-
-              if (videoRatio > canvasRatio) { // Video is wider than canvas
-                  const scale = video.clientHeight / video.videoHeight;
-                  const newWidth = scale * video.videoWidth;
-                  x = (newWidth - video.clientWidth) / 2;
-                  y = 0;
-                  width = video.clientWidth;
-                  height = video.clientHeight;
-              } else { // Video is taller than canvas
-                  const scale = video.clientWidth / video.videoWidth;
-                  const newHeight = scale * video.videoHeight;
-                  x = 0;
-                  y = (newHeight - video.clientHeight) / 2;
-                  width = video.clientWidth;
-                  height = video.clientHeight;
-              }
-
-              // Aim for a centered letterbox-style region
-              const regionHeight = Math.min(video.videoHeight, video.clientHeight) * 0.5;
-              const regionWidth = width; // Full width
-              const regionX = x;
-              const regionY = y + (height - regionHeight) / 2;
-              
-              return { x: regionX, y: regionY, width: regionWidth, height: regionHeight, downscaledHeight: regionHeight, downscaledWidth: regionWidth };
-          },
           preferredCamera: "environment",
         }
       );
@@ -691,5 +662,7 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
 
     
