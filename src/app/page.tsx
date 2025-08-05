@@ -273,17 +273,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {isScanMode && (
-         <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
-            <div className="bg-background flex-shrink-0">
-               <div className="container mx-auto px-4 py-2 flex justify-between items-center">
+         <div className="fixed inset-x-0 top-0 z-50">
+            <div className="bg-background/80 backdrop-blur-sm">
+                <div className="container mx-auto px-4 py-2 flex justify-between items-center">
                    <h2 className="text-lg font-medium">Scan Barcode</h2>
                    <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)}>
                        <X className="h-5 w-5" />
                    </Button>
                </div>
             </div>
-            <div className="flex-grow flex items-center justify-center p-4">
-                <div className="w-full max-w-md">
+             <div className="p-4 bg-background/80 backdrop-blur-sm">
+                <div className="w-full max-w-md mx-auto">
                     <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
                 </div>
             </div>
