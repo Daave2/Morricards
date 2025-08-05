@@ -91,7 +91,6 @@ export default function AvailabilityPage() {
   });
   const watchedReason = reasonForm.watch('reason');
   
-  // Load items from local storage on initial render
   useEffect(() => {
     try {
       const savedItems = localStorage.getItem(LOCAL_STORAGE_KEY_AVAILABILITY);
@@ -103,7 +102,6 @@ export default function AvailabilityPage() {
     }
   }, []);
 
-  // Save items to local storage whenever they change
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY_AVAILABILITY, JSON.stringify(reportedItems));
@@ -113,7 +111,7 @@ export default function AvailabilityPage() {
   }, [reportedItems]);
 
 
-  const stopScanner = () => {
+  const stopScanner = useCallback(() => {
     if (scannerRef.current) {
         try {
             scannerRef.current.clear();
@@ -123,7 +121,7 @@ export default function AvailabilityPage() {
             scannerRef.current = null;
         }
     }
-  };
+  }, []);
   
   const handleScanSuccess = useCallback(async (decodedText: string) => {
     if (!decodedText || scannedSkusRef.current.has(decodedText)) return;
@@ -185,7 +183,7 @@ export default function AvailabilityPage() {
     return () => {
       stopScanner();
     };
-  }, [isScanMode, handleScanSuccess, toast]);
+  }, [isScanMode, handleScanSuccess, toast, stopScanner]);
 
   
   const handleReasonSubmit = (values: z.infer<typeof ReasonSchema>) => {
@@ -464,3 +462,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
