@@ -27,6 +27,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   Dialog,
@@ -281,7 +282,7 @@ export default function AvailabilityPage() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a reason..." />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="Low Stock">Low Stock</SelectItem>
