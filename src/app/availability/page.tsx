@@ -257,6 +257,38 @@ export default function AvailabilityPage() {
     });
   }
 
+  const copyHtmlWithFallback = (html: string) => {
+    const el = document.createElement('div');
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+    el.innerHTML = html;
+    document.body.appendChild(el);
+    
+    const selection = window.getSelection();
+    const range = document.createRange();
+    if(selection && range) {
+        range.selectNode(el);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        try {
+            const success = document.execCommand('copy');
+            if (success) {
+                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
+            } else {
+                toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
+            }
+        } catch (err) {
+            console.error('Fallback copy failed', err);
+            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
+        }
+
+        selection.removeAllRanges();
+    }
+    document.body.removeChild(el);
+  }
+
+
   const handleCopyHtml = () => {
     const styles = {
         table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
@@ -316,38 +348,6 @@ export default function AvailabilityPage() {
     }
   }
 
-  const copyHtmlWithFallback = (html: string) => {
-    const el = document.createElement('div');
-    el.style.position = 'absolute';
-    el.style.left = '-9999px';
-    el.innerHTML = html;
-    document.body.appendChild(el);
-    
-    const selection = window.getSelection();
-    const range = document.createRange();
-    if(selection && range) {
-        range.selectNode(el);
-        selection.removeAllRanges();
-        selection.addRange(range);
-
-        try {
-            const success = document.execCommand('copy');
-            if (success) {
-                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
-            } else {
-                toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
-            }
-        } catch (err) {
-            console.error('Fallback copy failed', err);
-            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
-        }
-
-        selection.removeAllRanges();
-    }
-    document.body.removeChild(el);
-  }
-
-
   return (
     <div className="min-h-screen bg-background">
        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -386,7 +386,7 @@ export default function AvailabilityPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Reason</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a reason..." />
