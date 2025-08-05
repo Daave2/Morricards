@@ -180,7 +180,36 @@ export default function Home() {
         {
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          maxScansPerSecond: 5,
+          calculateScanRegion: (video: HTMLVideoElement) => {
+              const videoRatio = video.videoWidth / video.videoHeight;
+              const canvasRatio = video.clientWidth / video.clientHeight;
+              let x, y, width, height;
+
+              if (videoRatio > canvasRatio) { // Video is wider than canvas
+                  const scale = video.clientHeight / video.videoHeight;
+                  const newWidth = scale * video.videoWidth;
+                  x = (newWidth - video.clientWidth) / 2;
+                  y = 0;
+                  width = video.clientWidth;
+                  height = video.clientHeight;
+              } else { // Video is taller than canvas
+                  const scale = video.clientWidth / video.videoWidth;
+                  const newHeight = scale * video.videoHeight;
+                  x = 0;
+                  y = (newHeight - video.clientHeight) / 2;
+                  width = video.clientWidth;
+                  height = video.clientHeight;
+              }
+
+              // Aim for a centered letterbox-style region
+              const regionHeight = Math.min(video.videoHeight, video.clientHeight) * 0.5;
+              const regionWidth = width; // Full width
+              const regionX = x;
+              const regionY = y + (height - regionHeight) / 2;
+              
+              return { x: regionX, y: regionY, width: regionWidth, height: regionHeight, downscaledHeight: regionHeight, downscaledWidth: regionWidth };
+          },
+          preferredCamera: "environment",
         }
       );
       scannerRef.current = qrScanner;
@@ -321,8 +350,8 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         {isScanMode && (
           <div className="sticky top-0 z-50 py-4 bg-background/80 backdrop-blur-sm -mx-4 px-4 mb-4">
-            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border relative bg-black">
-                <video ref={videoRef} className="w-full aspect-video rounded-md" />
+            <div className="max-w-md mx-auto rounded-lg overflow-hidden shadow-lg border relative bg-black aspect-video max-h-[25vh]">
+                <video ref={videoRef} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 border-4 border-primary/50 rounded-lg pointer-events-none" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%)' }}></div>
                 {hasFlash && (
                     <Button 
@@ -531,3 +560,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
