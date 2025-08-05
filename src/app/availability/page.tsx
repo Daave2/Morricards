@@ -507,9 +507,12 @@ export default function AvailabilityPage() {
         </DialogContent>
       </Dialog>
       
-      <main className="container mx-auto px-4 py-8 md:py-12">
+      <main className={cn(
+          "container mx-auto px-4 py-8 md:py-12 transition-all duration-300",
+          isScanMode && "pt-[calc(100vw/1.77+2rem)] sm:pt-[calc(448px/1.77+2rem)]"
+      )}>
         
-        <div>
+        <div className={cn(isScanMode && "hidden")}>
           <header className="text-center mb-8">
             <div className="inline-flex items-center gap-3">
                <ServerCrash className="w-8 h-8 text-primary" />
@@ -560,6 +563,7 @@ export default function AvailabilityPage() {
               </Form>
             </CardContent>
           </Card>
+        </div>
 
 
           {reportedItems.length > 0 && 
@@ -629,7 +633,6 @@ export default function AvailabilityPage() {
                   </CardContent>
               </Card>
           }
-        </div>
       </main>
     </div>
   );
