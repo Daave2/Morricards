@@ -137,24 +137,24 @@ export default function Home() {
           if (scannedSkusRef.current.has(decodedText)) return;
           scannedSkusRef.current.add(decodedText);
 
-          if (products.length > 0) {
-            const productToPick = products.find(p => p.sku === decodedText || p.scannedSku === decodedText);
-            if (productToPick) {
-              if (productToPick.picked) {
-                playInfo();
-                toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
-              } else {
-                handlePick(productToPick.sku);
-              }
+          const productToPick = products.find(p => p.sku === decodedText || p.scannedSku === decodedText);
+          if (productToPick) {
+            if (productToPick.picked) {
+              playInfo();
+              toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
             } else {
-              playError();
-              toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${decodedText}) is not in the picking list.` });
+              handlePick(productToPick.sku);
             }
           } else {
-            const currentSkus = form.getValues('skus');
-            form.setValue('skus', currentSkus ? `${currentSkus}, ${decodedText}` : decodedText, { shouldValidate: true });
-            playSuccess();
-            toast({ title: 'Barcode Scanned', description: `Added EAN: ${decodedText}` });
+              const currentSkus = form.getValues('skus');
+              if (currentSkus.split(/[\s,]+/).find(s => s.trim() === decodedText)) {
+                playInfo();
+                toast({ title: 'EAN Already in List', description: `EAN ${decodedText} is already in the text box.` });
+              } else {
+                form.setValue('skus', currentSkus ? `${currentSkus}, ${decodedText}` : decodedText, { shouldValidate: true });
+                playSuccess();
+                toast({ title: 'Barcode Scanned', description: `Added EAN: ${decodedText}` });
+              }
           }
            // After a short delay, allow the same barcode to be scanned again if needed.
           setTimeout(() => {
@@ -170,7 +170,7 @@ export default function Home() {
           SCANNER_CONTAINER_ID,
           { 
             fps: 10,
-            qrbox: { width: 250, height: 150 },
+            qrbox: { width: 300, height: 100 },
             rememberLastUsedCamera: true,
             supportedScanTypes: [], // Scan all supported types
           },
@@ -198,8 +198,7 @@ export default function Home() {
         scannerRef.current = null;
       }
     };
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanMode]);
+  }, [isScanMode, products, handlePick, playSuccess, playError, playInfo, toast, form]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -319,11 +318,9 @@ export default function Home() {
         </header>
         
         {isScanMode && (
-          <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
-            <CardContent className="p-4">
-              <div id={SCANNER_CONTAINER_ID} className="w-full"></div>
-            </CardContent>
-          </Card>
+          <div className="max-w-2xl mx-auto mb-8 rounded-lg overflow-hidden shadow-lg border">
+            <div id={SCANNER_CONTAINER_ID} className="w-full aspect-video bg-black"></div>
+          </div>
         )}
 
         <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
@@ -493,5 +490,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
