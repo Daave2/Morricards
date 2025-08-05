@@ -314,70 +314,79 @@ export default function AvailabilityPage() {
     });
   }
 
-  const handleCopyHtml = () => {
-    const styles = {
-      table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
-      th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2; font-weight: bold;',
-      td: 'border: 1px solid #dddddd; text-align: left; padding: 8px;',
-      tr_even: 'background-color: #f9f9f9;',
-    };
+  const handleCopyHtml = async () => {
+    function escapeHtml(s: string | number) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
 
-    const html = `
-        <table style="${styles.table}">
-            <thead>
-                <tr>
-                    <th style="${styles.th}">SKU</th>
-                    <th style="${styles.th}">Name</th>
-                    <th style="${styles.th}">Stock</th>
-                    <th style="${styles.th}">Location</th>
-                    <th style="${styles.th}">Reason</th>
-                    <th style="${styles.th}">Comment</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${reportedItems.map((p, index) => `
-                    <tr style="${index % 2 === 0 ? styles.tr_even : ''}">
-                        <td style="${styles.td}">${p.sku}</td>
-                        <td style="${styles.td}">${p.name}</td>
-                        <td style="${styles.td}">${p.stockQuantity}</td>
-                        <td style="${styles.td}">${p.location.standard || 'N/A'}</td>
-                        <td style="${styles.td}">${p.reason}</td>
-                        <td style="${styles.td}">${p.comment || ''}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
+    const rows = reportedItems.map(p => ({
+        img: p.imageUrl || 'https://placehold.co/100x100.png',
+        sku: p.sku,
+        name: p.name,
+        stock: p.stockQuantity,
+        location: p.location.standard || 'N/A',
+        reason: p.reason,
+        comment: p.comment || ''
+    }));
 
-    const listener = (e: ClipboardEvent) => {
-        if (e.clipboardData) {
-            e.clipboardData.setData('text/html', html);
-            e.clipboardData.setData('text/plain', html); // Fallback
-            e.preventDefault();
-        }
-    };
+    const head = `
+      <table border="1" cellspacing="0" cellpadding="8" style="border-collapse:collapse;width:100%;font:12px sans-serif;">
+        <thead style="background:#f2f2f2;font-weight:bold;text-align:left;">
+          <tr>
+            <th>Image</th><th>SKU</th><th>Name</th><th>Stock</th><th>Location</th><th>Reason</th><th>Comment</th>
+          </tr>
+        </thead>
+        <tbody>`;
+    const body = rows.map((r, i) => `
+      <tr${i % 2 ? "" : ' bgcolor="#f9f9f9"'}>
+        <td><img src="${r.img}" width="60" height="60" style="object-fit:cover;border-radius:4px;"></td>
+        <td>${escapeHtml(r.sku)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.stock)}</td>
+        <td>${escapeHtml(r.location)}</td>
+        <td>${escapeHtml(r.reason)}</td>
+        <td>${escapeHtml(r.comment)}</td>
+      </tr>`).join("");
+    const tail = `</tbody></table>`;
+    const html = head + body + tail;
 
     try {
-        document.addEventListener('copy', listener);
-        document.execCommand('copy');
-        toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
-    } catch (err) {
-        console.error('HTML copy failed, falling back to plain text.', err);
-        // Fallback for browsers that don't support the HTML copy method
-        try {
-            const tempTextarea = document.createElement('textarea');
-            tempTextarea.value = html.replace(/<[^>]*>/g, ""); // Basic strip of HTML for plain text
-            document.body.appendChild(tempTextarea);
-            tempTextarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempTextarea);
-            toast({ title: 'Copied as Plain Text', description: 'Could not copy full formatting, but plain text was copied.' });
-        } catch (copyError) {
-             console.error('Plain text copy also failed', copyError);
-             toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+        if (navigator.clipboard && window.ClipboardItem) {
+            const item = new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }) });
+            await navigator.clipboard.write([item]);
+            toast({ title: "Copied for Email", description: "Rich HTML table copied to clipboard." });
+        } else {
+            throw new Error("ClipboardItem API not available.");
         }
-    } finally {
-        document.removeEventListener('copy', listener);
+    } catch (err) {
+        // Fallback for older browsers or if the modern API fails
+        try {
+            const tmp = document.createElement("div");
+            tmp.style.position = "fixed";
+            tmp.style.left = "-9999px";
+            tmp.innerHTML = html;
+            document.body.appendChild(tmp);
+            
+            const range = document.createRange();
+            range.selectNodeContents(tmp);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+            
+            document.execCommand("copy");
+            
+            sel?.removeAllRanges();
+            document.body.removeChild(tmp);
+            
+            toast({ title: "Copied for Email", description: "HTML table copied using fallback method." });
+        } catch (copyError) {
+            console.error("HTML copy failed:", copyError);
+            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+        }
     }
   };
   
@@ -679,3 +688,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
