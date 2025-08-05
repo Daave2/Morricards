@@ -150,37 +150,52 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  const handleScanResult = useCallback((text: string) => {
-        const sku = text.split(',')[0].trim();
-        if (!sku) return;
+  const handleScanResult = useCallback(async (text: string) => {
+    const sku = text.split(',')[0].trim();
+    if (!sku) return;
 
-        const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
-        if (productToPick) {
-            if (productToPick.picked) {
-                playInfo();
-                toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
-            } else {
-                handlePick(productToPick.sku);
-            }
+    const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
+
+    if (productToPick) {
+        if (productToPick.picked) {
+            playInfo();
+            toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
         } else {
-            const currentSkus = form.getValues('skus');
-            if (currentSkus.split(/[\s,]+/).find(s => s.trim() === sku)) {
-                playInfo();
-                toast({ title: 'EAN Already in List', description: `EAN ${sku} is already in the text box.` });
-            } else {
-                form.setValue('skus', currentSkus ? `${currentSkus}, ${sku}` : sku, { shouldValidate: true });
-                playSuccess();
-                toast({ title: 'Barcode Scanned', description: `Added EAN: ${sku}` });
-            }
+            handlePick(productToPick.sku);
         }
+    } else {
+        playSuccess();
+        toast({ title: 'New Item Scanned', description: `Fetching details for EAN: ${sku}` });
 
-        // Restart scanning after a short delay
-        setTimeout(() => {
-            if (isScanMode) {
-              scannerRef.current?.start();
-            }
-        }, 2000);
-  }, [form, handlePick, playInfo, playSuccess, toast, isScanMode]);
+        setLoadingSkuCount(prev => prev + 1);
+        setIsLoading(true);
+
+        const locationId = form.getValues('locationId');
+        const { data, error } = await getProductData({ locationId, skus: [sku] });
+        
+        if (error || !data || data.length === 0) {
+            playError();
+            toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product for EAN: ${sku}` });
+        } else {
+            setProducts(prevProducts => {
+                const existing = prevProducts.find(p => p.sku === data[0].sku);
+                if (existing) return prevProducts; // Already added somehow
+                return [...prevProducts, { ...data[0], picked: false }];
+            });
+        }
+        
+        setIsLoading(false);
+        setLoadingSkuCount(prev => Math.max(0, prev - 1));
+    }
+
+    // Restart scanning after a short delay
+    setTimeout(() => {
+        if (scannerRef.current) { // Check if the ref is still mounted and scanner is active
+          scannerRef.current?.start();
+        }
+    }, 2000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handlePick, playInfo, playSuccess, toast, playError, form]);
 
   const handleScanError = (message: string) => {
     if (!message.toLowerCase().includes('not found')) {
@@ -509,3 +524,5 @@ export default function Home() {
       </main>
     </div>
   );
+
+    
