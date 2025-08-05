@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -27,7 +26,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   Dialog,
@@ -239,6 +237,15 @@ export default function AvailabilityPage() {
       reasonForm.reset({ reason: item.reason, comment: item.comment || '' });
       setIsModalOpen(true);
       setIsMoreInfoOpen(false);
+  }
+
+  const handleDeleteItem = (e: React.MouseEvent, reportId: string) => {
+    e.stopPropagation(); // Prevent card's onClick from firing
+    setReportedItems(prev => prev.filter(item => item.reportId !== reportId));
+    toast({
+        title: 'Item Removed',
+        description: 'The item has been removed from the report list.',
+    });
   }
 
   const handleScanButtonClick = () => {
@@ -604,7 +611,10 @@ export default function AvailabilityPage() {
                   <CardContent>
                     <div className="space-y-4">
                       {reportedItems.map((item) => (
-                        <div key={item.reportId} onClick={() => handleEditItem(item)} className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div key={item.reportId} onClick={() => handleEditItem(item)} className="relative flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 z-10" onClick={(e) => handleDeleteItem(e, item.reportId)}>
+                            <X className="h-4 w-4" />
+                          </Button>
                            <Image
                               src={item.imageUrl || `https://placehold.co/100x100.png`}
                               alt={item.name}
@@ -619,7 +629,7 @@ export default function AvailabilityPage() {
                                   <p className="font-semibold">{item.name}</p>
                                   <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                                 </div>
-                                <Badge variant={item.reason === 'Other' ? 'secondary' : 'default'}>{item.reason}</Badge>
+                                <Badge variant={item.reason === 'Other' ? 'secondary' : 'default'} className="mr-8">{item.reason}</Badge>
                              </div>
                              <div className="text-sm mt-2">
                                <p><strong>Stock:</strong> {item.stockQuantity}</p>
@@ -636,3 +646,7 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
+
+    
