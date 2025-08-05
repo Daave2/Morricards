@@ -320,14 +320,12 @@ export default function AvailabilityPage() {
       th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2; font-weight: bold;',
       td: 'border: 1px solid #dddddd; text-align: left; padding: 8px;',
       tr_even: 'background-color: #f9f9f9;',
-      img: 'width: 60px; height: 60px; object-fit: cover; border-radius: 4px;',
     };
 
     const html = `
         <table style="${styles.table}">
             <thead>
                 <tr>
-                    <th style="${styles.th}">Image</th>
                     <th style="${styles.th}">SKU</th>
                     <th style="${styles.th}">Name</th>
                     <th style="${styles.th}">Stock</th>
@@ -339,7 +337,6 @@ export default function AvailabilityPage() {
             <tbody>
                 ${reportedItems.map((p, index) => `
                     <tr style="${index % 2 === 0 ? styles.tr_even : ''}">
-                        <td style="${styles.td}"><img src="${p.imageUrl || 'https://placehold.co/100x100.png'}" alt="${p.name}" style="${styles.img}" /></td>
                         <td style="${styles.td}">${p.sku}</td>
                         <td style="${styles.td}">${p.name}</td>
                         <td style="${styles.td}">${p.stockQuantity}</td>
@@ -352,23 +349,35 @@ export default function AvailabilityPage() {
         </table>
     `;
 
-    function listener(e: ClipboardEvent) {
-      if (e.clipboardData) {
-        e.clipboardData.setData('text/html', html);
-        e.clipboardData.setData('text/plain', html);
-        e.preventDefault();
-      }
-    }
-    
+    const listener = (e: ClipboardEvent) => {
+        if (e.clipboardData) {
+            e.clipboardData.setData('text/html', html);
+            e.clipboardData.setData('text/plain', html); // Fallback
+            e.preventDefault();
+        }
+    };
+
     try {
-      document.addEventListener('copy', listener);
-      document.execCommand('copy');
-      toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
-    } catch (e) {
-      console.error('Copy failed', e);
-      toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
+        document.addEventListener('copy', listener);
+        document.execCommand('copy');
+        toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
+    } catch (err) {
+        console.error('HTML copy failed, falling back to plain text.', err);
+        // Fallback for browsers that don't support the HTML copy method
+        try {
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = html.replace(/<[^>]*>/g, ""); // Basic strip of HTML for plain text
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextarea);
+            toast({ title: 'Copied as Plain Text', description: 'Could not copy full formatting, but plain text was copied.' });
+        } catch (copyError) {
+             console.error('Plain text copy also failed', copyError);
+             toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+        }
     } finally {
-      document.removeEventListener('copy', listener);
+        document.removeEventListener('copy', listener);
     }
   };
   
