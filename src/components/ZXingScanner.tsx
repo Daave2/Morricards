@@ -79,18 +79,19 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
 
       let isScanning = true;
 
-      controlsRef.current = await readerRef.current.decodeFromVideoElement(
-        videoRef.current,
-        (result, err) => {
-          if (result && isScanning) {
-            isScanning = false; // Immediately stop further processing
-            onResult?.(result.getText(), result);
-          }
-          if (err && !(err.name === 'NotFoundException')) {
-             onError?.(err.message);
-          }
+      const decodeCallback = (result: Result | undefined, err: any) => {
+        if (result && isScanning) {
+          isScanning = false;
+          onResult?.(result.getText(), result);
+          controlsRef.current?.stop();
         }
-      );
+        if (err && !(err.name === 'NotFoundException')) {
+           onError?.(err.message);
+        }
+      };
+
+      controlsRef.current = await readerRef.current.decodeFromVideoElement(videoRef.current, decodeCallback);
+
     } catch (e: any) {
       console.error("Scanner start error:", e);
       onError?.(e?.message || String(e));
@@ -103,12 +104,10 @@ const ZXingScanner = forwardRef<{ start: () => void }, Props>(({
   }));
   
   useEffect(() => {
-    // This effect now only handles cleanup when the component unmounts.
-    // startScan is initiated by the parent component via the ref.
     return () => {
       stopScan();
     };
-  }, [startScan, stopScan]);
+  }, [stopScan]);
 
   return (
       <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
