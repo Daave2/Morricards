@@ -58,6 +58,12 @@ export default function Home() {
   const productsRef = useRef(products);
   const scannerRef = useRef<{ start: () => void } | null>(null);
 
+  useEffect(() => {
+    if (isScanMode) {
+      scannerRef.current?.start();
+    }
+  }, [isScanMode]);
+
   // Keep the ref updated with the latest products state
   useEffect(() => {
     productsRef.current = products;
@@ -170,7 +176,7 @@ export default function Home() {
         // Restart scanning after a short delay
         setTimeout(() => {
             scannerRef.current?.start();
-        }, 1000);
+        }, 2000);
   }, [form, handlePick, playInfo, playSuccess, toast]);
 
   const handleScanError = (message: string) => {
@@ -483,3 +489,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

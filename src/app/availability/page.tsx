@@ -93,6 +93,12 @@ export default function AvailabilityPage() {
 
   const scannerRef = useRef<{ start: () => void } | null>(null);
 
+  useEffect(() => {
+    if (isScanMode) {
+      scannerRef.current?.start();
+    }
+  }, [isScanMode]);
+
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -624,3 +630,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
