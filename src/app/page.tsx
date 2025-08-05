@@ -96,18 +96,7 @@ export default function Home() {
       locationId: '218',
     },
   });
-
-  const stopCamera = useCallback(() => {
-    if (controlsRef.current) {
-        controlsRef.current.stop();
-        controlsRef.current = null;
-    }
-    if(videoRef.current?.srcObject){
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-    }
-  }, []);
-
+  
   const handleUndoPick = useCallback((skuToUndo: string) => {
     setProducts(prevProducts => {
       const newProducts = prevProducts.map(p =>
@@ -152,76 +141,71 @@ export default function Home() {
   }, [handleUndoPick, playSuccess, dismiss, toast]);
   
    useEffect(() => {
-    const startScanner = async () => {
-        if (isScanMode && codeReaderRef.current && videoRef.current && notFoundExceptionRef.current) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                setHasCameraPermission(true);
-                videoRef.current.srcObject = stream;
+    if (isScanMode && codeReaderRef.current && videoRef.current) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            
+            // Start scanning
+            codeReaderRef.current?.decodeFromVideoElement(videoRef.current, (result, error, controls) => {
+              controlsRef.current = controls;
+              if (result) {
+                const code = result.getText();
+                if (scannedSkus.has(code)) return;
 
-                videoRef.current.onloadeddata = async () => {
-                    try {
-                        if (videoRef.current && codeReaderRef.current) {
-                            controlsRef.current = await codeReaderRef.current.decodeFromVideoElement(videoRef.current, (result, error, controls) => {
-                                if (result) {
-                                    const code = result.getText();
-                                    if (scannedSkus.has(code)) return;
+                setScannedSkus(prev => new Set(prev).add(code));
 
-                                    setScannedSkus(prev => new Set(prev).add(code));
-
-                                    if (products.length > 0) {
-                                        const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
-                                        if (productToPick) {
-                                            if (productToPick.picked) {
-                                                playInfo();
-                                                setTimeout(() => toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> }), 0);
-                                            } else {
-                                                handlePick(productToPick.sku);
-                                            }
-                                        } else {
-                                            playError();
-                                            setTimeout(() => toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${code}) is not in the picking list.` }), 0);
-                                        }
-                                    } else {
-                                        const currentSkus = form.getValues('skus');
-                                        form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
-                                        playSuccess();
-                                        setTimeout(() => toast({ title: 'Barcode Scanned', description: `Added EAN: ${code}` }), 0);
-                                    }
-                                }
-                                if (error && !(error instanceof notFoundExceptionRef.current)) {
-                                    console.error('Barcode scan error:', error);
-                                }
-                            });
-                        }
-                    } catch (err) {
-                        console.error('Error starting video decode:', err);
+                if (products.length > 0) {
+                  const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
+                  if (productToPick) {
+                    if (productToPick.picked) {
+                      playInfo();
+                      toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
+                    } else {
+                      handlePick(productToPick.sku);
                     }
-                };
-
-            } catch (err) {
-                console.error('Error getting media stream:', err);
-                setHasCameraPermission(false);
-                setTimeout(() => toast({
-                    variant: 'destructive',
-                    title: 'Camera Access Denied',
-                    description: 'Please enable camera permissions in your browser settings.',
-                }), 0);
-                setIsScanMode(false);
-            }
-        }
-    };
-
-    if (isScanMode) {
-        startScanner();
-    } else {
-        stopCamera();
+                  } else {
+                    playError();
+                    toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${code}) is not in the picking list.` });
+                  }
+                } else {
+                  const currentSkus = form.getValues('skus');
+                  form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
+                  playSuccess();
+                  toast({ title: 'Barcode Scanned', description: `Added EAN: ${code}` });
+                }
+              }
+              if (error && !(error instanceof notFoundExceptionRef.current)) {
+                console.error('Barcode scan error:', error);
+              }
+            });
+          }
+        })
+        .catch(err => {
+          console.error('Error getting media stream:', err);
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings.',
+          });
+          setIsScanMode(false);
+        });
     }
 
     return () => {
-        stopCamera();
+      if (controlsRef.current) {
+        controlsRef.current.stop();
+        controlsRef.current = null;
+      }
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
     };
-}, [isScanMode, handlePick, playError, playInfo, playSuccess, products, form, toast, dismiss, scannedSkus, stopCamera]);
+  }, [isScanMode, handlePick, playError, playInfo, playSuccess, products, form, toast, scannedSkus]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -526,3 +510,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
