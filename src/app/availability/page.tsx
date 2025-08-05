@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -257,6 +257,56 @@ export default function AvailabilityPage() {
     });
   }
 
+  const handleCopyHtml = () => {
+    const styles = {
+        table: 'border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px;',
+        th: 'border: 1px solid #dddddd; text-align: left; padding: 8px; background-color: #f2f2f2;',
+        td: 'border: 1px solid #dddddd; text-align: left; padding: 8px;',
+        img: 'width: 50px; height: 50px; object-fit: cover; border-radius: 4px;'
+    };
+
+    const html = `
+        <table style="${styles.table}">
+            <thead>
+                <tr>
+                    <th style="${styles.th}">Image</th>
+                    <th style="${styles.th}">SKU</th>
+                    <th style="${styles.th}">EAN</th>
+                    <th style="${styles.th}">Name</th>
+                    <th style="${styles.th}">Stock</th>
+                    <th style="${styles.th}">Location</th>
+                    <th style="${styles.th}">Reason</th>
+                    <th style="${styles.th}">Comment</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reportedItems.map(p => `
+                    <tr>
+                        <td style="${styles.td}"><img src="${p.imageUrl || 'https://placehold.co/100x100.png'}" alt="${p.name}" style="${styles.img}" /></td>
+                        <td style="${styles.td}">${p.sku}</td>
+                        <td style="${styles.td}">${p.scannedSku}</td>
+                        <td style="${styles.td}">${p.name}</td>
+                        <td style="${styles.td}">${p.stockQuantity}</td>
+                        <td style="${styles.td}">${p.location.standard}</td>
+                        <td style="${styles.td}">${p.reason}</td>
+                        <td style="${styles.td}">${p.comment || ''}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const clipboardItem = new ClipboardItem({ 'text/html': blob });
+
+    navigator.clipboard.write([clipboardItem]).then(() => {
+        toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
+    }).catch(err => {
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.'});
+    });
+  }
+
+
   return (
     <div className="min-h-screen bg-background">
        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -409,9 +459,13 @@ export default function AvailabilityPage() {
                   <CardHeader className="flex-row items-center justify-between">
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
                       <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={handleCopyHtml}>
+                              <Mail className="mr-2 h-4 w-4" />
+                              Copy for Email
+                          </Button>
                           <Button variant="outline" size="sm" onClick={handleCopyData}>
-                              <FileUp className="mr-2 h-4 w-4" />
-                              Copy
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copy TSV
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
