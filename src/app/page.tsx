@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import type { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import type { BrowserMultiFormatReader, NotFoundException, IScannerControls } from '@zxing/library';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -56,7 +56,7 @@ export default function Home() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
-  const controlsRef = useRef<any>();
+  const controlsRef = useRef<IScannerControls | null>(null);
   const notFoundExceptionRef = useRef<any>(null);
 
   // Load products from local storage on initial render
@@ -101,6 +101,10 @@ export default function Home() {
     if (controlsRef.current) {
         controlsRef.current.stop();
         controlsRef.current = null;
+    }
+    if(videoRef.current?.srcObject){
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
     }
   }, []);
 
@@ -147,99 +151,77 @@ export default function Home() {
     });
   }, [handleUndoPick, playSuccess, dismiss, toast]);
   
-  useEffect(() => {
-    async function setupCamera() {
-      if (isScanMode && codeReaderRef.current && notFoundExceptionRef.current) {
-        try {
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Camera not supported on this browser');
-          }
-          
-          setHasCameraPermission(true);
-
-          if (videoRef.current) {
+   useEffect(() => {
+    const startScanner = async () => {
+        if (isScanMode && codeReaderRef.current && videoRef.current && notFoundExceptionRef.current) {
             try {
-              const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-              
-              controlsRef.current = await codeReaderRef.current.decodeFromStream(stream, videoRef.current, (result, error, controls) => {
-                  if (result) {
-                      const code = result.getText();
-                      if (scannedSkus.has(code)) { // Covers both list building and picking mode
-                          return; 
-                      }
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                setHasCameraPermission(true);
+                videoRef.current.srcObject = stream;
 
-                      // We add all scanned codes to a session set to avoid double-processing
-                      setScannedSkus(prev => new Set(prev).add(code));
+                videoRef.current.onloadeddata = async () => {
+                    try {
+                        if (videoRef.current && codeReaderRef.current) {
+                            controlsRef.current = await codeReaderRef.current.decodeFromVideoElement(videoRef.current, (result, error, controls) => {
+                                if (result) {
+                                    const code = result.getText();
+                                    if (scannedSkus.has(code)) return;
 
-                      // If we have products, we are in "picking mode"
-                      if (products.length > 0) {
-                          const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
-                          if (productToPick) {
-                              if (productToPick.picked) {
-                                  playInfo();
-                                  setTimeout(() => toast({
-                                      title: 'Item Already Picked',
-                                      description: `Already picked: ${productToPick.name}`,
-                                      icon: <Info className="h-5 w-5 text-blue-500" />
-                                  }), 0);
-                              } else {
-                                handlePick(productToPick.sku);
-                              }
-                          } else {
-                              playError();
-                              setTimeout(() => toast({
-                                  variant: 'destructive',
-                                  title: 'Item Not in List',
-                                  description: `Scanned item (EAN: ${code}) is not in the picking list.`,
-                              }), 0);
-                          }
-                      } else {
-                          // Otherwise, we are in "list building mode"
-                          const currentSkus = form.getValues('skus');
-                          form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
-                          playSuccess();
-                          setTimeout(() => toast({
-                              title: 'Barcode Scanned',
-                              description: `Added EAN: ${code}`,
-                          }), 0);
-                      }
-                  }
-                  if (error && !(error instanceof notFoundExceptionRef.current)) {
-                      console.error('Barcode scan error:', error);
-                  }
-              });
+                                    setScannedSkus(prev => new Set(prev).add(code));
+
+                                    if (products.length > 0) {
+                                        const productToPick = products.find(p => p.sku === code || p.scannedSku === code);
+                                        if (productToPick) {
+                                            if (productToPick.picked) {
+                                                playInfo();
+                                                setTimeout(() => toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> }), 0);
+                                            } else {
+                                                handlePick(productToPick.sku);
+                                            }
+                                        } else {
+                                            playError();
+                                            setTimeout(() => toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${code}) is not in the picking list.` }), 0);
+                                        }
+                                    } else {
+                                        const currentSkus = form.getValues('skus');
+                                        form.setValue('skus', currentSkus ? `${currentSkus}, ${code}` : code, { shouldValidate: true });
+                                        playSuccess();
+                                        setTimeout(() => toast({ title: 'Barcode Scanned', description: `Added EAN: ${code}` }), 0);
+                                    }
+                                }
+                                if (error && !(error instanceof notFoundExceptionRef.current)) {
+                                    console.error('Barcode scan error:', error);
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Error starting video decode:', err);
+                    }
+                };
+
             } catch (err) {
-              console.error('Error initializing scanner:', err);
-              setHasCameraPermission(false);
-              setTimeout(() => toast({
-                  variant: 'destructive',
-                  title: 'Camera Access Denied',
-                  description: 'Please enable camera permissions in your browser settings.',
-              }), 0);
-              setIsScanMode(false);
+                console.error('Error getting media stream:', err);
+                setHasCameraPermission(false);
+                setTimeout(() => toast({
+                    variant: 'destructive',
+                    title: 'Camera Access Denied',
+                    description: 'Please enable camera permissions in your browser settings.',
+                }), 0);
+                setIsScanMode(false);
             }
-          }
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          setTimeout(() => toast({
-            variant: 'destructive',
-            title: 'Camera Access Error',
-            description: (error as Error).message || 'Could not access camera.',
-          }), 0);
-          setIsScanMode(false);
         }
-      } else {
+    };
+
+    if (isScanMode) {
+        startScanner();
+    } else {
         stopCamera();
-      }
     }
-    setupCamera();
 
     return () => {
-      stopCamera();
+        stopCamera();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanMode, handlePick]);
+}, [isScanMode, handlePick, playError, playInfo, playSuccess, products, form, toast, dismiss, scannedSkus, stopCamera]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -349,7 +331,7 @@ export default function Home() {
       {isScanMode && (
           <div className="sticky top-0 z-50 bg-black p-4 shadow-lg">
               <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-lg overflow-hidden border-2 border-primary">
-                  <video ref={videoRef} className="w-full h-full object-cover" />
+                  <video ref={videoRef} className="w-full h-full object-cover" muted autoPlay playsInline />
                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-3/4 h-1/2 border-y-2 border-dashed border-red-500 opacity-75" />
                   </div>
@@ -544,8 +526,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-    
-
-    
