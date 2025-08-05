@@ -4,7 +4,7 @@ import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/lib/morriso
 import { z } from 'zod';
 
 const FormSchema = z.object({
-  skus: z.string(),
+  skus: z.union([z.string(), z.array(z.string())]),
   locationId: z.string(),
 });
 
@@ -22,8 +22,7 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
   
   const { skus, locationId } = validatedFields.data;
   
-  const skuList = skus
-    .split(/[\s,]+/)
+  const skuList = (Array.isArray(skus) ? skus : skus.split(/[\s,]+/))
     .map(s => s.trim())
     .filter(Boolean);
   

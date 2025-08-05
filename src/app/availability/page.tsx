@@ -138,7 +138,7 @@ export default function AvailabilityPage() {
     
     setIsLoading(true);
 
-    const { data, error } = await getProductData({ locationId, skus: [decodedText] });
+    const { data, error } = await getProductData({ locationId, skus: decodedText });
 
     setIsLoading(false);
 
@@ -390,7 +390,7 @@ export default function AvailabilityPage() {
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
                       <div className="flex items-center gap-2">
                           <Button variant="outline" size="sm" onClick={handleCopyData}>
-                              <Copy className="mr-2 h-4 w-4" />
+                              <FileUp className="mr-2 h-4 w-4" />
                               Copy
                           </Button>
                           <AlertDialog>
@@ -461,5 +461,4 @@ export default function AvailabilityPage() {
       </main>
     </div>
   );
-
-    
+}
