@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Html5QrcodeScanner, type QrCodeSuccessCallback } from 'html5-qrcode';
+import { type Html5QrcodeScanner, type QrCodeSuccessCallback } from 'html5-qrcode';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -131,47 +131,56 @@ export default function Home() {
   
    useEffect(() => {
     if (isScanMode) {
-      const onScanSuccess: QrCodeSuccessCallback = (decodedText, decodedResult) => {
-        if (scannedSkusRef.current.has(decodedText)) return;
-        scannedSkusRef.current.add(decodedText);
+      // Dynamically import the library
+      import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
+        const onScanSuccess: QrCodeSuccessCallback = (decodedText, decodedResult) => {
+          if (scannedSkusRef.current.has(decodedText)) return;
+          scannedSkusRef.current.add(decodedText);
 
-        if (products.length > 0) {
-          const productToPick = products.find(p => p.sku === decodedText || p.scannedSku === decodedText);
-          if (productToPick) {
-            if (productToPick.picked) {
-              playInfo();
-              toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
+          if (products.length > 0) {
+            const productToPick = products.find(p => p.sku === decodedText || p.scannedSku === decodedText);
+            if (productToPick) {
+              if (productToPick.picked) {
+                playInfo();
+                toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
+              } else {
+                handlePick(productToPick.sku);
+              }
             } else {
-              handlePick(productToPick.sku);
+              playError();
+              toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${decodedText}) is not in the picking list.` });
             }
           } else {
-            playError();
-            toast({ variant: 'destructive', title: 'Item Not in List', description: `Scanned item (EAN: ${decodedText}) is not in the picking list.` });
+            const currentSkus = form.getValues('skus');
+            form.setValue('skus', currentSkus ? `${currentSkus}, ${decodedText}` : decodedText, { shouldValidate: true });
+            playSuccess();
+            toast({ title: 'Barcode Scanned', description: `Added EAN: ${decodedText}` });
           }
-        } else {
-          const currentSkus = form.getValues('skus');
-          form.setValue('skus', currentSkus ? `${currentSkus}, ${decodedText}` : decodedText, { shouldValidate: true });
-          playSuccess();
-          toast({ title: 'Barcode Scanned', description: `Added EAN: ${decodedText}` });
-        }
-      };
+           // After a short delay, allow the same barcode to be scanned again if needed.
+          setTimeout(() => {
+            scannedSkusRef.current.delete(decodedText);
+          }, 2000);
+        };
 
-      const onScanFailure = (error: any) => {
-        // We can ignore errors, as they happen continuously when no code is found.
-        // The library handles this gracefully.
-      };
+        const onScanFailure = (error: any) => {
+          // We can ignore errors, as they happen continuously when no code is found.
+        };
 
-      scannerRef.current = new Html5QrcodeScanner(
-        SCANNER_CONTAINER_ID,
-        { 
-          fps: 10,
-          qrbox: { width: 250, height: 150 },
-          rememberLastUsedCamera: true,
-          supportedScanTypes: [], // Scan all supported types
-        },
-        /* verbose= */ false
-      );
-      scannerRef.current.render(onScanSuccess, onScanFailure);
+        scannerRef.current = new Html5QrcodeScanner(
+          SCANNER_CONTAINER_ID,
+          { 
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            rememberLastUsedCamera: true,
+            supportedScanTypes: [], // Scan all supported types
+          },
+          /* verbose= */ false
+        );
+        scannerRef.current.render(onScanSuccess, onScanFailure);
+      }).catch(err => {
+        console.error("Failed to load html5-qrcode library", err);
+      });
+
     } else {
       if (scannerRef.current) {
         scannerRef.current.clear().catch(error => {
