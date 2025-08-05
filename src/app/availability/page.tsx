@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -301,6 +301,27 @@ export default function AvailabilityPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {isScanMode && (
+         <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
+            <div className="bg-background flex-shrink-0">
+               <div className="container mx-auto px-4 py-2 flex justify-between items-center">
+                   <h2 className="text-lg font-medium">Scan Barcode</h2>
+                   <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)}>
+                       <X className="h-5 w-5" />
+                   </Button>
+               </div>
+            </div>
+            <div className="flex-grow flex items-center justify-center p-4">
+                <div className="w-full max-w-md">
+                     <ZXingScanner 
+                        onResult={(text) => handleScanSuccess(text)} 
+                        onError={handleScanError} 
+                    />
+                </div>
+            </div>
+        </div>
+      )}
+      
        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <Form {...reasonForm}>
@@ -451,7 +472,7 @@ export default function AvailabilityPage() {
       
       <main className="container mx-auto px-4 py-8 md:py-12">
         
-        <div className={isScanMode ? 'pt-4' : ''}>
+        <div>
           <header className="text-center mb-12">
             <div className="inline-flex items-center gap-4">
                <ServerCrash className="w-12 h-12 text-primary" />
@@ -472,19 +493,9 @@ export default function AvailabilityPage() {
           
           <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
             <CardHeader>
-              <CardTitle>Scan Item to Report</CardTitle>
+              <CardTitle>Item Details</CardTitle>
             </CardHeader>
             <CardContent>
-              {isScanMode && (
-                    <div className="pb-4">
-                       <div className="w-full max-w-md mx-auto">
-                           <ZXingScanner 
-                                onResult={(text) => handleScanSuccess(text)} 
-                                onError={handleScanError} 
-                            />
-                        </div>
-                    </div>
-               )}
               <Form {...form}>
                 <form className="space-y-6">
                   <FormField
@@ -503,7 +514,7 @@ export default function AvailabilityPage() {
                    <Button
                       type="button"
                       className="w-full"
-                      variant={isScanMode ? 'destructive' : 'default'}
+                      variant='outline'
                       onClick={handleScanButtonClick}
                       disabled={isLoading}
                     >
@@ -512,7 +523,7 @@ export default function AvailabilityPage() {
                       ) : (
                          <ScanLine className="mr-2 h-4 w-4" />
                       )}
-                      {isLoading ? 'Checking...' : isScanMode ? 'Close Scanner' : 'Start Scanning'}
+                      {isLoading ? 'Checking...' : 'Scan Item to Report'}
                     </Button>
                 </form>
               </Form>
@@ -601,3 +612,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    

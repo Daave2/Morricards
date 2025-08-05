@@ -255,7 +255,6 @@ export default function Home() {
   }
 
   const getScanButtonLabel = () => {
-    if (isScanMode) return 'Close Scanner';
     if (products.length > 0) return 'Pick by Scan';
     return 'Scan to Add';
   }
@@ -273,8 +272,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      {isScanMode && (
+         <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
+            <div className="bg-background flex-shrink-0">
+               <div className="container mx-auto px-4 py-2 flex justify-between items-center">
+                   <h2 className="text-lg font-medium">Scan Barcode</h2>
+                   <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)}>
+                       <X className="h-5 w-5" />
+                   </Button>
+               </div>
+            </div>
+            <div className="flex-grow flex items-center justify-center p-4">
+                <div className="w-full max-w-md">
+                    <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
+                </div>
+            </div>
+        </div>
+      )}
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <div className={isScanMode ? 'pt-4' : ''}>
+        <div>
           <header className="text-center mb-12">
             <div className="inline-flex items-center gap-4">
                <ShoppingBasket className="w-12 h-12 text-primary" />
@@ -298,13 +314,6 @@ export default function Home() {
               <CardTitle>Create or Add to Picking List</CardTitle>
             </CardHeader>
             <CardContent>
-              {isScanMode && (
-                <div className="pb-4">
-                    <div className="w-full max-w-md mx-auto">
-                    <ZXingScanner onResult={handleScanResult} onError={handleScanError} />
-                    </div>
-                </div>
-              )}
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
@@ -316,7 +325,7 @@ export default function Home() {
                           <FormLabel>Product SKUs / EANs</FormLabel>
                           <Button
                             type="button"
-                            variant={isScanMode ? 'destructive' : 'outline'}
+                            variant='outline'
                             size="sm"
                             onClick={handleScanButtonClick}
                           >
@@ -377,7 +386,7 @@ export default function Home() {
                       </div>
                       <div className="flex flex-wrap items-center gap-4">
                           <Button 
-                              variant={isScanMode ? "destructive" : "outline"}
+                              variant={"outline"}
                               onClick={handleScanButtonClick}
                             >
                                <ScanLine className="mr-2 h-4 w-4" />
@@ -468,3 +477,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
