@@ -154,14 +154,14 @@ function extractLocationBits(pi: PriceIntegrity | null): { std: string, secondar
     if (!pi || !pi.space) return { std: "", promo: "", walk: "" };
     
     const stdLocs = pi.space.standardSpace?.locations;
-    const [std, secondary] = simplifyLocations(stdLocs);
+    const [std, ...secondary] = simplifyLocations(stdLocs);
 
     const promoLocs = pi.space.promotionalSpace?.locations;
     const [promo] = simplifyLocations(promoLocs);
     
     const walk = stdLocs && stdLocs.length > 0 && stdLocs[0].storeWalkSequence ? stdLocs[0].storeWalkSequence.toString() : "";
     
-    return { std: std || "", secondary, promo: promo || "", walk };
+    return { std: std || "", secondary: secondary.join('; ') || undefined, promo: promo || "", walk };
 }
 
 
