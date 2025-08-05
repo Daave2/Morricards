@@ -170,7 +170,7 @@ export default function Home() {
           SCANNER_CONTAINER_ID,
           { 
             fps: 10,
-            qrbox: { width: 250, height: 150 },
+            qrbox: { width: 300, height: 150 },
             rememberLastUsedCamera: true,
             supportedScanTypes: [], // Scan all supported types
           },
@@ -198,7 +198,11 @@ export default function Home() {
         scannerRef.current = null;
       }
     };
-  }, [isScanMode, products, handlePick, playSuccess, playError, playInfo, toast, form]);
+  // NOTE: Do not add `products`, `handlePick`, etc. to the dependency array.
+  // This is intentional to prevent the scanner from re-initializing on every state change,
+  // which would cause a flicker and make continuous scanning impossible.
+  // We use refs to access the latest values of these functions and state inside the callbacks.
+  }, [isScanMode]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -305,187 +309,190 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <header className="text-center mb-12">
-          <div className="inline-flex items-center gap-4">
-             <ShoppingBasket className="w-12 h-12 text-primary" />
-            <h1 className="text-5xl font-bold tracking-tight text-primary">
-              Store mobile <span className="text-foreground">ULTRA</span>
-            </h1>
-          </div>
-          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
-          </p>
-        </header>
-        
         {isScanMode && (
-          <div className="max-w-xl mx-auto mb-8 rounded-lg overflow-hidden shadow-lg border h-[250px] flex items-center justify-center bg-black">
-            <div id={SCANNER_CONTAINER_ID} className="w-[400px] h-[400px]"></div>
+          <div className="sticky top-0 z-50 py-4 bg-background -mx-4 px-4 mb-4">
+            <div className="max-w-xl mx-auto rounded-lg overflow-hidden shadow-lg border h-[250px] flex items-center justify-center bg-black">
+              <div id={SCANNER_CONTAINER_ID} className="w-[400px] h-[400px]"></div>
+            </div>
           </div>
         )}
-
-        <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
-          <CardHeader>
-            <CardTitle>Create or Add to Picking List</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="skus"
-                  render={({ field }) => (
-                    <FormItem>
-                       <div className="flex justify-between items-center">
-                        <FormLabel>Product SKUs / EANs</FormLabel>
-                        <Button
-                          type="button"
-                          variant={isScanMode ? 'destructive' : 'outline'}
-                          size="sm"
-                          onClick={handleScanButtonClick}
-                        >
-                          <ScanLine className="mr-2 h-4 w-4" />
-                          {getScanButtonLabel()}
-                        </Button>
-                      </div>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                          className="min-h-[120px] resize-y"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="locationId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Store Location ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 218" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Fetching Data...
-                    </>
-                  ) : (
-                    'Get/Add to Picking List'
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        { (products.length > 0 || isLoading) && 
-            <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
-                <div className="flex flex-wrap gap-4 justify-between items-center">
-                    <div className="relative w-full sm:w-auto sm:flex-grow max-w-xs">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input 
-                            placeholder="Filter by name..."
-                            value={filterQuery}
-                            onChange={(e) => setFilterQuery(e.target.value)}
-                            className="pl-10"
-                        />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                        <Button 
-                            variant={isScanMode ? "destructive" : "outline"}
+        <div className={isScanMode ? 'pt-4' : ''}>
+          <header className="text-center mb-12">
+            <div className="inline-flex items-center gap-4">
+               <ShoppingBasket className="w-12 h-12 text-primary" />
+              <h1 className="text-5xl font-bold tracking-tight text-primary">
+                Store mobile <span className="text-foreground">ULTRA</span>
+              </h1>
+            </div>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
+            </p>
+          </header>
+          
+          <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
+            <CardHeader>
+              <CardTitle>Create or Add to Picking List</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="skus"
+                    render={({ field }) => (
+                      <FormItem>
+                         <div className="flex justify-between items-center">
+                          <FormLabel>Product SKUs / EANs</FormLabel>
+                          <Button
+                            type="button"
+                            variant={isScanMode ? 'destructive' : 'outline'}
+                            size="sm"
                             onClick={handleScanButtonClick}
                           >
-                             <ScanLine className="mr-2 h-4 w-4" />
-                             {getScanButtonLabel()}
+                            <ScanLine className="mr-2 h-4 w-4" />
+                            {getScanButtonLabel()}
                           </Button>
-                        <Select value={sortConfig} onValueChange={setSortConfig}>
-                            <SelectTrigger className="w-full sm:w-[200px]">
-                                <SelectValue placeholder="Sort by..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
-                                <SelectItem value="stockQuantity-desc">Stock (High to Low)</SelectItem>
-                                <SelectItem value="stockQuantity-asc">Stock (Low to High)</SelectItem>
-                                <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-                                <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-                                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
-                            <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
-                                <LayoutGrid className="h-5 w-5"/>
-                            </Button>
-                            <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')}>
-                                <List className="h-5 w-5"/>
-                            </Button>
                         </div>
-                         <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="icon">
-                                <Trash2 className="h-5 w-5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action will permanently clear your entire picking list. This cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleResetList}>Clear List</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
-                </div>
-            </div>
-        }
+                        <FormControl>
+                          <Textarea
+                            placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
+                            className="min-h-[120px] resize-y"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="locationId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Store Location ID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 218" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Fetching Data...
+                      </>
+                    ) : (
+                      'Get/Add to Picking List'
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
 
-        {isLoading ? (
-          <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
-            {Array.from({ length: 8 }).map((_, i) => (
-                <Card key={i} className="w-full">
-                     <Skeleton className="aspect-square w-full" />
-                    <CardHeader>
-                        <Skeleton className="h-6 w-3/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Skeleton className="h-5 w-full" />
-                        <Skeleton className="h-5 w-full" />
-                        <Skeleton className="h-5 w-5/6" />
-                    </CardContent>
-                </Card>
-            ))}
-          </div>
-        ) : sortedAndFilteredProducts.length > 0 ? (
-          <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
-            {sortedAndFilteredProducts.map((product) => (
-              <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} />
-            ))}
-          </div>
-        ) : !isLoading && products.length > 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-                <p>No products match your filter.</p>
+          { (products.length > 0 || isLoading) && 
+              <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
+                  <div className="flex flex-wrap gap-4 justify-between items-center">
+                      <div className="relative w-full sm:w-auto sm:flex-grow max-w-xs">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input 
+                              placeholder="Filter by name..."
+                              value={filterQuery}
+                              onChange={(e) => setFilterQuery(e.target.value)}
+                              className="pl-10"
+                          />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4">
+                          <Button 
+                              variant={isScanMode ? "destructive" : "outline"}
+                              onClick={handleScanButtonClick}
+                            >
+                               <ScanLine className="mr-2 h-4 w-4" />
+                               {getScanButtonLabel()}
+                            </Button>
+                          <Select value={sortConfig} onValueChange={setSortConfig}>
+                              <SelectTrigger className="w-full sm:w-[200px]">
+                                  <SelectValue placeholder="Sort by..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
+                                  <SelectItem value="stockQuantity-desc">Stock (High to Low)</SelectItem>
+                                  <SelectItem value="stockQuantity-asc">Stock (Low to High)</SelectItem>
+                                  <SelectItem value="price-desc">Price (High to Low)</SelectItem>
+                                  <SelectItem value="price-asc">Price (Low to High)</SelectItem>
+                                  <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                  <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                              </SelectContent>
+                          </Select>
+                          <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                              <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
+                                  <LayoutGrid className="h-5 w-5"/>
+                              </Button>
+                              <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')}>
+                                  <List className="h-5 w-5"/>
+                              </Button>
+                          </div>
+                           <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="icon">
+                                  <Trash2 className="h-5 w-5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action will permanently clear your entire picking list. This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleResetList}>Clear List</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                      </div>
+                  </div>
+              </div>
+          }
+
+          {isLoading ? (
+            <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                  <Card key={i} className="w-full">
+                       <Skeleton className="aspect-square w-full" />
+                      <CardHeader>
+                          <Skeleton className="h-6 w-3/4" />
+                          <Skeleton className="h-4 w-1/2" />
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                          <Skeleton className="h-5 w-full" />
+                          <Skeleton className="h-5 w-full" />
+                          <Skeleton className="h-5 w-5/6" />
+                      </CardContent>
+                  </Card>
+              ))}
             </div>
-        ) : !isLoading && form.formState.isSubmitted ? (
-            <div className="text-center py-16 text-muted-foreground">
-                <PackageSearch className="mx-auto h-16 w-16 mb-4" />
-                <h3 className="text-xl font-semibold">No Products Found</h3>
-                <p>We couldn't find any products for the SKUs you entered.</p>
+          ) : sortedAndFilteredProducts.length > 0 ? (
+            <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
+              {sortedAndFilteredProducts.map((product) => (
+                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} />
+              ))}
             </div>
-        ) : null}
+          ) : !isLoading && products.length > 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                  <p>No products match your filter.</p>
+              </div>
+          ) : !isLoading && form.formState.isSubmitted ? (
+              <div className="text-center py-16 text-muted-foreground">
+                  <PackageSearch className="mx-auto h-16 w-16 mb-4" />
+                  <h3 className="text-xl font-semibold">No Products Found</h3>
+                  <p>We couldn't find any products for the SKUs you entered.</p>
+              </div>
+          ) : null}
+        </div>
       </main>
     </div>
   );
