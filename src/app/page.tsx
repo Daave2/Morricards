@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { type Html5QrcodeScanner, type Html5Qrcode } from 'html5-qrcode';
+import { type Html5QrcodeScanner } from 'html5-qrcode';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -143,16 +143,14 @@ export default function Home() {
 
   }, [products, handleUndoPick, playSuccess, dismiss, toast]);
   
-   const stopScanner = async () => {
+   const stopScanner = () => {
     if (scannerRef.current) {
-        const scanner = scannerRef.current as any;
         try {
-            if (scanner.getState() === 2) { // 2 === Html5QrcodeScannerState.SCANNING
-                await scanner.stop();
-            }
-            await scanner.clear();
+            // The clear method stops the scan and clears the UI.
+            // It can throw an error if called when not scanning, which we can ignore.
+            scannerRef.current.clear();
         } catch (error) {
-            console.error("Failed to stop or clear html5-qrcode-scanner.", error);
+            console.warn("Ignoring error during scanner cleanup:", error);
         } finally {
             scannerRef.current = null;
         }
