@@ -55,6 +55,12 @@ export default function Home() {
 
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const scannedSkusRef = useRef<Set<string>>(new Set());
+  const productsRef = useRef(products);
+
+  // Keep the ref updated with the latest products state
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
 
   // Load products from local storage on initial render
   useEffect(() => {
@@ -99,7 +105,8 @@ export default function Home() {
         description: 'The item has been unpicked.',
         icon: <Undo2 className="h-5 w-5 text-blue-500" />
     });
-  }, [toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePick = useCallback((sku: string) => {
     const productCard = document.querySelector(`[data-sku="${sku}"]`);
@@ -111,20 +118,12 @@ export default function Home() {
         setProducts(prevProducts => {
             const productToUpdate = prevProducts.find(p => p.sku === sku || p.scannedSku === sku);
             if (!productToUpdate) return prevProducts;
-
-            const isPicking = !productToUpdate.picked;
-            
-            if (isPicking) {
-                // We show toast feedback outside of the state update to avoid delays
-            }
-
             const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
             return [...updatedProducts];
         });
     });
 
-    // Provide immediate feedback, not tied to the state update
-    const productToUpdate = products.find(p => p.sku === sku || p.scannedSku === sku);
+    const productToUpdate = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
     if(productToUpdate && !productToUpdate.picked) {
         setTimeout(() => dismiss(), 0);
         playSuccess();
@@ -140,14 +139,12 @@ export default function Home() {
             ),
         }), 0);
     }
-
-  }, [products, handleUndoPick, playSuccess, dismiss, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
    const stopScanner = () => {
     if (scannerRef.current) {
         try {
-            // The clear method stops the scan and clears the UI.
-            // It can throw an error if called when not scanning, which we can ignore.
             scannerRef.current.clear();
         } catch (error) {
             console.warn("Ignoring error during scanner cleanup:", error);
@@ -159,14 +156,13 @@ export default function Home() {
 
    useEffect(() => {
     if (isScanMode) {
-      // Dynamically import the library
       import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
         const onScanSuccess = (decodedText: string) => {
           if (!decodedText || scannedSkusRef.current.has(decodedText)) return;
           
           scannedSkusRef.current.add(decodedText);
 
-          const productToPick = products.find(p => p.sku === decodedText || p.scannedSku === decodedText);
+          const productToPick = productsRef.current.find(p => p.sku === decodedText || p.scannedSku === decodedText);
           if (productToPick) {
             if (productToPick.picked) {
               playInfo();
@@ -185,15 +181,12 @@ export default function Home() {
                 toast({ title: 'Barcode Scanned', description: `Added EAN: ${decodedText}` });
               }
           }
-           // After a short delay, allow the same barcode to be scanned again if needed.
           setTimeout(() => {
             scannedSkusRef.current.delete(decodedText);
           }, 3000); 
         };
 
-        const onScanFailure = (error: any) => {
-          // We can ignore errors, as they happen continuously when no code is found.
-        };
+        const onScanFailure = (error: any) => {};
         
         if (!scannerRef.current) {
             scannerRef.current = new Html5QrcodeScanner(
@@ -202,32 +195,27 @@ export default function Home() {
                 fps: 10,
                 qrbox: { width: 250, height: 100 },
                 rememberLastUsedCamera: true,
-                supportedScanTypes: [], // Scan all supported types
+                supportedScanTypes: [],
               },
-              /* verbose= */ false
+              false
             );
         }
-
         scannerRef.current.render(onScanSuccess, onScanFailure);
-
       }).catch(err => {
         console.error("Failed to load html5-qrcode library", err);
       });
-
     } else {
         stopScanner();
     }
-
-    // This is the cleanup function for the useEffect hook
     return () => {
         stopScanner();
     };
-  }, [isScanMode, handlePick, playInfo, playSuccess, toast, form, products]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanMode]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
     setIsLoading(true);
-    // Don't clear products here to allow adding to existing list
     const { data, error } = await getProductData(values);
 
     if (error) {
@@ -243,13 +231,12 @@ export default function Home() {
           description: 'Could not find any products for the given SKUs.',
         });
       } else {
-        // Merge new products with existing ones, avoiding duplicates
         setProducts(prevProducts => {
             const existingSkus = new Set(prevProducts.map(p => p.sku));
             const newProducts = data.filter(p => !existingSkus.has(p.sku));
             return [...prevProducts, ...newProducts.map(p => ({ ...p, picked: false }))]
         });
-        form.setValue('skus', ''); // Clear SKU input after successful fetch
+        form.setValue('skus', '');
       }
     }
     setIsLoading(false);
@@ -304,7 +291,7 @@ export default function Home() {
     if (isScanMode) {
       setIsScanMode(false);
     } else {
-      scannedSkusRef.current = new Set(); // Reset session scanned SKUs
+      scannedSkusRef.current = new Set();
       setIsScanMode(true);
     }
   }
