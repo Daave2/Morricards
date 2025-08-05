@@ -187,7 +187,8 @@ export default function AvailabilityPage() {
   }, [form, playError, toast, playSuccess, reasonForm]);
 
   const handleScanError = (message: string) => {
-    if (!message.toLowerCase().includes('not found')) {
+    const lowerMessage = message.toLowerCase();
+    if (!lowerMessage.includes('not found') && !lowerMessage.includes('no multifunction readers')) {
       toast({
         variant: 'destructive',
         title: 'Scanner Error',

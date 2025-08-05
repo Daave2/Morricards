@@ -221,7 +221,8 @@ function PickingList() {
   }, [handlePick, playInfo, playSuccess, toast, playError, form]);
 
   const handleScanError = (message: string) => {
-    if (!message.toLowerCase().includes('not found')) {
+    const lowerMessage = message.toLowerCase();
+    if (!lowerMessage.includes('not found') && !lowerMessage.includes('no multifunction readers')) {
       toast({
         variant: 'destructive',
         title: 'Scanner Error',
