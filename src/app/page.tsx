@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { type Html5QrcodeScanner, type QrCodeSuccessCallback } from 'html5-qrcode';
+import { type Html5QrcodeScanner } from 'html5-qrcode';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -133,7 +133,7 @@ export default function Home() {
     if (isScanMode) {
       // Dynamically import the library
       import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
-        const onScanSuccess: QrCodeSuccessCallback = (decodedText, decodedResult) => {
+        const onScanSuccess = (decodedText: string) => {
           if (scannedSkusRef.current.has(decodedText)) return;
           scannedSkusRef.current.add(decodedText);
 
@@ -198,7 +198,8 @@ export default function Home() {
         scannerRef.current = null;
       }
     };
-  }, [isScanMode, form, handlePick, playError, playInfo, playSuccess, products, toast]);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanMode]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -492,3 +493,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
