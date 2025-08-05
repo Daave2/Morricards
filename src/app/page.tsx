@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { type Html5QrcodeScanner } from 'html5-qrcode';
+import { type Html5QrcodeScanner, type Html5Qrcode } from 'html5-qrcode';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
@@ -143,6 +143,22 @@ export default function Home() {
 
   }, [products, handleUndoPick, playSuccess, dismiss, toast]);
   
+   const stopScanner = async () => {
+    if (scannerRef.current) {
+        const scanner = scannerRef.current as any;
+        try {
+            if (scanner.getState() === 2) { // 2 === Html5QrcodeScannerState.SCANNING
+                await scanner.stop();
+            }
+            await scanner.clear();
+        } catch (error) {
+            console.error("Failed to stop or clear html5-qrcode-scanner.", error);
+        } finally {
+            scannerRef.current = null;
+        }
+    }
+  };
+
    useEffect(() => {
     if (isScanMode) {
       // Dynamically import the library
@@ -180,40 +196,34 @@ export default function Home() {
         const onScanFailure = (error: any) => {
           // We can ignore errors, as they happen continuously when no code is found.
         };
+        
+        if (!scannerRef.current) {
+            scannerRef.current = new Html5QrcodeScanner(
+              SCANNER_CONTAINER_ID,
+              { 
+                fps: 10,
+                qrbox: { width: 250, height: 100 },
+                rememberLastUsedCamera: true,
+                supportedScanTypes: [], // Scan all supported types
+              },
+              /* verbose= */ false
+            );
+        }
 
-        scannerRef.current = new Html5QrcodeScanner(
-          SCANNER_CONTAINER_ID,
-          { 
-            fps: 10,
-            qrbox: { width: 250, height: 100 },
-            rememberLastUsedCamera: true,
-            supportedScanTypes: [], // Scan all supported types
-          },
-          /* verbose= */ false
-        );
         scannerRef.current.render(onScanSuccess, onScanFailure);
+
       }).catch(err => {
         console.error("Failed to load html5-qrcode library", err);
       });
 
     } else {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(error => {
-          console.error("Failed to clear html5-qrcode-scanner.", error);
-        });
-        scannerRef.current = null;
-      }
+        stopScanner();
     }
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(error => {
-          console.error("Failed to clear html5-qrcode-scanner on cleanup.", error);
-        });
-        scannerRef.current = null;
-      }
+        stopScanner();
     };
-  }, [isScanMode, products, handlePick, playInfo, playSuccess, toast, form]);
+  }, [isScanMode, handlePick, playInfo, playSuccess, toast, form]);
 
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
@@ -508,7 +518,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    
