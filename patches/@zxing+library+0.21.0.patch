@@ -1,0 +1,40 @@
+diff --git a/node_modules/@zxing/library/esm/core/oned/rss/expanded/decoders/DecodedNumeric.js b/node_modules/@zxing/library/esm/core/oned/rss/expanded/decoders/DecodedNumeric.js
+index 5384ab7..51d3b07 100644
+--- a/node_modules/@zxing/library/esm/core/oned/rss/expanded/decoders/DecodedNumeric.js
++++ b/node_modules/@zxing/library/esm/core/oned/rss/expanded/decoders/DecodedNumeric.js
+@@ -11,7 +11,7 @@
+         return extendStatics(d, b);
+     };
+ })();
+-import FormatException from '../../../../FormatException';
++import FormatException from '../../../FormatException.js';
+ import DecodedObject from './DecodedObject';
+ var DecodedNumeric = /** @class */ (function (_super) {
+     __extends(DecodedNumeric, _super);
+diff --git a/node_modules/@zxing/library/esm/core/pdf417/decoder/ec/ErrorCorrection.js b/node_modules/@zxing/library/esm/core/pdf417/decoder/ec/ErrorCorrection.js
+index b8590c4..858348d 100644
+--- a/node_modules/@zxing/library/esm/core/pdf417/decoder/ec/ErrorCorrection.js
++++ b/node_modules/@zxing/library/esm/core/pdf417/decoder/ec/ErrorCorrection.js
+@@ -1,5 +1,5 @@
+ import ModulusPoly from './ModulusPoly';
+ import ModulusGF from './ModulusGF';
+-import ChecksumException from '../../../ChecksumException';
++import ChecksumException from '../../../ChecksumException.js';
+ /*
+  * Copyright 2012 ZXing authors
+  *
+diff --git a/node_modules/@zxing/library/esm/core/qrcode/decoder/Decoder.js b/node_modules/@zxing/library/esm/core/qrcode/decoder/Decoder.js
+index a73e7c8..959e19d 100644
+--- a/node_modules/@zxing/library/esm/core/qrcode/decoder/Decoder.js
++++ b/node_modules/@zxing/library/esm/core/qrcode/decoder/Decoder.js
+@@ -1,7 +1,7 @@
+ import ReedSolomonDecoder from '../../reedsolomon/ReedSolomonDecoder';
+ import GenericGF from '../../reedsolomon/GenericGF';
+ import BitMatrix from '../../common/BitMatrix';
+-import ChecksumException from '../../ChecksumException';
+-import FormatException from '../../FormatException';
++import ChecksumException from '../../ChecksumException.js';
++import FormatException from '../../FormatException.js';
+ import DataBlock from './DataBlock';
+ import Version from './Version';
+ import DecodedBitStreamParser from './DecodedBitStreamParser';
