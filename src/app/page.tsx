@@ -285,19 +285,16 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {isScanMode && (
-         <div className="fixed inset-x-0 top-0 z-50">
-            <div className="bg-background/80 backdrop-blur-sm">
-                <div className="container mx-auto px-4 py-2 flex justify-between items-center">
-                   <h2 className="text-lg font-medium">Scan Barcode</h2>
-                   <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)}>
-                       <X className="h-5 w-5" />
-                   </Button>
-               </div>
-            </div>
-             <div className="p-4 bg-background/80 backdrop-blur-sm">
-                <div className="w-full max-w-md mx-auto">
-                    <ZXingScanner ref={scannerRef} onResult={handleScanResult} onError={handleScanError} />
-                </div>
+         <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
+            <div className="w-full max-w-md mx-auto relative">
+                <ZXingScanner 
+                    ref={scannerRef} 
+                    onResult={handleScanResult} 
+                    onError={handleScanError} 
+                />
+                <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+                   <X className="h-5 w-5" />
+                </Button>
             </div>
         </div>
       )}
@@ -489,7 +486,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    
