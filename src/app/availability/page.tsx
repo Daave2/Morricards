@@ -91,6 +91,8 @@ export default function AvailabilityPage() {
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
 
+  const scannerRef = useRef<{ start: () => void } | null>(null);
+
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -323,6 +325,7 @@ export default function AvailabilityPage() {
              <div className="p-4 bg-background/80 backdrop-blur-sm">
                 <div className="w-full max-w-md mx-auto">
                      <ZXingScanner 
+                        ref={scannerRef}
                         onResult={(text) => handleScanSuccess(text)} 
                         onError={handleScanError} 
                     />
