@@ -71,7 +71,6 @@ export default function AvailabilityPage() {
   const [isScanMode, setIsScanMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
-  const [htmlForCopy, setHtmlForCopy] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -296,24 +295,24 @@ export default function AvailabilityPage() {
             </tbody>
         </table>
     `;
+    
+    const listener = (e: ClipboardEvent) => {
+      e.preventDefault();
+      if (e.clipboardData) {
+        e.clipboardData.setData('text/html', html);
+        e.clipboardData.setData('text/plain', html);
+      }
+    };
 
-    if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
-        try {
-            const blob = new Blob([html], { type: 'text/html' });
-            const clipboardItem = new ClipboardItem({ 'text/html': blob });
-            navigator.clipboard.write([clipboardItem]).then(() => {
-                toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
-            }).catch(err => {
-                console.error("Clipboard API error, showing fallback dialog:", err);
-                setHtmlForCopy(html);
-            });
-        } catch(e) {
-            console.error("Error creating blob/clipboard item, showing fallback dialog:", e);
-            setHtmlForCopy(html);
-        }
-    } else {
-        console.log("Clipboard API not supported, showing fallback dialog.")
-        setHtmlForCopy(html);
+    document.addEventListener('copy', listener);
+    try {
+      document.execCommand('copy');
+      toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
+    } catch (e) {
+      console.error('Failed to copy HTML to clipboard', e)
+      toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
+    } finally {
+      document.removeEventListener('copy', listener);
     }
   }
 
@@ -395,26 +394,6 @@ export default function AvailabilityPage() {
               </DialogFooter>
             </form>
           </Form>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={!!htmlForCopy} onOpenChange={(isOpen) => !isOpen && setHtmlForCopy(null)}>
-        <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>Copy HTML for Email</DialogTitle>
-                <DialogDescription>
-                    Automatic copy failed. Please manually copy the HTML code below.
-                </DialogDescription>
-            </DialogHeader>
-            <Textarea
-                readOnly
-                value={htmlForCopy || ''}
-                className="h-64 text-xs font-mono"
-                onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            />
-            <DialogFooter>
-                <Button onClick={() => setHtmlForCopy(null)}>Close</Button>
-            </DialogFooter>
         </DialogContent>
       </Dialog>
       
@@ -565,3 +544,5 @@ export default function AvailabilityPage() {
       </main>
     </div>
   );
+
+    
