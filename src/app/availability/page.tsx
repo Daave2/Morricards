@@ -65,7 +65,7 @@ const ReasonSchema = z.object({
 });
 
 
-const SCANNER_CONTAINER_ID = 'qr-reader';
+const SCANNER_CONTAINER_ID = 'qr-reader-availability';
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 
 const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
@@ -192,28 +192,36 @@ export default function AvailabilityPage() {
 
   useEffect(() => {
     if (isScanMode) {
-      import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
-        const onScanFailure = (error: any) => {};
-        
-        if (!scannerRef.current) {
-            scannerRef.current = new Html5QrcodeScanner(
-              SCANNER_CONTAINER_ID,
-              { 
-                fps: 10,
-                qrbox: { width: 300, height: 120 },
-                rememberLastUsedCamera: true,
-                supportedScanTypes: [],
-                verbose: false,
-                showTorchButtonIfSupported: true,
-              },
-              false
-            );
+      const startScanner = () => {
+        if (!document.getElementById(SCANNER_CONTAINER_ID)) {
+          requestAnimationFrame(startScanner);
+          return;
         }
-        scannerRef.current.render(handleScanSuccess, onScanFailure);
-      }).catch(err => {
-        console.error("Failed to load html5-qrcode library", err);
-        toast({ variant: 'destructive', title: 'Scanner Error', description: 'Could not load the barcode scanner.'})
-      });
+        
+        import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
+          const onScanFailure = (error: any) => {};
+          
+          if (!scannerRef.current) {
+              scannerRef.current = new Html5QrcodeScanner(
+                SCANNER_CONTAINER_ID,
+                { 
+                  fps: 10,
+                  qrbox: { width: 300, height: 120 },
+                  rememberLastUsedCamera: true,
+                  supportedScanTypes: [],
+                  verbose: false,
+                  showTorchButtonIfSupported: true,
+                },
+                false
+              );
+          }
+          scannerRef.current.render(handleScanSuccess, onScanFailure);
+        }).catch(err => {
+          console.error("Failed to load html5-qrcode library", err);
+          toast({ variant: 'destructive', title: 'Scanner Error', description: 'Could not load the barcode scanner.'})
+        });
+      };
+      startScanner();
     } else {
         stopScanner();
     }
@@ -636,3 +644,4 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+

@@ -157,56 +157,64 @@ export default function Home() {
 
    useEffect(() => {
     if (isScanMode) {
-      import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
-        const onScanSuccess = (decodedText: string) => {
-          const sku = decodedText.split(',')[0].trim();
-          if (!sku || scannedSkusRef.current.has(sku)) return;
-          
-          scannedSkusRef.current.add(sku);
-
-          const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
-          if (productToPick) {
-            if (productToPick.picked) {
-              playInfo();
-              toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
-            } else {
-              handlePick(productToPick.sku);
+        const startScanner = () => {
+            if (!document.getElementById(SCANNER_CONTAINER_ID)) {
+                requestAnimationFrame(startScanner);
+                return;
             }
-          } else {
-              const currentSkus = form.getValues('skus');
-              if (currentSkus.split(/[\s,]+/).find(s => s.trim() === sku)) {
-                playInfo();
-                toast({ title: 'EAN Already in List', description: `EAN ${sku} is already in the text box.` });
-              } else {
-                form.setValue('skus', currentSkus ? `${currentSkus}, ${sku}` : sku, { shouldValidate: true });
-                playSuccess();
-                toast({ title: 'Barcode Scanned', description: `Added EAN: ${sku}` });
-              }
-          }
-          setTimeout(() => {
-            scannedSkusRef.current.delete(sku);
-          }, 3000); 
-        };
 
-        const onScanFailure = (error: any) => {};
-        
-        if (!scannerRef.current) {
-            scannerRef.current = new Html5QrcodeScanner(
-              SCANNER_CONTAINER_ID,
-              { 
-                fps: 10,
-                qrbox: { width: 250, height: 100 },
-                rememberLastUsedCamera: true,
-                supportedScanTypes: [],
-                showTorchButtonIfSupported: true,
-              },
-              false
-            );
-        }
-        scannerRef.current.render(onScanSuccess, onScanFailure);
-      }).catch(err => {
-        console.error("Failed to load html5-qrcode library", err);
-      });
+            import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
+                const onScanSuccess = (decodedText: string) => {
+                    const sku = decodedText.split(',')[0].trim();
+                    if (!sku || scannedSkusRef.current.has(sku)) return;
+                    
+                    scannedSkusRef.current.add(sku);
+
+                    const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
+                    if (productToPick) {
+                        if (productToPick.picked) {
+                            playInfo();
+                            toast({ title: 'Item Already Picked', description: `Already picked: ${productToPick.name}`, icon: <Info className="h-5 w-5 text-blue-500" /> });
+                        } else {
+                            handlePick(productToPick.sku);
+                        }
+                    } else {
+                        const currentSkus = form.getValues('skus');
+                        if (currentSkus.split(/[\s,]+/).find(s => s.trim() === sku)) {
+                            playInfo();
+                            toast({ title: 'EAN Already in List', description: `EAN ${sku} is already in the text box.` });
+                        } else {
+                            form.setValue('skus', currentSkus ? `${currentSkus}, ${sku}` : sku, { shouldValidate: true });
+                            playSuccess();
+                            toast({ title: 'Barcode Scanned', description: `Added EAN: ${sku}` });
+                        }
+                    }
+                    setTimeout(() => {
+                        scannedSkusRef.current.delete(sku);
+                    }, 3000); 
+                };
+
+                const onScanFailure = (error: any) => {};
+                
+                if (!scannerRef.current) {
+                    scannerRef.current = new Html5QrcodeScanner(
+                        SCANNER_CONTAINER_ID,
+                        { 
+                            fps: 10,
+                            qrbox: { width: 250, height: 100 },
+                            rememberLastUsedCamera: true,
+                            supportedScanTypes: [],
+                            showTorchButtonIfSupported: true,
+                        },
+                        false
+                    );
+                }
+                scannerRef.current.render(onScanSuccess, onScanFailure);
+            }).catch(err => {
+                console.error("Failed to load html5-qrcode library", err);
+            });
+        };
+        startScanner();
     } else {
         stopScanner();
     }
