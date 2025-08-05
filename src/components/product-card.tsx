@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -15,6 +15,7 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { format, differenceInDays } from 'date-fns';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
 
@@ -55,6 +56,17 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
   const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
   const bws = product.productDetails.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
+
+  const lastStockChangeEvent = product.lastStockChange;
+  let isRecentChange = false;
+  if (lastStockChangeEvent?.lastCountDateTime) {
+      const changeDate = new Date(lastStockChangeEvent.lastCountDateTime);
+      const now = new Date();
+      if (differenceInDays(now, changeDate) <= 3) {
+          isRecentChange = true;
+      }
+  }
+
 
   const cardContent = (
       <>
@@ -184,6 +196,22 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                   <PoundSterling className="h-5 w-5 text-primary" />
                   <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
+               {isRecentChange && lastStockChangeEvent && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-3 text-sm text-blue-600 cursor-default">
+                            <History className="h-5 w-5" />
+                            <span>Recent stock event</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{lastStockChangeEvent.inventoryAction} of {lastStockChangeEvent.qty} by {lastStockChangeEvent.createdBy}</p>
+                        <p>On: {format(new Date(lastStockChangeEvent.lastCountDateTime!), 'dd/MM/yy HH:mm')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
           </CardContent>
 
           <CollapsibleContent>
@@ -200,10 +228,17 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                         <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
                       </div>
 
-                      <Separator />
+                       <Separator />
                         <div>
                           <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                             {product.lastStockChange?.lastCountDateTime && (
+                                <DataRow 
+                                    icon={<History />} 
+                                    label="Last Stock Event" 
+                                    value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${format(new Date(product.lastStockChange.lastCountDateTime), 'dd/MM/yy HH:mm')}`}
+                                />
+                              )}
                              <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
                              <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
                              <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
@@ -211,6 +246,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                              <DataRow icon={<Flag />} label="Manual Order" value={product.productDetails.manuallyStoreOrderedItem} />
                           </div>
                         </div>
+
 
                       {product.productDetails.commercialHierarchy && (
                           <>
