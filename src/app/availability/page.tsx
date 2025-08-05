@@ -271,7 +271,6 @@ export default function AvailabilityPage() {
                 <tr>
                     <th style="${styles.th}">Image</th>
                     <th style="${styles.th}">SKU</th>
-                    <th style="${styles.th}">EAN</th>
                     <th style="${styles.th}">Name</th>
                     <th style="${styles.th}">Stock</th>
                     <th style="${styles.th}">Location</th>
@@ -284,7 +283,6 @@ export default function AvailabilityPage() {
                     <tr>
                         <td style="${styles.td}"><img src="${p.imageUrl || 'https://placehold.co/100x100.png'}" alt="${p.name}" style="${styles.img}" /></td>
                         <td style="${styles.td}">${p.sku}</td>
-                        <td style="${styles.td}">${p.scannedSku}</td>
                         <td style="${styles.td}">${p.name}</td>
                         <td style="${styles.td}">${p.stockQuantity}</td>
                         <td style="${styles.td}">${p.location.standard}</td>
@@ -295,24 +293,40 @@ export default function AvailabilityPage() {
             </tbody>
         </table>
     `;
-    
-    const listener = (e: ClipboardEvent) => {
-      e.preventDefault();
-      if (e.clipboardData) {
-        e.clipboardData.setData('text/html', html);
-        e.clipboardData.setData('text/plain', html);
-      }
-    };
 
-    document.addEventListener('copy', listener);
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.innerHTML = html;
+    document.body.appendChild(tempDiv);
+    
+    const range = document.createRange();
+    range.selectNodeContents(tempDiv);
+    const selection = window.getSelection();
+    if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+    
     try {
-      document.execCommand('copy');
-      toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.'});
-    } catch (e) {
-      console.error('Failed to copy HTML to clipboard', e)
-      toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
+        const successful = document.execCommand('copy');
+        if (successful) {
+            toast({ title: 'Copied for Email', description: 'HTML table copied to clipboard.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
+        }
+    } catch (err) {
+        console.error('Failed to copy HTML to clipboard', err);
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy HTML to clipboard.' });
     } finally {
-      document.removeEventListener('copy', listener);
+        document.body.removeChild(tempDiv);
+        if (window.getSelection) {
+            if (window.getSelection()?.empty) {  // Chrome
+              window.getSelection()?.empty();
+            } else if (window.getSelection()?.removeAllRanges) {  // Firefox
+              window.getSelection()?.removeAllRanges();
+            }
+          }
     }
   }
 
@@ -544,5 +558,4 @@ export default function AvailabilityPage() {
       </main>
     </div>
   );
-
-    
+}
