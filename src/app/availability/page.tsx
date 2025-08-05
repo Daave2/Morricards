@@ -380,7 +380,6 @@ export default function AvailabilityPage() {
                           height={80}
                           className="rounded-md object-cover"
                           data-ai-hint="product image"
-                          
                         />
                         <div className="text-sm space-y-1 flex-grow">
                           <p className="font-bold">{productForModal.name}</p>
@@ -612,7 +611,6 @@ export default function AvailabilityPage() {
                               height={64}
                               className="rounded-md object-cover"
                               data-ai-hint="product image small"
-                              
                           />
                           <div className="flex-grow">
                              <div className="flex justify-between items-start">
