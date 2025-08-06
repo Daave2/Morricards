@@ -88,8 +88,11 @@ function getProduct(sku: string): Promise<Product | null> {
     return fetchJson<Product>(`${BASE_PRODUCT}/${sku}?apikey=${API_KEY}`);
 }
 
-function candidateStockSkus(prod: Product, primarySku: string): string[] {
-    const skus = new Set<string>([primarySku]);
+function candidateStockSkus(prod: Product): string[] {
+    const skus = new Set<string>();
+    if(prod.itemNumber) {
+        skus.add(prod.itemNumber);
+    }
     if (prod.packComponents) {
         for (const pc of prod.packComponents) {
             if (pc.itemNumber) {
@@ -182,20 +185,22 @@ function extractLocationBits(pi: PriceIntegrity | null): { std: string, secondar
 export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promise<FetchMorrisonsDataOutput> {
   console.log(`Fetching data for SKUs: ${input.skus.join(', ')} at location: ${input.locationId}`);
 
-  const productPromises = input.skus.map(async (sku) => {
+  const productPromises = input.skus.map(async (scannedSku) => {
     try {
-      const product = await getProduct(sku);
-      if (!product) {
-        console.warn(`Product not found for SKU: ${sku}`);
+      const product = await getProduct(scannedSku);
+      if (!product || !product.itemNumber) {
+        console.warn(`Product not found for SKU: ${scannedSku}`);
         return null;
       }
+      
+      const internalSku = product.itemNumber;
 
-      const stockCandidates = candidateStockSkus(product, sku);
+      const stockCandidates = candidateStockSkus(product);
       const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
 
-      const finalSku = stockSku || sku;
-      const piPromise = getPi(input.locationId, finalSku);
-      const stockHistoryPromise = getStockHistory(input.locationId, finalSku);
+      const finalSkuForPi = stockSku || internalSku;
+      const piPromise = getPi(input.locationId, finalSkuForPi);
+      const stockHistoryPromise = getStockHistory(input.locationId, finalSkuForPi);
       
       const [pi, stockHistory] = await Promise.all([piPromise, stockHistoryPromise]);
 
@@ -207,8 +212,8 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
       const promos = pi?.promotions;
 
       return {
-        sku: product.itemNumber || sku,
-        scannedSku: sku,
+        sku: internalSku,
+        scannedSku: scannedSku,
         name: product.customerFriendlyDescription || product.tillDescription || product.itemDescription || 'Unknown Product',
         price: {
           regular: prices?.[0]?.regularPrice,
@@ -224,14 +229,14 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         temperature: product.temperatureRegime,
         weight: product.dimensions?.weight,
         status: product.status,
-        stockSkuUsed: stockSku === sku ? undefined : stockSku || undefined,
+        stockSkuUsed: stockSku === internalSku ? undefined : stockSku || undefined,
         imageUrl: (product as any).imageUrl?.[0]?.url,
         walkSequence: walk,
         productDetails: product,
         lastStockChange: stockHistory || undefined,
       };
     } catch (error) {
-      console.error(`Failed to process SKU ${sku}:`, error);
+      console.error(`Failed to process SKU ${scannedSku}:`, error);
       return null;
     }
   });
