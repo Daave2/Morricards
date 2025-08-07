@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -32,9 +32,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { cn } from '@/lib/utils';
 import ZXingScanner from '@/components/ZXingScanner';
 import { useSearchParams, useRouter } from 'next/navigation';
+import QRCode from 'qrcode';
+import Image from 'next/image';
+
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
 
@@ -54,6 +65,9 @@ function PickingList() {
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [isScanMode, setIsScanMode] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportUrl, setExportUrl] = useState('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -340,6 +354,44 @@ function PickingList() {
         description: 'The picking list has been successfully cleared.',
     });
   }
+
+  const handleOpenExportModal = () => {
+    if (products.length === 0) {
+      toast({
+        title: 'Empty List',
+        description: 'Add some products to the list before exporting.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const skus = products.map(p => p.sku).join(',');
+    const locationId = form.getValues('locationId');
+    const url = `${window.location.origin}/?skus=${encodeURIComponent(skus)}&location=${encodeURIComponent(locationId)}`;
+    setExportUrl(url);
+
+    QRCode.toDataURL(url, { width: 300, margin: 2 })
+      .then(setQrCodeDataUrl)
+      .catch(err => {
+        console.error('Failed to generate QR code', err);
+        toast({
+          title: 'QR Code Error',
+          description: 'Could not generate a QR code for the list.',
+          variant: 'destructive',
+        });
+      });
+
+    setIsExportModalOpen(true);
+  };
+  
+  const handleCopyExportUrl = () => {
+    navigator.clipboard.writeText(exportUrl).then(() => {
+      toast({ title: 'URL Copied', description: 'The list URL has been copied to your clipboard.' });
+    }).catch(() => {
+      toast({ title: 'Copy Failed', description: 'Could not copy the URL.', variant: 'destructive' });
+    });
+  };
+
   
   const skeletons = Array.from({ length: loadingSkuCount }).map((_, i) => (
     <Card key={`skeleton-${i}`} className="w-full">
@@ -373,6 +425,38 @@ function PickingList() {
             </div>
         </div>
       )}
+
+      <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share Picking List</DialogTitle>
+            <DialogDescription>
+              Share this URL or QR code with a team member to instantly load this picking list on their device.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center space-x-2">
+              <Input value={exportUrl} readOnly className="flex-grow" />
+              <Button type="button" size="sm" onClick={handleCopyExportUrl}>
+                <Copy className="mr-2 h-4 w-4" />
+                Copy
+              </Button>
+            </div>
+            {qrCodeDataUrl && (
+              <div className="flex justify-center p-4 bg-muted rounded-md">
+                <Image
+                  src={qrCodeDataUrl}
+                  alt="Picking List QR Code"
+                  width={250}
+                  height={250}
+                  data-ai-hint="QR code"
+                />
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
       <main className="container mx-auto px-4 py-8 md:py-12">
         <div>
           <header className="text-center mb-12">
@@ -490,6 +574,10 @@ function PickingList() {
                                   <SelectItem value="name-desc">Name (Z-A)</SelectItem>
                               </SelectContent>
                           </Select>
+                           <Button variant="outline" onClick={handleOpenExportModal}>
+                                <Share2 className="mr-2 h-4 w-4" />
+                                Export
+                            </Button>
                           <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
                               <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
                                   <LayoutGrid className="h-5 w-5"/>
