@@ -21,11 +21,15 @@ const nextConfig: NextConfig = {
         hostname: 's3-eu-west-1.amazonaws.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.morrisons.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
 };
 
 export default nextConfig;
-
-    
