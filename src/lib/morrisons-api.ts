@@ -79,7 +79,7 @@ async function fetchJson<T>(
     "X-No-Auth": "1",
   };
 
-  async function once(withBearer: boolean) {
+  async function once(withBearer: boolean): Promise<Response> {
     const headers = new Headers(baseHeaders);
     // Never send Authorization if forceNoAuth is true
     if (withBearer && bearer && !forceNoAuth) {
@@ -112,20 +112,30 @@ async function fetchJson<T>(
     let errorText = `HTTP error! status: ${res.status}`;
     if (debug) {
       const responseBody = await res.text().catch(() => "");
-      // Show the final request headers we actually sent
-      const sentHeaders: Record<string, string> = {};
-      res.headers.forEach((_v, _k) => void 0); // consume for types sake
-      // We can’t read *request* headers here; log what we *intended* to send:
+      
       const intendedHeaders = {
         ...baseHeaders,
         ...(bearer && !forceNoAuth ? { Authorization: `Bearer ${bearer}` } : {}),
       };
-      errorText += `\nURL: ${url}\nIntended headers: ${JSON.stringify(intendedHeaders, null, 2)}\nResponse: ${responseBody}`;
+
+      const responseHeaders: Record<string, string> = {};
+      res.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      errorText += `\nURL: ${url}\nIntended headers: ${JSON.stringify(intendedHeaders, null, 2)}\nResponse Headers: ${JSON.stringify(responseHeaders, null, 2)}\nResponse: ${responseBody}`;
     }
     throw new Error(errorText);
   }
 
-  return (await res.json()) as T;
+  try {
+    return (await res.json()) as T;
+  } catch (e) {
+     if (debug) {
+        console.error("Failed to parse JSON response for URL:", url);
+     }
+     throw new Error(`Failed to parse JSON response. Status: ${res.status}`);
+  }
 }
 
 // ── Endpoint wrappers ──────────────────────────────────────────────────────
