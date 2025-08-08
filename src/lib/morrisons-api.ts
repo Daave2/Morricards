@@ -96,7 +96,7 @@ async function fetchJson<T>(
     });
     const body = debug ? await res.text().catch(() => "") : "";
     const intendedHeaders = { ...baseHeaders, ...(bearer && !forceNoAuth ? { Authorization: `Bearer ${bearer}` } : {}) };
-    throw new Error(`HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(intendedHeaders, null, 2)}\nResponse Headers: ${JSON.stringify(responseHeaders, null, 2)}\nResponse: ${body}`);
+    throw new Error(`HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(intendedHeaders, null, 2)}\nResponse Headers: ${JSON.stringify(responseHeaders, null, 2)}\nResponse: \n${body}`);
   }
 
   try {
@@ -124,9 +124,9 @@ async function getPI(locationId: string, sku: string, bearer?: string, debug?: b
   return fetchJson<PriceIntegrity>(url, { debug, bearer, forceNoAuth: !bearer, allowRetryWithoutBearer: true });
 }
 
-async function getStock(locationId: string, sku: string, debug?: boolean): Promise<StockPayload | null> {
+async function getStock(locationId: string, sku: string, bearer?: string, debug?: boolean): Promise<StockPayload | null> {
   const url = `${BASE_STOCK}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
-  return fetchJson<StockPayload>(url, { debug, forceNoAuth: true, allowRetryWithoutBearer: false });
+  return fetchJson<StockPayload>(url, { debug, bearer, forceNoAuth: !bearer, allowRetryWithoutBearer: true });
 }
 
 async function getStockHistory(locationId: string, sku: string, bearer?: string, debug?: boolean): Promise<StockHistory | null> {
@@ -211,7 +211,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           scannedSku;
 
         // 2) Stock — try on the internalSku only (packComponents need Product; skip in browser).
-        const stockPayload = await getStock(locationId, internalSku, debugMode);
+        const stockPayload = await getStock(locationId, internalSku, bearerToken, debugMode);
         const stockPosition = stockPayload?.stockPosition?.[0];
 
         // (If you *did* get Product via proxy and want to try pack components, you can add that loop here.)
