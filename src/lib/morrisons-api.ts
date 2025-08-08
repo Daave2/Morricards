@@ -59,7 +59,8 @@ export type FetchMorrisonsDataOutput = {
   lastStockChange?: StockHistory;
 }[];
 
-async function fetchJson<T>(url: string, headers: Record<string, string> = {}, debugMode: boolean = false): Promise<T | null> {
+async function fetchJson<T>(url: string, options: { headers?: Record<string, string>, debugMode?: boolean } = {}): Promise<T | null> {
+    const { headers = {}, debugMode = false } = options;
     try {
         const r = await fetch(url, { headers: { ...HEADERS_BASE, ...headers } });
         if (r.status === 404) {
@@ -81,7 +82,7 @@ async function fetchJson<T>(url: string, headers: Record<string, string> = {}, d
 
 
 function getProduct(sku: string, debugMode?: boolean): Promise<Product | null> {
-    return fetchJson<Product>(`${BASE_PRODUCT}/${sku}?apikey=${API_KEY}`, {}, debugMode);
+    return fetchJson<Product>(`${BASE_PRODUCT}/${sku}?apikey=${API_KEY}`, { debugMode });
 }
 
 function candidateStockSkus(prod: Product): string[] {
@@ -101,7 +102,7 @@ function candidateStockSkus(prod: Product): string[] {
 
 async function tryStock(loc: string, skus: string[], debugMode?: boolean): Promise<{ sku: string | null, payload: StockPayload | null }> {
     for (const s of skus) {
-        const payload = await fetchJson<StockPayload>(`${BASE_STOCK}/${loc}/items/${s}?apikey=${API_KEY}`, {}, debugMode);
+        const payload = await fetchJson<StockPayload>(`${BASE_STOCK}/${loc}/items/${s}?apikey=${API_KEY}`, { debugMode });
         if (payload?.stockPosition && payload.stockPosition.length > 0 && payload.stockPosition[0].qty !== undefined) {
             return { sku: s, payload };
         }
@@ -110,7 +111,7 @@ async function tryStock(loc: string, skus: string[], debugMode?: boolean): Promi
 }
 
 function getPi(loc: string, sku: string, debugMode?: boolean): Promise<PriceIntegrity | null> {
-    return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`, {}, debugMode);
+    return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`, { debugMode });
 }
 
 function getStockHistory(loc: string, sku: string, bearerToken?: string, debugMode?: boolean): Promise<StockHistory | null> {
@@ -118,7 +119,7 @@ function getStockHistory(loc: string, sku: string, bearerToken?: string, debugMo
     if (bearerToken) {
         headers['Authorization'] = `Bearer ${bearerToken}`;
     }
-    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, headers, debugMode);
+    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, { headers, debugMode });
 }
 
 const AISLE_NAME_MAP: Record<string, string> = {
