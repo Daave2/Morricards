@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -46,6 +46,9 @@ import { Separator } from '@/components/ui/separator';
 import ZXingScanner from '@/components/ZXingScanner';
 import { ToastAction } from '@/components/ui/toast';
 import { useApiSettings } from '@/hooks/use-api-settings';
+import { useNetworkSync } from '@/hooks/useNetworkSync';
+import { queueCapture } from '@/lib/offlineQueue';
+import InstallPrompt from '@/components/InstallPrompt';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -91,13 +94,29 @@ export default function AvailabilityPage() {
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
   const [lastDeletedItem, setLastDeletedItem] = useState<{ item: ReportedItem; index: number } | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
+  const { lastSync } = useNetworkSync();
 
 
   const scannerRef = useRef<{ start: () => void } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'onLine' in navigator) {
+      setIsOnline(navigator.onLine);
+      const onlineHandler = () => setIsOnline(true);
+      const offlineHandler = () => setIsOnline(false);
+      window.addEventListener('online', onlineHandler);
+      window.addEventListener('offline', offlineHandler);
+      return () => {
+        window.removeEventListener('online', onlineHandler);
+        window.removeEventListener('offline', offlineHandler);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     if (isScanMode) {
@@ -147,6 +166,16 @@ export default function AvailabilityPage() {
     if (!locationId) {
         playError();
         toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID before scanning.' });
+        return;
+    }
+    
+    if (!isOnline) {
+        await queueCapture({ sku, locationId, reason: 'Other', comment: 'Offline Scan - details needed' });
+        toast({
+            title: "Queued for Sync",
+            description: `Item ${sku} was captured while offline and will be processed later. You can edit the details from the list.`,
+            icon: <WifiOff className="h-5 w-5" />
+        });
         return;
     }
     
@@ -203,7 +232,7 @@ export default function AvailabilityPage() {
           setIsMoreInfoOpen(false);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -411,6 +440,7 @@ export default function AvailabilityPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <InstallPrompt />
       {isScanMode && (
          <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
             <div className="w-full max-w-md mx-auto relative p-0">
@@ -600,6 +630,15 @@ export default function AvailabilityPage() {
                     </Link>
                 </Button>
             </div>
+              {!isOnline && (
+                <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
+                    <WifiOff className="h-4 w-4" />
+                    <AlertTitle>You are offline</AlertTitle>
+                    <AlertDescription>
+                        Scanned items will be queued and processed when you reconnect. Some functionality may be limited.
+                    </AlertDescription>
+                </Alert>
+              )}
           </header>
           
            <Card className="max-w-4xl mx-auto mb-8 shadow-md">

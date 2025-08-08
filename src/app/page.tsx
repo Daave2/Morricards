@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -46,6 +46,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
+import { useNetworkSync } from '@/hooks/useNetworkSync';
+import InstallPrompt from '@/components/InstallPrompt';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
@@ -69,10 +71,12 @@ function PickingList() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [isOnline, setIsOnline] = useState(true);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
   const { settings } = useApiSettings();
+  const { lastSync } = useNetworkSync();
 
   const productsRef = useRef(products);
   const scannerRef = useRef<{ start: () => void } | null>(null);
@@ -80,6 +84,20 @@ function PickingList() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'onLine' in navigator) {
+      setIsOnline(navigator.onLine);
+      const onlineHandler = () => setIsOnline(true);
+      const offlineHandler = () => setIsOnline(false);
+      window.addEventListener('online', onlineHandler);
+      window.addEventListener('offline', offlineHandler);
+      return () => {
+        window.removeEventListener('online', onlineHandler);
+        window.removeEventListener('offline', offlineHandler);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     if (isScanMode) {
@@ -444,6 +462,7 @@ function PickingList() {
 
   return (
     <div className="min-h-screen bg-background">
+      <InstallPrompt />
       {isScanMode && (
          <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
             <div className="w-full max-w-md mx-auto relative p-0">
@@ -516,6 +535,15 @@ function PickingList() {
                     </Link>
                 </Button>
             </div>
+             {!isOnline && (
+              <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
+                  <WifiOff className="h-4 w-4" />
+                  <AlertTitle>You are offline</AlertTitle>
+                  <AlertDescription>
+                      The app is running in offline mode. Some functionality may be limited, but you can still view your list. Any new data will be fetched when you reconnect.
+                  </AlertDescription>
+              </Alert>
+            )}
           </header>
           
           <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
@@ -566,11 +594,16 @@ function PickingList() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Fetching Data...
+                      </>
+                    ) : !isOnline ? (
+                      <>
+                        <WifiOff className="mr-2 h-4 w-4" />
+                        Offline - Cannot Fetch
                       </>
                     ) : (
                       'Get/Add to Picking List'
