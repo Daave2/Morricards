@@ -1,24 +1,24 @@
 /**
- * @fileOverview Browser-safe Morrisons API client:
- * - Uses Price Integrity for product details (browser OK).
- * - Uses Stock + Stock History as before.
- * - Optionally calls Product via your own server proxy (set productProxyUrl).
+ * Browser-safe Morrisons API client:
+ * - Uses Price Integrity (PI) for product details (browser OK).
+ * - Uses Stock and Stock History; now sends Bearer if provided.
+ * - Optional Product via your own server proxy (to get packComponents, etc).
  */
 
 import type { components } from '../morrisons-types';
 
-const API_KEY = "0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW";
+const API_KEY = '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
 
-const BASE_STOCK = "https://api.morrisons.com/stock/v2/locations";
-const BASE_LOCN = "https://api.morrisons.com/priceintegrity/v1/locations";
-const BASE_STOCK_HISTORY = "https://api.morrisons.com/storemobileapp/v1/stores";
+const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
+const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
+const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 
 export interface FetchMorrisonsDataInput {
   locationId: string;
   skus: string[];
-  bearerToken?: string;          // helps PI & stock history when needed
+  bearerToken?: string;      // If available, send it for Stock/PI/History
   debugMode?: boolean;
-  productProxyUrl?: string;      // e.g. "/api/morrisons/product?sku=" (server-side proxy)
+  productProxyUrl?: string;  // e.g. '/api/morrisons/product?sku=' (server-side proxy)
 }
 
 type Product = components['schemas']['Product'];
@@ -50,90 +50,127 @@ export type FetchMorrisonsDataOutput = {
   lastStockChange?: StockHistory;
 }[];
 
-// ───────────────────────────────── helpers ─────────────────────────────────
+// ─────────────────────────── core fetch helper ────────────────────────────
 async function fetchJson<T>(
   url: string,
   {
     debug = false,
     bearer,
-    forceNoAuth = false,
-    allowRetryWithoutBearer = true,
+    preferBearer = !!bearer,     // if true, try with bearer first then without
   }: {
     debug?: boolean;
     bearer?: string;
-    forceNoAuth?: boolean;
-    allowRetryWithoutBearer?: boolean;
+    preferBearer?: boolean;
   } = {}
 ): Promise<T | null> {
-  const baseHeaders: Record<string, string> = { Accept: "application/json", "X-No-Auth": "1" };
+  const baseHeaders: Record<string, string> = {
+    Accept: 'application/json',
+    'X-No-Auth': '1', // hint for any SW to *not* inject auth
+  };
 
   async function once(withBearer: boolean) {
     const headers = new Headers(baseHeaders);
-    if (withBearer && bearer && !forceNoAuth) headers.set("Authorization", `Bearer ${bearer}`);
+    if (withBearer && bearer) headers.set('Authorization', `Bearer ${bearer}`);
     return fetch(url, {
-      method: "GET",
+      method: 'GET',
       headers,
-      credentials: "omit",
-      mode: "cors",
-      cache: "no-store",
-      redirect: "follow",
-      referrerPolicy: "no-referrer",
+      credentials: 'omit',
+      mode: 'cors',
+      cache: 'no-store',
+      redirect: 'follow',
+      referrerPolicy: 'no-referrer',
     });
   }
 
-  let res = await once(true);
-  if (res.status === 404) return null;
+  // Decide order: bearer→no-bearer or no-bearer→bearer
+  const attempts: boolean[] = preferBearer ? [true, false] : [false, true];
 
-  if ((res.status === 401 || res.status === 403) && allowRetryWithoutBearer && bearer && !forceNoAuth) {
-    if (debug) console.warn(`[fetchJson] ${url} → ${res.status}. Retrying WITHOUT Authorization…`);
-    res = await once(false);
+  let lastRes: Response | undefined;
+  for (const withBearer of attempts) {
+    const res = await once(withBearer);
+    lastRes = res;
+    if (res.status === 404) return null;
+    if (res.ok) return (await res.json()) as T;
+    if (res.status !== 401 && res.status !== 403) {
+      // Hard fail for other statuses
+      const body = debug ? await res.text().catch(() => '') : '';
+      const intendedHeaders = {
+        ...baseHeaders,
+        ...(withBearer && bearer ? { Authorization: 'Bearer <redacted>' } : {}),
+      };
+      throw new Error(
+        `HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(
+          intendedHeaders,
+          null,
+          2
+        )}\nResponse: ${body}`
+      );
+    }
+    // else 401/403 → fall through to next attempt
+    if (debug) {
+      console.warn(
+        `[fetchJson] ${url} → ${res.status} with ${withBearer ? 'bearer' : 'no bearer'}; trying ${
+          withBearer ? 'without' : 'with'
+        } bearer…`
+      );
+    }
   }
 
-  if (!res.ok) {
-    const responseHeaders: Record<string, string> = {};
-    res.headers.forEach((value, key) => {
-        responseHeaders[key] = value;
-    });
-    const body = debug ? await res.text().catch(() => "") : "";
-    const intendedHeaders = { ...baseHeaders, ...(bearer && !forceNoAuth ? { Authorization: `Bearer ${bearer}` } : {}) };
-    throw new Error(`HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(intendedHeaders, null, 2)}\nResponse Headers: ${JSON.stringify(responseHeaders, null, 2)}\nResponse: \n${body}`);
+  // If we exhausted attempts, throw with the last response body (if debug)
+  if (lastRes) {
+    const body = debug ? await lastRes.text().catch(() => '') : '';
+    const intendedHeaders = {
+      ...baseHeaders,
+      ...(preferBearer && bearer ? { Authorization: 'Bearer <redacted>' } : {}),
+    };
+    throw new Error(
+      `HTTP error! status: ${lastRes.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(
+        intendedHeaders,
+        null,
+        2
+      )}\nResponse: ${body}`
+    );
   }
-
-  try {
-    return (await res.json()) as T;
-  } catch (e) {
-     if (debug) {
-        console.error("Failed to parse JSON response for URL:", url);
-     }
-     throw new Error(`Failed to parse JSON response. Status: ${res.status}`);
-  }
+  throw new Error(`Request failed for ${url} (no response)`);
 }
 
-// Browser-safe: DO NOT call the product endpoint directly.
-// Instead, try to derive product info from PI. Optionally, use a server proxy for product.
-async function getProductViaProxy(sku: string, productProxyUrl?: string, debug?: boolean): Promise<Product | null> {
+// ─────────────────────────── endpoint wrappers ────────────────────────────
+// Product: do NOT hit from browser; use server proxy if you need rich details.
+async function getProductViaProxy(
+  sku: string,
+  productProxyUrl?: string,
+  debug?: boolean
+): Promise<Product | null> {
   if (!productProxyUrl) return null;
   const url = `${productProxyUrl}${encodeURIComponent(sku)}`;
-  // This is same-origin → you control CORS. No bearer sent.
-  return fetchJson<Product>(url, { debug, forceNoAuth: true, allowRetryWithoutBearer: false });
+  return fetchJson<Product>(url, { debug, bearer: undefined, preferBearer: false });
 }
 
-async function getPI(locationId: string, sku: string, bearer?: string, debug?: boolean): Promise<PriceIntegrity | null> {
-  const url = `${BASE_LOCN}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
-  // PI often works without bearer, but bearer can help. If 401 with bearer, we retry without it.
-  return fetchJson<PriceIntegrity>(url, { debug, bearer, forceNoAuth: !bearer, allowRetryWithoutBearer: true });
+// Price Integrity: allow bearer if you have one; fallback without.
+async function getPI(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+  const url = `${BASE_LOCN}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
+    sku
+  )}?apikey=${encodeURIComponent(API_KEY)}`;
+  return fetchJson<PriceIntegrity>(url, { debug, bearer, preferBearer: !!bearer });
 }
 
-async function getStock(locationId: string, sku: string, bearer?: string, debug?: boolean): Promise<StockPayload | null> {
-  const url = `${BASE_STOCK}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
-  return fetchJson<StockPayload>(url, { debug, bearer, forceNoAuth: !bearer, allowRetryWithoutBearer: true });
+// Stock: **FIXED** → send bearer when provided; fallback without.
+async function getStock(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+  const url = `${BASE_STOCK}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
+    sku
+  )}?apikey=${encodeURIComponent(API_KEY)}`;
+  return fetchJson<StockPayload>(url, { debug, bearer, preferBearer: !!bearer });
 }
 
-async function getStockHistory(locationId: string, sku: string, bearer?: string, debug?: boolean): Promise<StockHistory | null> {
-  const url = `${BASE_STOCK_HISTORY}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
-  return fetchJson<StockHistory>(url, { debug, bearer, forceNoAuth: !bearer, allowRetryWithoutBearer: true });
+// Stock History: try with bearer then without (like the official app behavior).
+async function getStockHistory(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+  const url = `${BASE_STOCK_HISTORY}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
+    sku
+  )}?apikey=${encodeURIComponent(API_KEY)}`;
+  return fetchJson<StockHistory>(url, { debug, bearer, preferBearer: !!bearer });
 }
 
+// ─────────────────────── location formatting helpers ──────────────────────
 const AISLE_NAME_MAP: Record<string, string> = {
   '70': 'Seasonal',
   '78': 'Food to order',
@@ -148,20 +185,21 @@ const AISLE_NAME_MAP: Record<string, string> = {
 
 function niceLoc(raw: components['schemas']['Location']): string {
   const sideRe = /^([LR])(\d+)$/i;
-  const aisle = raw.aisle || "";
-  let bay = raw.bayNumber || "";
-  const shelf = raw.shelfNumber || "";
-  let side = "";
+  const aisle = raw.aisle || '';
+  let bay = raw.bayNumber || '';
+  const shelf = raw.shelfNumber || '';
+  let side = '';
 
   const m = bay.match(sideRe);
   if (m) {
-    side = m[1].toUpperCase() === "L" ? "Left" : "Right";
+    side = m[1].toUpperCase() === 'L' ? 'Left' : 'Right';
     bay = m[2];
   }
 
   const parts: string[] = [];
   if (aisle) parts.push(AISLE_NAME_MAP[aisle] ?? `Aisle ${aisle}`);
-  if (side) parts.push(`${side} bay ${bay}`); else if (bay) parts.push(`Bay ${bay}`);
+  if (side) parts.push(`${side} bay ${bay}`);
+  else if (bay) parts.push(`Bay ${bay}`);
   if (shelf) parts.push(`shelf ${shelf}`);
   return parts.join(', ');
 }
@@ -172,31 +210,29 @@ function simplifyLocations(lst?: components['schemas']['Location'][]): string[] 
 }
 
 function extractLocationBits(pi: PriceIntegrity | null): { std: string; secondary?: string; promo: string; walk: string } {
-  if (!pi?.space) return { std: "", promo: "", walk: "" };
+  if (!pi?.space) return { std: '', promo: '', walk: '' };
   const stdLocs = pi.space.standardSpace?.locations;
   const [std, ...secondary] = simplifyLocations(stdLocs);
   const promoLocs = pi.space.promotionalSpace?.locations;
   const [promo] = simplifyLocations(promoLocs);
-  const walk = stdLocs?.[0]?.storeWalkSequence ? String(stdLocs[0].storeWalkSequence) : "";
-  return { std: std || "", secondary: secondary.join('; ') || undefined, promo: promo || "", walk };
+  const walk = stdLocs?.[0]?.storeWalkSequence ? String(stdLocs[0].storeWalkSequence) : '';
+  return { std: std || '', secondary: secondary.join('; ') || undefined, promo: promo || '', walk };
 }
 
-// ───────────────────────────── main ─────────────────────────────
+// ───────────────────────────── main API ─────────────────────────────
 export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promise<FetchMorrisonsDataOutput> {
   const { locationId, skus, bearerToken, debugMode, productProxyUrl } = input;
 
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
       try {
-        // 1) Try PI first (browser-friendly) to identify the internal SKU and prices.
+        // 1) PI first (browser-safe) to anchor product & price.
         const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
-
-        // If PI didn’t resolve on the scanned SKU, you can optionally skip or try scannedSku as-is for stock.
         const piProduct = (pi as any)?.product as Product | undefined;
 
-        // If we still want rich product info (e.g., packComponents), try server proxy to Product API.
+        // 2) Optional richer Product via proxy
         let product: Product | null = null;
-        if (productProxyUrl && scannedSku) {
+        if (productProxyUrl) {
           try {
             product = await getProductViaProxy(scannedSku, productProxyUrl, debugMode);
           } catch (e) {
@@ -204,26 +240,24 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           }
         }
 
-        // Decide the “internal” SKU we’ll use for stock/PI fallback.
+        // internal SKU we’ll use for stock/PI alignment
         const internalSku =
           product?.itemNumber?.toString() ||
           piProduct?.itemNumber?.toString() ||
           scannedSku;
 
-        // 2) Stock — try on the internalSku only (packComponents need Product; skip in browser).
+        // 3) Stock — now tries WITH bearer first (if provided), then without
         const stockPayload = await getStock(locationId, internalSku, bearerToken, debugMode);
         const stockPosition = stockPayload?.stockPosition?.[0];
 
-        // (If you *did* get Product via proxy and want to try pack components, you can add that loop here.)
-
-        // 3) If PI wasn’t already fetched for internalSku (because scanned ≠ internal), fetch again to align.
+        // 4) Align PI to internalSku if needed
         const piAligned = internalSku === scannedSku ? pi : await getPI(locationId, internalSku, bearerToken, debugMode);
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(piAligned);
 
-        // 4) Stock history
+        // 5) Stock history
         const stockHistory = await getStockHistory(locationId, internalSku, bearerToken, debugMode);
 
-        // 5) Prices/promos & product fields — prefer Product (proxy) then PI’s product
+        // 6) Prices/promos & product preference
         const prices = (piAligned?.prices ?? []) as any[];
         const promos = (piAligned?.promotions ?? []) as any[];
 
