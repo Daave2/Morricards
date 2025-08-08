@@ -1,16 +1,14 @@
 /**
- * @fileOverview An API for fetching Morrisons product, stock, PI and stock history data (browser-safe).
- * Strategy:
- *  - Avoid Authorization on endpoints that don’t need it.
- *  - If a bearer is present and the server returns 401/403, retry *without* Authorization.
- *  - Force credentials: 'omit' and add an optional X-No-Auth header to help service workers skip auth injection.
+ * @fileOverview Browser-safe Morrisons API client:
+ * - Uses Price Integrity for product details (browser OK).
+ * - Uses Stock + Stock History as before.
+ * - Optionally calls Product via your own server proxy (set productProxyUrl).
  */
 
 import type { components } from '../morrisons-types';
 
 const API_KEY = "0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW";
 
-const BASE_PRODUCT = "https://api.morrisons.com/product/v1/items";
 const BASE_STOCK = "https://api.morrisons.com/stock/v2/locations";
 const BASE_LOCN = "https://api.morrisons.com/priceintegrity/v1/locations";
 const BASE_STOCK_HISTORY = "https://api.morrisons.com/storemobileapp/v1/stores";
@@ -18,13 +16,14 @@ const BASE_STOCK_HISTORY = "https://api.morrisons.com/storemobileapp/v1/stores";
 export interface FetchMorrisonsDataInput {
   locationId: string;
   skus: string[];
-  bearerToken?: string;   // Only *needed* for stock history; other endpoints should work without it.
+  bearerToken?: string;          // helps PI & stock history when needed
   debugMode?: boolean;
+  productProxyUrl?: string;      // e.g. "/api/morrisons/product?sku=" (server-side proxy)
 }
 
 type Product = components['schemas']['Product'];
-type StockPayload = components['schemas']['StockPayload'];
 type PriceIntegrity = components['schemas']['PriceIntegrity'];
+type StockPayload = components['schemas']['StockPayload'];
 
 type StockHistory = {
   lastCountDateTime?: string;
@@ -37,17 +36,10 @@ export type FetchMorrisonsDataOutput = {
   sku: string;
   scannedSku: string;
   name: string;
-  price: {
-    regular?: number;
-    promotional?: string;
-  };
+  price: { regular?: number; promotional?: string };
   stockQuantity: number;
   stockUnit?: string;
-  location: {
-    standard?: string;
-    secondary?: string;
-    promotional?: string;
-  };
+  location: { standard?: string; secondary?: string; promotional?: string };
   temperature?: string;
   weight?: number;
   status?: string;
@@ -58,74 +50,53 @@ export type FetchMorrisonsDataOutput = {
   lastStockChange?: StockHistory;
 }[];
 
-/** Internal fetch with optional bearer and automatic retry-without-bearer on 401/403. */
+// ───────────────────────────────── helpers ─────────────────────────────────
 async function fetchJson<T>(
   url: string,
   {
     debug = false,
     bearer,
-    tryWithoutBearerOn401 = !!bearer,
-    forceNoAuth = false, // set true for endpoints that must never send Authorization
+    forceNoAuth = false,
+    allowRetryWithoutBearer = true,
   }: {
     debug?: boolean;
     bearer?: string;
-    tryWithoutBearerOn401?: boolean;
     forceNoAuth?: boolean;
+    allowRetryWithoutBearer?: boolean;
   } = {}
 ): Promise<T | null> {
-  const baseHeaders: Record<string, string> = {
-    Accept: "application/json",
-    // Hint header that a service worker (if present) can use to *not* inject Authorization
-    "X-No-Auth": "1",
-  };
+  const baseHeaders: Record<string, string> = { Accept: "application/json", "X-No-Auth": "1" };
 
-  async function once(withBearer: boolean): Promise<Response> {
+  async function once(withBearer: boolean) {
     const headers = new Headers(baseHeaders);
-    // Never send Authorization if forceNoAuth is true
-    if (withBearer && bearer && !forceNoAuth) {
-      headers.set("Authorization", `Bearer ${bearer}`);
-    }
-    const res = await fetch(url, {
+    if (withBearer && bearer && !forceNoAuth) headers.set("Authorization", `Bearer ${bearer}`);
+    return fetch(url, {
       method: "GET",
       headers,
-      credentials: "omit",  // ensure no ambient cookies get sent
+      credentials: "omit",
       mode: "cors",
       cache: "no-store",
       redirect: "follow",
       referrerPolicy: "no-referrer",
     });
-    return res;
   }
 
   let res = await once(true);
   if (res.status === 404) return null;
 
-  // If unauthorized *and* we tried with bearer, try once more with no Authorization
-  if ((res.status === 401 || res.status === 403) && tryWithoutBearerOn401) {
-    if (debug) {
-      console.warn(`[fetchJson] ${url} → ${res.status}. Retrying WITHOUT Authorization header…`);
-    }
+  if ((res.status === 401 || res.status === 403) && allowRetryWithoutBearer && bearer && !forceNoAuth) {
+    if (debug) console.warn(`[fetchJson] ${url} → ${res.status}. Retrying WITHOUT Authorization…`);
     res = await once(false);
   }
 
   if (!res.ok) {
-    let errorText = `HTTP error! status: ${res.status}`;
-    if (debug) {
-      const responseBody = await res.text().catch(() => "");
-      
-      const intendedHeaders = {
-        ...baseHeaders,
-        ...(bearer && !forceNoAuth ? { Authorization: `Bearer ${bearer}` } : {}),
-      };
-
-      const responseHeaders: Record<string, string> = {};
-      res.headers.forEach((value, key) => {
+    const responseHeaders: Record<string, string> = {};
+    res.headers.forEach((value, key) => {
         responseHeaders[key] = value;
-      });
-
-      errorText += `\nURL: ${url}\nIntended headers: ${JSON.stringify(intendedHeaders, null, 2)}\nResponse Headers: ${JSON.stringify(responseHeaders, null, 2)}\nResponse: ${responseBody}`;
-    }
-    throw new Error(errorText);
+    });
+    const body = debug ? await res.text().catch(() => "") : "";
+    const intendedHeaders = { ...baseHeaders, ...(bearer && !forceNoAuth ? { Authorization: `Bearer ${bearer}` } : {}) };
+    throw new Error(`HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(intendedHeaders, null, 2)}\nResponse Headers: ${JSON.stringify(responseHeaders, null, 2)}\nResponse: ${body}`);
   }
 
   try {
@@ -138,64 +109,31 @@ async function fetchJson<T>(
   }
 }
 
-// ── Endpoint wrappers ──────────────────────────────────────────────────────
-// These endpoints should *not* send Authorization (forceNoAuth: true).
-function getProduct(sku: string, debug?: boolean): Promise<Product | null> {
-  return fetchJson<Product>(`${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`, {
-    debug,
-    forceNoAuth: true,
-  });
+// Browser-safe: DO NOT call the product endpoint directly.
+// Instead, try to derive product info from PI. Optionally, use a server proxy for product.
+async function getProductViaProxy(sku: string, productProxyUrl?: string, debug?: boolean): Promise<Product | null> {
+  if (!productProxyUrl) return null;
+  const url = `${productProxyUrl}${encodeURIComponent(sku)}`;
+  // This is same-origin → you control CORS. No bearer sent.
+  return fetchJson<Product>(url, { debug, forceNoAuth: true, allowRetryWithoutBearer: false });
 }
 
-function candidateStockSkus(prod: Product): string[] {
-  const skus = new Set<string>();
-  if (prod.itemNumber) skus.add(prod.itemNumber.toString());
-  if (prod.packComponents) {
-    for (const pc of prod.packComponents) {
-      if (pc.itemNumber) skus.add(pc.itemNumber.toString());
-    }
-  }
-  return Array.from(skus);
+async function getPI(locationId: string, sku: string, bearer?: string, debug?: boolean): Promise<PriceIntegrity | null> {
+  const url = `${BASE_LOCN}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
+  // PI often works without bearer, but bearer can help. If 401 with bearer, we retry without it.
+  return fetchJson<PriceIntegrity>(url, { debug, bearer, forceNoAuth: !bearer, allowRetryWithoutBearer: true });
 }
 
-async function tryStock(loc: string, skus: string[], debug?: boolean): Promise<{ sku: string | null; payload: StockPayload | null }> {
-  for (const s of skus) {
-    const payload = await fetchJson<StockPayload>(`${BASE_STOCK}/${encodeURIComponent(loc)}/items/${encodeURIComponent(s)}?apikey=${encodeURIComponent(API_KEY)}`, {
-      debug,
-      forceNoAuth: true,
-    });
-    if (payload?.stockPosition?.length && payload.stockPosition[0].qty !== undefined) {
-      return { sku: s, payload };
-    }
-  }
-  return { sku: null, payload: null };
+async function getStock(locationId: string, sku: string, debug?: boolean): Promise<StockPayload | null> {
+  const url = `${BASE_STOCK}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
+  return fetchJson<StockPayload>(url, { debug, forceNoAuth: true, allowRetryWithoutBearer: false });
 }
 
-function getPi(loc: string, sku: string, debug?: boolean): Promise<PriceIntegrity | null> {
-  return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${encodeURIComponent(loc)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`, {
-    debug,
-    forceNoAuth: true,
-  });
+async function getStockHistory(locationId: string, sku: string, bearer?: string, debug?: boolean): Promise<StockHistory | null> {
+  const url = `${BASE_STOCK_HISTORY}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
+  return fetchJson<StockHistory>(url, { debug, bearer, forceNoAuth: !bearer, allowRetryWithoutBearer: true });
 }
 
-// Stock history *may* require a bearer in some stores/apps.
-// We try with bearer first (if provided) and fall back to no bearer on 401/403 like your Python does.
-async function getStockHistory(
-  loc: string,
-  sku: string,
-  bearerToken?: string,
-  debug?: boolean
-): Promise<StockHistory | null> {
-  const url = `${BASE_STOCK_HISTORY}/${encodeURIComponent(loc)}/items/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
-  return fetchJson<StockHistory>(url, {
-    debug,
-    bearer: bearerToken,
-    tryWithoutBearerOn401: !!bearerToken,
-    forceNoAuth: !bearerToken, // if no bearer provided, ensure we never send Authorization
-  });
-}
-
-// ── Location formatting helpers ────────────────────────────────────────────
 const AISLE_NAME_MAP: Record<string, string> = {
   '70': 'Seasonal',
   '78': 'Food to order',
@@ -222,98 +160,106 @@ function niceLoc(raw: components['schemas']['Location']): string {
   }
 
   const parts: string[] = [];
-  if (aisle) {
-    parts.push(AISLE_NAME_MAP[aisle] ?? `Aisle ${aisle}`);
-  }
-  if (side) parts.push(`${side} bay ${bay}`);
-  else if (bay) parts.push(`Bay ${bay}`);
+  if (aisle) parts.push(AISLE_NAME_MAP[aisle] ?? `Aisle ${aisle}`);
+  if (side) parts.push(`${side} bay ${bay}`); else if (bay) parts.push(`Bay ${bay}`);
   if (shelf) parts.push(`shelf ${shelf}`);
-
   return parts.join(', ');
 }
 
 function simplifyLocations(lst?: components['schemas']['Location'][]): string[] {
-  if (!lst || lst.length === 0) return [];
+  if (!lst?.length) return [];
   return lst.map(niceLoc);
 }
 
 function extractLocationBits(pi: PriceIntegrity | null): { std: string; secondary?: string; promo: string; walk: string } {
   if (!pi?.space) return { std: "", promo: "", walk: "" };
-
   const stdLocs = pi.space.standardSpace?.locations;
   const [std, ...secondary] = simplifyLocations(stdLocs);
-
   const promoLocs = pi.space.promotionalSpace?.locations;
   const [promo] = simplifyLocations(promoLocs);
-
-  const walk =
-    stdLocs && stdLocs.length > 0 && stdLocs[0].storeWalkSequence
-      ? stdLocs[0].storeWalkSequence.toString()
-      : "";
-
+  const walk = stdLocs?.[0]?.storeWalkSequence ? String(stdLocs[0].storeWalkSequence) : "";
   return { std: std || "", secondary: secondary.join('; ') || undefined, promo: promo || "", walk };
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────
+// ───────────────────────────── main ─────────────────────────────
 export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promise<FetchMorrisonsDataOutput> {
-  console.log(`Fetching data for SKUs: ${input.skus.join(', ')} at location: ${input.locationId}`);
+  const { locationId, skus, bearerToken, debugMode, productProxyUrl } = input;
 
-  const productPromises = input.skus.map(async (scannedSku) => {
-    try {
-      const product = await getProduct(scannedSku, input.debugMode);
-      if (!product?.itemNumber) {
-        console.warn(`Product not found for SKU: ${scannedSku}`);
+  const rows = await Promise.all(
+    skus.map(async (scannedSku) => {
+      try {
+        // 1) Try PI first (browser-friendly) to identify the internal SKU and prices.
+        const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
+
+        // If PI didn’t resolve on the scanned SKU, you can optionally skip or try scannedSku as-is for stock.
+        const piProduct = (pi as any)?.product as Product | undefined;
+
+        // If we still want rich product info (e.g., packComponents), try server proxy to Product API.
+        let product: Product | null = null;
+        if (productProxyUrl && scannedSku) {
+          try {
+            product = await getProductViaProxy(scannedSku, productProxyUrl, debugMode);
+          } catch (e) {
+            if (debugMode) console.warn(`Product via proxy failed for ${scannedSku}:`, e);
+          }
+        }
+
+        // Decide the “internal” SKU we’ll use for stock/PI fallback.
+        const internalSku =
+          product?.itemNumber?.toString() ||
+          piProduct?.itemNumber?.toString() ||
+          scannedSku;
+
+        // 2) Stock — try on the internalSku only (packComponents need Product; skip in browser).
+        const stockPayload = await getStock(locationId, internalSku, debugMode);
+        const stockPosition = stockPayload?.stockPosition?.[0];
+
+        // (If you *did* get Product via proxy and want to try pack components, you can add that loop here.)
+
+        // 3) If PI wasn’t already fetched for internalSku (because scanned ≠ internal), fetch again to align.
+        const piAligned = internalSku === scannedSku ? pi : await getPI(locationId, internalSku, bearerToken, debugMode);
+        const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(piAligned);
+
+        // 4) Stock history
+        const stockHistory = await getStockHistory(locationId, internalSku, bearerToken, debugMode);
+
+        // 5) Prices/promos & product fields — prefer Product (proxy) then PI’s product
+        const prices = (piAligned?.prices ?? []) as any[];
+        const promos = (piAligned?.promotions ?? []) as any[];
+
+        const chosenProduct = product ?? piProduct ?? ({} as Product);
+
+        return {
+          sku: internalSku,
+          scannedSku,
+          name:
+            chosenProduct.customerFriendlyDescription ||
+            chosenProduct.tillDescription ||
+            chosenProduct.itemDescription ||
+            'Unknown Product',
+          price: {
+            regular: prices?.[0]?.regularPrice,
+            promotional: promos?.[0]?.marketingAttributes?.offerValue,
+          },
+          stockQuantity: stockPosition?.qty ?? 0,
+          stockUnit: stockPosition?.unitofMeasure || chosenProduct.standardUnitOfMeasure,
+          location: { standard: stdLoc, secondary: secondaryLoc, promotional: promoLoc },
+          temperature: chosenProduct.temperatureRegime,
+          weight: chosenProduct.dimensions?.weight,
+          status: chosenProduct.status,
+          stockSkuUsed: undefined,
+          imageUrl: (chosenProduct as any).imageUrl?.[0]?.url,
+          walkSequence: walk,
+          productDetails: chosenProduct,
+          lastStockChange: stockHistory || undefined,
+        };
+      } catch (err) {
+        console.error(`Failed to process SKU ${scannedSku}:`, err);
+        if (debugMode) throw err;
         return null;
       }
+    })
+  );
 
-      const internalSku = product.itemNumber.toString();
-
-      const stockCandidates = candidateStockSkus(product);
-      const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates, input.debugMode);
-
-      const finalSkuForPi = stockSku || internalSku;
-      const [pi, stockHistory] = await Promise.all([
-        getPi(input.locationId, finalSkuForPi, input.debugMode),
-        getStockHistory(input.locationId, finalSkuForPi, input.bearerToken, input.debugMode),
-      ]);
-
-      const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
-
-      const stockPosition = stockPayload?.stockPosition?.[0];
-      const prices = pi?.prices;
-      const promos = pi?.promotions;
-
-      return {
-        sku: internalSku,
-        scannedSku,
-        name: product.customerFriendlyDescription || product.tillDescription || product.itemDescription || 'Unknown Product',
-        price: {
-          regular: prices?.[0]?.regularPrice,
-          promotional: promos?.[0]?.marketingAttributes?.offerValue,
-        },
-        stockQuantity: stockPosition?.qty ?? 0,
-        stockUnit: stockPosition?.unitofMeasure || product.standardUnitOfMeasure,
-        location: {
-          standard: stdLoc,
-          secondary: secondaryLoc,
-          promotional: promoLoc,
-        },
-        temperature: product.temperatureRegime,
-        weight: product.dimensions?.weight,
-        status: product.status,
-        stockSkuUsed: stockSku === internalSku ? undefined : stockSku || undefined,
-        imageUrl: (product as any).imageUrl?.[0]?.url,
-        walkSequence: walk,
-        productDetails: product,
-        lastStockChange: stockHistory || undefined,
-      };
-    } catch (error) {
-      console.error(`Failed to process SKU ${scannedSku}:`, error);
-      if (input.debugMode) throw error;
-      return null;
-    }
-  });
-
-  const results = await Promise.all(productPromises);
-  return results.filter((r): r is NonNullable<typeof r> => r !== null);
+  return rows.filter((r): r is NonNullable<typeof r> => !!r);
 }
