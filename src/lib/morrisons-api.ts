@@ -69,7 +69,9 @@ async function fetchJson<T>(url: string, debugMode: boolean = false): Promise<T 
         if (!r.ok) {
             let errorText = `HTTP error! status: ${r.status}`;
             if (debugMode) {
-              errorText += ` - URL: ${url}`;
+              const responseBody = await r.text();
+              const requestHeaders = JSON.stringify(HEADERS_BASE, null, 2);
+              errorText += `\nURL: ${url}\nHeaders: ${requestHeaders}\nResponse: ${responseBody}`;
             }
             throw new Error(errorText);
         }
@@ -129,7 +131,9 @@ async function getStockHistory(loc: string, sku: string, bearerToken?: string, d
         if (!r.ok) {
             let errorText = `HTTP error! status: ${r.status}`;
             if (debugMode) {
-              errorText += ` - URL: ${url}`;
+              const responseBody = await r.text();
+              const requestHeaders = JSON.stringify(headers, null, 2);
+              errorText += `\nURL: ${url}\nHeaders: ${requestHeaders}\nResponse: ${responseBody}`;
             }
             throw new Error(errorText);
         }
