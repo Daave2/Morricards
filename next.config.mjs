@@ -1,25 +1,32 @@
+// next.config.mjs
 import withPWA from 'next-pwa';
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// IMPORTANT: Only RegExp or string URL patterns here — no functions.
 const runtimeCaching = [
-  // App shell & static assets
+  // Next static assets
   {
-    urlPattern: ({ request }) => request.destination === 'document',
-    handler: 'NetworkFirst',
-    options: { cacheName: 'html', networkTimeoutSeconds: 3, fallbacks: { documents: '/offline' } }
-  },
-  {
-    urlPattern: ({ request }) => ['style', 'script', 'worker'].includes(request.destination),
+    urlPattern: /\/_next\/static\/.*/i,
     handler: 'StaleWhileRevalidate',
-    options: { cacheName: 'assets' }
+    options: { cacheName: 'next-static' },
   },
+  // Any other JS/CSS served from your app
   {
-    urlPattern: ({ request }) => request.destination === 'image',
+    urlPattern: /\/(.*)\.(?:js|css)$/i,
     handler: 'StaleWhileRevalidate',
-    options: { cacheName: 'images', expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 14 } }
+    options: { cacheName: 'assets' },
   },
-  // Google Fonts
+  // Same-origin images from /public and dynamic routes
+  {
+    urlPattern: /\/(.*)\.(?:png|jpg|jpeg|gif|webp|svg|ico)$/i,
+    handler: 'StaleWhileRevalidate',
+    options: {
+      cacheName: 'images',
+      expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 14 },
+    },
+  },
+   // Google Fonts
   {
     urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/,
     handler: 'CacheFirst',
@@ -30,25 +37,28 @@ const runtimeCaching = [
     handler: 'StaleWhileRevalidate',
     options: { cacheName: 'google-fonts-stylesheets' }
   },
-  // Morrisons APIs
+  // Remote images (S3 / Brandbank, tweak as needed)
   {
-    urlPattern: /^https:\/\/api\.morrisons\.com\/.*/,
+    urlPattern: /^https?:\/\/(?:images\.morrisons\.com|s3-eu-west-1\.amazonaws\.com)\/.*/i,
+    handler: 'StaleWhileRevalidate',
+    options: {
+      cacheName: 'remote-images',
+      expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 7 },
+    },
+  },
+  // API routes (NetworkFirst + BackgroundSync for resilience)
+  {
+    urlPattern: /\/api\/captures\/batch\/.*/i,
     handler: 'NetworkFirst',
     options: {
-      cacheName: 'morrisons-api',
+      cacheName: 'api-captures',
       networkTimeoutSeconds: 3,
       backgroundSync: {
-        name: 'morrisons-api-queue',
-        options: { maxRetentionTime: 24 * 60 } // minutes
-      }
-    }
+        name: 'capture-queue',
+        options: { maxRetentionTime: 24 * 60 }, // minutes
+      },
+    },
   },
-   // External images (placeholders, etc.)
-  {
-    urlPattern: /^https?:/i,
-    handler: 'StaleWhileRevalidate',
-    options: { cacheName: 'remote-images', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 7 } }
-  }
 ];
 
 const withPWANext = withPWA({
@@ -57,10 +67,10 @@ const withPWANext = withPWA({
   register: true,
   skipWaiting: true,
   runtimeCaching,
-  buildExcludes: [/middleware-manifest\.json$/]
+  // Avoid packing ephemeral manifests that can confuse workbox
+  buildExcludes: [/middleware-manifest\.json$/],
 });
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -90,17 +100,6 @@ const nextConfig = {
       }
     ],
   },
-  async headers() {
-    return [{
-      source: '/:path*',
-      headers: [
-        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-        { key: 'X-Content-Type-Options', value: 'nosniff' },
-        { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }
-      ]
-    }];
-  }
 };
 
 export default withPWANext(nextConfig);
