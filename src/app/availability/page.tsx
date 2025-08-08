@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2 } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -45,6 +45,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import ZXingScanner from '@/components/ZXingScanner';
 import { ToastAction } from '@/components/ui/toast';
+import { useApiSettings } from '@/hooks/use-api-settings';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -93,6 +94,8 @@ export default function AvailabilityPage() {
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
+  const { settings } = useApiSettings();
+
 
   const scannerRef = useRef<{ start: () => void } | null>(null);
 
@@ -149,7 +152,7 @@ export default function AvailabilityPage() {
     
     setIsLoading(true);
 
-    const { data, error } = await getProductData({ locationId, skus: [sku] });
+    const { data, error } = await getProductData({ locationId, skus: [sku], bearerToken: settings.bearerToken });
 
     setIsLoading(false);
 
@@ -184,7 +187,7 @@ export default function AvailabilityPage() {
           setIsMoreInfoOpen(false);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -562,12 +565,20 @@ export default function AvailabilityPage() {
                 Availability Report
               </h1>
             </div>
-             <Button variant="link" asChild className="mt-1 text-sm">
-                <Link href="/">
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    Go to Picking List
-                </Link>
-            </Button>
+             <div className="mt-2 space-x-2">
+                <Button variant="link" asChild className="text-sm">
+                    <Link href="/">
+                        <LinkIcon className="mr-2 h-4 w-4" />
+                        Go to Picking List
+                    </Link>
+                </Button>
+                <Button variant="link" asChild className="text-sm">
+                    <Link href="/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                    </Link>
+                </Button>
+            </div>
           </header>
           
            <Card className="max-w-4xl mx-auto mb-8 shadow-md">

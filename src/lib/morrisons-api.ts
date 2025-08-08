@@ -20,6 +20,7 @@ const HEADERS_BASE = {
 export interface FetchMorrisonsDataInput {
   locationId: string;
   skus: string[];
+  bearerToken?: string;
 }
 
 type Product = components['schemas']['Product'];
@@ -117,8 +118,8 @@ function getPi(loc: string, sku: string): Promise<PriceIntegrity | null> {
     return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`);
 }
 
-function getStockHistory(loc: string, sku: string): Promise<StockHistory | null> {
-    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`);
+function getStockHistory(loc: string, sku: string, bearerToken?: string): Promise<StockHistory | null> {
+    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, bearerToken || null);
 }
 
 const AISLE_NAME_MAP: Record<string, string> = {
@@ -200,7 +201,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
       const finalSkuForPi = stockSku || internalSku;
       const piPromise = getPi(input.locationId, finalSkuForPi);
-      const stockHistoryPromise = getStockHistory(input.locationId, finalSkuForPi);
+      const stockHistoryPromise = getStockHistory(input.locationId, finalSkuForPi, input.bearerToken);
       
       const [pi, stockHistory] = await Promise.all([piPromise, stockHistoryPromise]);
 

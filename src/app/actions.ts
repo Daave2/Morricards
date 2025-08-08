@@ -6,6 +6,7 @@ import { z } from 'zod';
 const FormSchema = z.object({
   skus: z.union([z.string(), z.array(z.string())]),
   locationId: z.string(),
+  bearerToken: z.string().optional(),
 });
 
 type ActionResponse = {
@@ -20,7 +21,7 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
     return { data: null, error: 'Invalid form data.' };
   }
   
-  const { skus, locationId } = validatedFields.data;
+  const { skus, locationId, bearerToken } = validatedFields.data;
   
   const skuList = (Array.isArray(skus) ? skus : skus.split(/[\s,]+/))
     .map(s => s.trim())
@@ -36,6 +37,7 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
     const data = await fetchMorrisonsData({
       locationId,
       skus: uniqueSkuList,
+      bearerToken: bearerToken,
     });
     return { data, error: null };
   } catch (e) {

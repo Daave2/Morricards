@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -45,6 +45,7 @@ import ZXingScanner from '@/components/ZXingScanner';
 import { useSearchParams, useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import Image from 'next/image';
+import { useApiSettings } from '@/hooks/use-api-settings';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
@@ -71,6 +72,7 @@ function PickingList() {
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
+  const { settings } = useApiSettings();
 
   const productsRef = useRef(products);
   const scannerRef = useRef<{ start: () => void } | null>(null);
@@ -208,7 +210,7 @@ function PickingList() {
         setIsLoading(true);
 
         const locationId = form.getValues('locationId');
-        const { data, error } = await getProductData({ locationId, skus: [sku] });
+        const { data, error } = await getProductData({ locationId, skus: [sku], bearerToken: settings.bearerToken });
         
         if (error || !data || data.length === 0) {
             playError();
@@ -232,7 +234,7 @@ function PickingList() {
         }
     }, 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handlePick, playInfo, playSuccess, toast, playError, form]);
+  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -263,7 +265,7 @@ function PickingList() {
     setLoadingSkuCount(newSkus.length);
     setIsLoading(true);
 
-    const { data, error } = await getProductData({...values, skus: newSkus});
+    const { data, error } = await getProductData({...values, skus: newSkus, bearerToken: settings.bearerToken });
 
     if (error) {
       toast({
@@ -469,12 +471,20 @@ function PickingList() {
              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
             </p>
-            <Button variant="link" asChild className="mt-2">
-                <Link href="/availability">
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    Go to Availability Checker
-                </Link>
-            </Button>
+            <div className="mt-2 space-x-2">
+                <Button variant="link" asChild>
+                    <Link href="/availability">
+                        <LinkIcon className="mr-2 h-4 w-4" />
+                        Go to Availability Checker
+                    </Link>
+                </Button>
+                 <Button variant="link" asChild>
+                    <Link href="/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                    </Link>
+                </Button>
+            </div>
           </header>
           
           <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
