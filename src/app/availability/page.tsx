@@ -152,13 +152,18 @@ export default function AvailabilityPage() {
     
     setIsLoading(true);
 
-    const { data, error } = await getProductData({ locationId, skus: [sku], bearerToken: settings.bearerToken });
+    const { data, error } = await getProductData({
+      locationId,
+      skus: [sku],
+      bearerToken: settings.bearerToken,
+      debugMode: settings.debugMode,
+    });
 
     setIsLoading(false);
 
     if (error || !data || data.length === 0) {
         playError();
-        toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for EAN: ${sku}` });
+        toast({ variant: 'destructive', title: 'Product Not Found', description: error || `Could not find product data for EAN: ${sku}` });
         setIsScanMode(true); // Re-open scanner on error
     } else {
         const product = data[0];
@@ -187,7 +192,7 @@ export default function AvailabilityPage() {
           setIsMoreInfoOpen(false);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();

@@ -210,11 +210,16 @@ function PickingList() {
         setIsLoading(true);
 
         const locationId = form.getValues('locationId');
-        const { data, error } = await getProductData({ locationId, skus: [sku], bearerToken: settings.bearerToken });
+        const { data, error } = await getProductData({
+          locationId,
+          skus: [sku],
+          bearerToken: settings.bearerToken,
+          debugMode: settings.debugMode,
+        });
         
         if (error || !data || data.length === 0) {
             playError();
-            toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product for EAN: ${sku}` });
+            toast({ variant: 'destructive', title: 'Product Not Found', description: error || `Could not find product for EAN: ${sku}` });
         } else {
             setProducts(prevProducts => {
                 const existing = prevProducts.find(p => p.sku === data[0].sku);
@@ -234,7 +239,7 @@ function PickingList() {
         }
     }, 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken]);
+  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -265,7 +270,12 @@ function PickingList() {
     setLoadingSkuCount(newSkus.length);
     setIsLoading(true);
 
-    const { data, error } = await getProductData({...values, skus: newSkus, bearerToken: settings.bearerToken });
+    const { data, error } = await getProductData({
+      ...values,
+      skus: newSkus,
+      bearerToken: settings.bearerToken,
+      debugMode: settings.debugMode,
+    });
 
     if (error) {
       toast({

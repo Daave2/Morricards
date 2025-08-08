@@ -20,6 +20,7 @@ export interface FetchMorrisonsDataInput {
   locationId: string;
   skus: string[];
   bearerToken?: string;
+  debugMode?: boolean;
 }
 
 type Product = components['schemas']['Product'];
@@ -58,25 +59,29 @@ export type FetchMorrisonsDataOutput = {
   lastStockChange?: StockHistory;
 }[];
 
-async function fetchJson<T>(url: string, headers: Record<string, string> = {}): Promise<T | null> {
+async function fetchJson<T>(url: string, headers: Record<string, string> = {}, debugMode: boolean = false): Promise<T | null> {
     try {
         const r = await fetch(url, { headers: { ...HEADERS_BASE, ...headers } });
         if (r.status === 404) {
             return null;
         }
         if (!r.ok) {
-            throw new Error(`HTTP error! status: ${r.status}`);
+            let errorText = `HTTP error! status: ${r.status}`;
+            if (debugMode) {
+              errorText += ` - URL: ${url}`;
+            }
+            throw new Error(errorText);
         }
         return r.json() as Promise<T>;
     } catch (e) {
         console.error(`Failed to fetch ${url}`, e);
-        return null;
+        throw e;
     }
 }
 
 
-function getProduct(sku: string): Promise<Product | null> {
-    return fetchJson<Product>(`${BASE_PRODUCT}/${sku}?apikey=${API_KEY}`);
+function getProduct(sku: string, debugMode?: boolean): Promise<Product | null> {
+    return fetchJson<Product>(`${BASE_PRODUCT}/${sku}?apikey=${API_KEY}`, {}, debugMode);
 }
 
 function candidateStockSkus(prod: Product): string[] {
@@ -94,9 +99,9 @@ function candidateStockSkus(prod: Product): string[] {
     return Array.from(skus);
 }
 
-async function tryStock(loc: string, skus: string[]): Promise<{ sku: string | null, payload: StockPayload | null }> {
+async function tryStock(loc: string, skus: string[], debugMode?: boolean): Promise<{ sku: string | null, payload: StockPayload | null }> {
     for (const s of skus) {
-        const payload = await fetchJson<StockPayload>(`${BASE_STOCK}/${loc}/items/${s}?apikey=${API_KEY}`);
+        const payload = await fetchJson<StockPayload>(`${BASE_STOCK}/${loc}/items/${s}?apikey=${API_KEY}`, {}, debugMode);
         if (payload?.stockPosition && payload.stockPosition.length > 0 && payload.stockPosition[0].qty !== undefined) {
             return { sku: s, payload };
         }
@@ -104,16 +109,16 @@ async function tryStock(loc: string, skus: string[]): Promise<{ sku: string | nu
     return { sku: null, payload: null };
 }
 
-function getPi(loc: string, sku: string): Promise<PriceIntegrity | null> {
-    return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`);
+function getPi(loc: string, sku: string, debugMode?: boolean): Promise<PriceIntegrity | null> {
+    return fetchJson<PriceIntegrity>(`${BASE_LOCN}/${loc}/items/${sku}?apikey=${API_KEY}`, {}, debugMode);
 }
 
-function getStockHistory(loc: string, sku: string, bearerToken?: string): Promise<StockHistory | null> {
+function getStockHistory(loc: string, sku: string, bearerToken?: string, debugMode?: boolean): Promise<StockHistory | null> {
     const headers: Record<string, string> = {};
     if (bearerToken) {
         headers['Authorization'] = `Bearer ${bearerToken}`;
     }
-    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, headers);
+    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, headers, debugMode);
 }
 
 const AISLE_NAME_MAP: Record<string, string> = {
@@ -182,7 +187,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   const productPromises = input.skus.map(async (scannedSku) => {
     try {
-      const product = await getProduct(scannedSku);
+      const product = await getProduct(scannedSku, input.debugMode);
       if (!product || !product.itemNumber) {
         console.warn(`Product not found for SKU: ${scannedSku}`);
         return null;
@@ -191,11 +196,11 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
       const internalSku = product.itemNumber;
 
       const stockCandidates = candidateStockSkus(product);
-      const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates);
+      const { sku: stockSku, payload: stockPayload } = await tryStock(input.locationId, stockCandidates, input.debugMode);
 
       const finalSkuForPi = stockSku || internalSku;
-      const piPromise = getPi(input.locationId, finalSkuForPi);
-      const stockHistoryPromise = getStockHistory(input.locationId, finalSkuForPi, input.bearerToken);
+      const piPromise = getPi(input.locationId, finalSkuForPi, input.debugMode);
+      const stockHistoryPromise = getStockHistory(input.locationId, finalSkuForPi, input.bearerToken, input.debugMode);
       
       const [pi, stockHistory] = await Promise.all([piPromise, stockHistoryPromise]);
 
@@ -232,6 +237,9 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
       };
     } catch (error) {
       console.error(`Failed to process SKU ${scannedSku}:`, error);
+      if (input.debugMode) {
+        throw error;
+      }
       return null;
     }
   });

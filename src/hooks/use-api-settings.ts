@@ -6,10 +6,12 @@ const LOCAL_STORAGE_KEY_SETTINGS = 'morricards-api-settings';
 
 export interface ApiSettings {
   bearerToken: string;
+  debugMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: ApiSettings = {
-  bearerToken: 'l5rXP77Vno9GxqP0RA8351v5iJt8',
+  bearerToken: '',
+  debugMode: false,
 };
 
 export function useApiSettings() {
@@ -19,7 +21,8 @@ export function useApiSettings() {
     }
     try {
       const item = window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
-      return item ? JSON.parse(item) : DEFAULT_SETTINGS;
+      const parsed = item ? JSON.parse(item) : {};
+      return { ...DEFAULT_SETTINGS, ...parsed };
     } catch (error) {
       console.error(error);
       return DEFAULT_SETTINGS;

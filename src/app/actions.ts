@@ -7,6 +7,7 @@ const FormSchema = z.object({
   skus: z.union([z.string(), z.array(z.string())]),
   locationId: z.string(),
   bearerToken: z.string().optional(),
+  debugMode: z.boolean().optional(),
 });
 
 type ActionResponse = {
@@ -21,7 +22,7 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
     return { data: null, error: 'Invalid form data.' };
   }
   
-  const { skus, locationId, bearerToken } = validatedFields.data;
+  const { skus, locationId, bearerToken, debugMode } = validatedFields.data;
   
   const skuList = (Array.isArray(skus) ? skus : skus.split(/[\s,]+/))
     .map(s => s.trim())
@@ -38,10 +39,12 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
       locationId,
       skus: uniqueSkuList,
       bearerToken: bearerToken,
+      debugMode: debugMode,
     });
     return { data, error: null };
   } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('Failed to fetch Morrisons data:', e);
-    return { data: null, error: 'Failed to fetch product data. Please check your inputs and try again.' };
+    return { data: null, error: `Failed to fetch product data. ${errorMessage}` };
   }
 }
