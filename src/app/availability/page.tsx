@@ -162,8 +162,19 @@ export default function AvailabilityPage() {
     setIsLoading(false);
 
     if (error || !data || data.length === 0) {
+        const errText = error || `Could not find product data for EAN: ${sku}`;
         playError();
-        toast({ variant: 'destructive', title: 'Product Not Found', description: error || `Could not find product data for EAN: ${sku}` });
+        toast({
+            variant: 'destructive',
+            title: 'Product Not Found',
+            description: errText,
+            duration: 15000,
+            action: (
+                <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
+                     <Copy className="mr-2 h-4 w-4" /> Copy
+                </ToastAction>
+            ),
+        });
         setIsScanMode(true); // Re-open scanner on error
     } else {
         const product = data[0];
@@ -201,6 +212,11 @@ export default function AvailabilityPage() {
         variant: 'destructive',
         title: 'Scanner Error',
         description: message,
+        action: (
+            <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(message)}>
+                <Copy className="mr-2 h-4 w-4" /> Copy
+            </ToastAction>
+        ),
       });
     }
   }

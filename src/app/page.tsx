@@ -218,8 +218,18 @@ function PickingList() {
         });
         
         if (error || !data || data.length === 0) {
+            const errText = error || `Could not find product for EAN: ${sku}`;
             playError();
-            toast({ variant: 'destructive', title: 'Product Not Found', description: error || `Could not find product for EAN: ${sku}` });
+            toast({
+                variant: 'destructive',
+                title: 'Product Not Found',
+                description: errText,
+                action: (
+                    <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
+                        <Copy className="mr-2 h-4 w-4" /> Copy
+                    </ToastAction>
+                ),
+            });
         } else {
             setProducts(prevProducts => {
                 const existing = prevProducts.find(p => p.sku === data[0].sku);
@@ -248,6 +258,11 @@ function PickingList() {
         variant: 'destructive',
         title: 'Scanner Error',
         description: message,
+        action: (
+            <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(message)}>
+                <Copy className="mr-2 h-4 w-4" /> Copy
+            </ToastAction>
+        ),
       });
     }
   };
@@ -282,6 +297,12 @@ function PickingList() {
         variant: 'destructive',
         title: 'Error',
         description: error,
+        duration: 15000,
+        action: (
+            <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(error)}>
+                <Copy className="mr-2 h-4 w-4" /> Copy
+            </ToastAction>
+        ),
       });
     } else if (data) {
        if (data.length === 0) {
