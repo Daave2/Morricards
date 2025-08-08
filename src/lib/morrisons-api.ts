@@ -4,7 +4,6 @@
 import type {components} from '../morrisons-types';
 
 const API_KEY = "0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW";
-const BEARER_TOKEN_DEFAULT = "l5rXP77Vno9GxqP0RA8351v5iJt8";
 
 const BASE_PRODUCT = "https://api.morrisons.com/product/v1/items";
 const BASE_STOCK = "https://api.morrisons.com/stock/v2/locations";
@@ -59,18 +58,9 @@ export type FetchMorrisonsDataOutput = {
   lastStockChange?: StockHistory;
 }[];
 
-async function fetchJson<T>(url: string, bearer: string | null = BEARER_TOKEN_DEFAULT): Promise<T | null> {
-    const headers = {...HEADERS_BASE} as any;
-    if (bearer) {
-        headers['Authorization'] = `Bearer ${bearer}`;
-    }
+async function fetchJson<T>(url: string, headers: Record<string, string> = {}): Promise<T | null> {
     try {
-        let r = await fetch(url, {headers});
-        if ((r.status === 401 || r.status === 403) && bearer) {
-            // Retry without bearer token
-            const noBearerHeaders = {...HEADERS_BASE};
-            r = await fetch(url, {headers: noBearerHeaders});
-        }
+        const r = await fetch(url, { headers: { ...HEADERS_BASE, ...headers } });
         if (r.status === 404) {
             return null;
         }
@@ -119,7 +109,11 @@ function getPi(loc: string, sku: string): Promise<PriceIntegrity | null> {
 }
 
 function getStockHistory(loc: string, sku: string, bearerToken?: string): Promise<StockHistory | null> {
-    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, bearerToken || null);
+    const headers: Record<string, string> = {};
+    if (bearerToken) {
+        headers['Authorization'] = `Bearer ${bearerToken}`;
+    }
+    return fetchJson<StockHistory>(`${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`, headers);
 }
 
 const AISLE_NAME_MAP: Record<string, string> = {
