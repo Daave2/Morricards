@@ -10,7 +10,7 @@ export interface ApiSettings {
 }
 
 export const DEFAULT_SETTINGS: ApiSettings = {
-  bearerToken: '',
+  bearerToken: 'hTP4yVbB0OzMevXY5HIsiO68PvAw',
   debugMode: false,
 };
 

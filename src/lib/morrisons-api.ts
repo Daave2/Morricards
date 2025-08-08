@@ -54,13 +54,14 @@ export type FetchMorrisonsDataOutput = {
   lastStockChange?: StockHistory;
 }[];
 
-async function fetchJson<T>(url: string, debugMode: boolean = false): Promise<T | null> {
-    const headers = {
+async function fetchJson<T>(url: string, debugMode: boolean = false, headers: Record<string, string> = {}): Promise<T | null> {
+    const baseHeaders = {
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (MorriCards Web)",
+        ...headers,
     };
     try {
-        const r = await fetch(url, { headers });
+        const r = await fetch(url, { headers: baseHeaders });
         if (r.status === 404) {
             return null;
         }
@@ -68,7 +69,7 @@ async function fetchJson<T>(url: string, debugMode: boolean = false): Promise<T 
             let errorText = `HTTP error! status: ${r.status}`;
             if (debugMode) {
               const responseBody = await r.text();
-              const requestHeaders = JSON.stringify(headers, null, 2);
+              const requestHeaders = JSON.stringify(baseHeaders, null, 2);
               errorText += `\nURL: ${url}\nHeaders: ${requestHeaders}\nResponse: ${responseBody}`;
             }
             throw new Error(errorText);
@@ -116,33 +117,11 @@ function getPi(loc: string, sku: string, debugMode?: boolean): Promise<PriceInte
 
 async function getStockHistory(loc: string, sku: string, bearerToken?: string, debugMode?: boolean): Promise<StockHistory | null> {
     const url = `${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`;
-    const headers: Record<string, string> = {
-        "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (MorriCards Web)",
-    };
+    const headers: Record<string, string> = {};
     if (bearerToken) {
         headers['Authorization'] = `Bearer ${bearerToken}`;
     }
-
-    try {
-        const r = await fetch(url, { headers });
-        if (r.status === 404) {
-            return null;
-        }
-        if (!r.ok) {
-            let errorText = `HTTP error! status: ${r.status}`;
-            if (debugMode) {
-              const responseBody = await r.text();
-              const requestHeaders = JSON.stringify(headers, null, 2);
-              errorText += `\nURL: ${url}\nHeaders: ${requestHeaders}\nResponse: ${responseBody}`;
-            }
-            throw new Error(errorText);
-        }
-        return r.json() as Promise<StockHistory>;
-    } catch(e) {
-        console.error(`Failed to fetch ${url}`, e);
-        throw e;
-    }
+    return fetchJson<StockHistory>(url, debugMode, headers);
 }
 
 const AISLE_NAME_MAP: Record<string, string> = {
