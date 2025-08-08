@@ -11,12 +11,6 @@ const BASE_STOCK = "https://api.morrisons.com/stock/v2/locations";
 const BASE_LOCN = "https://api.morrisons.com/priceintegrity/v1/locations";
 const BASE_STOCK_HISTORY = "https://api.morrisons.com/storemobileapp/v1/stores";
 
-
-const HEADERS_BASE: Record<string, string> = {
-    "Accept": "application/json",
-    "User-Agent": "Mozilla/5.0 (MorriCards Web)",
-};
-
 export interface FetchMorrisonsDataInput {
   locationId: string;
   skus: string[];
@@ -61,8 +55,12 @@ export type FetchMorrisonsDataOutput = {
 }[];
 
 async function fetchJson<T>(url: string, debugMode: boolean = false): Promise<T | null> {
+    const headers = {
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (MorriCards Web)",
+    };
     try {
-        const r = await fetch(url, { headers: HEADERS_BASE });
+        const r = await fetch(url, { headers });
         if (r.status === 404) {
             return null;
         }
@@ -70,7 +68,7 @@ async function fetchJson<T>(url: string, debugMode: boolean = false): Promise<T 
             let errorText = `HTTP error! status: ${r.status}`;
             if (debugMode) {
               const responseBody = await r.text();
-              const requestHeaders = JSON.stringify(HEADERS_BASE, null, 2);
+              const requestHeaders = JSON.stringify(headers, null, 2);
               errorText += `\nURL: ${url}\nHeaders: ${requestHeaders}\nResponse: ${responseBody}`;
             }
             throw new Error(errorText);
@@ -118,7 +116,10 @@ function getPi(loc: string, sku: string, debugMode?: boolean): Promise<PriceInte
 
 async function getStockHistory(loc: string, sku: string, bearerToken?: string, debugMode?: boolean): Promise<StockHistory | null> {
     const url = `${BASE_STOCK_HISTORY}/${loc}/items/${sku}?apikey=${API_KEY}`;
-    const headers: Record<string, string> = {...HEADERS_BASE};
+    const headers: Record<string, string> = {
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (MorriCards Web)",
+    };
     if (bearerToken) {
         headers['Authorization'] = `Bearer ${bearerToken}`;
     }
