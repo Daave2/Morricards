@@ -12,7 +12,7 @@ const BASE_LOCN = "https://api.morrisons.com/priceintegrity/v1/locations";
 const BASE_STOCK_HISTORY = "https://api.morrisons.com/storemobileapp/v1/stores";
 
 
-const HEADERS_BASE = {
+const HEADERS_BASE: Record<string, string> = {
     "Accept": "application/json",
     "User-Agent": "Mozilla/5.0 (MorriCards Web)",
 };
