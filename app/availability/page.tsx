@@ -11,7 +11,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync, Bolt } from 'lucide-react';
 import Image from 'next/image';
@@ -51,6 +51,7 @@ import InstallPrompt from '@/components/InstallPrompt';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import SkuQrCode from '@/components/SkuQrCode';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -584,6 +585,10 @@ export default function AvailabilityPage() {
                         <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
                         <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
 
+                        <div className="flex justify-center py-2">
+                          <SkuQrCode sku={productForModal.sku} />
+                        </div>
+
                         <Accordion type="single" collapsible className="w-full">
                           <AccordionItem value="stock">
                              <AccordionTrigger className='py-2 text-xs font-semibold'>Stock & Logistics</AccordionTrigger>
@@ -869,3 +874,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
