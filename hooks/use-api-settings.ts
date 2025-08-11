@@ -16,31 +16,38 @@ export const DEFAULT_SETTINGS: ApiSettings = {
 };
 
 export function useApiSettings() {
-  const [settings, setSettings] = useState<ApiSettings>(() => {
-    if (typeof window === 'undefined') {
-      return DEFAULT_SETTINGS;
-    }
-    try {
-      const item = window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
-      const parsed = item ? JSON.parse(item) : {};
-      return { ...DEFAULT_SETTINGS, ...parsed };
-    } catch (error) {
-      console.error(error);
-      return DEFAULT_SETTINGS;
-    }
-  });
+  const [settings, setSettings] = useState<ApiSettings>(DEFAULT_SETTINGS);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     try {
-      window.localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+      const item = window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
+      if (item) {
+        const parsed = JSON.parse(item);
+        setSettings(prev => ({...prev, ...parsed}));
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Failed to load settings from localStorage", error);
     }
-  }, [settings]);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+        try {
+            const currentSettings = JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS) || '{}');
+            const newSettings = {...currentSettings, ...settings};
+            window.localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(newSettings));
+        } catch (error) {
+            console.error("Failed to save settings to localStorage", error);
+        }
+    }
+  }, [settings, isMounted]);
   
   const updateSettings = (newSettings: Partial<ApiSettings>) => {
     setSettings(prev => ({...prev, ...newSettings}));
   }
 
-  return { settings, setSettings: updateSettings };
+  // Return default settings on server or before mount, and real settings after mount
+  return { settings: isMounted ? settings : DEFAULT_SETTINGS, setSettings: updateSettings };
 }
