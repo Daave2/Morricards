@@ -25,15 +25,15 @@ const FormSchema = z.object({
 });
 
 const AISLE_NAME_MAP: Record<string, string> = {
-    'Ambient Grocery': 'International, Soup/Veg, Spices/meat',
+    'Ambient Grocery': 'International, Soup/Veg, Spices/meat, Home Bake, Desserts/Tea, Cereal/Sugar, Bread/Jam, Free From',
     'Confectionery, Snacks & Biscuits': 'Sweets, Biscuits, Crisps',
     'Drinks': 'Pop, Water',
-    'Household & Pet': 'Paper, Cleaning, Cat, Dog, Home',
-    'News, Mags, Tobacco & Home': 'Stationery, Home, Leisure',
+    'Household & Pet': 'Paper, Cleaning, Cat, Dog, Home, Health & Beauty, Baby, Clothes, Seasonal, Leisure, Cook shop',
+    'News, Mags, Tobacco & Home': 'Stationery, Home, Leisure, Partyware',
     'Beers, Wines & Spirits': 'Beer, Wine, Spirits',
     'Produce': 'Fruit & Veg',
     'Chilled Foods': 'Dairy, Cheese, Butter, Ready Meals, Dips, Pizzas, Coleslaw',
-    'Bakery': 'Bakery',
+    'Bakery': 'Bakery, Cakes',
     'Deli': 'Deli, Ham',
     'Meat & Fish': 'Meat, Seafood',
     'Frozen Foods': 'Frozen',
