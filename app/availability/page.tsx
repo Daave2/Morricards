@@ -50,6 +50,7 @@ import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
 import { queueCapture } from '@/lib/offlineQueue';
 import InstallPrompt from '@/components/InstallPrompt';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -608,7 +609,7 @@ export default function AvailabilityPage() {
           "container mx-auto px-4 py-8 md:py-12 transition-all duration-300",
           isScanMode && "pt-[calc(100vw/1.77+2rem)] sm:pt-[calc(448px/1.77+2rem)]"
       )}>
-        
+        <TooltipProvider>
         <div className={cn(isScanMode && "hidden")}>
           <header className="text-center mb-8">
             <div className="inline-flex items-center gap-3">
@@ -659,20 +660,27 @@ export default function AvailabilityPage() {
                       </FormItem>
                     )}
                   />
-                   <Button
-                      type="button"
-                      className="w-full sm:w-auto flex-shrink-0"
-                      variant='outline'
-                      onClick={handleScanButtonClick}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                         <ScanLine className="mr-2 h-4 w-4" />
-                      )}
-                      {isLoading ? 'Checking...' : 'Scan Item to Report'}
-                    </Button>
+                   <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        className="w-full sm:w-auto flex-shrink-0"
+                        variant='outline'
+                        onClick={handleScanButtonClick}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                           <ScanLine className="mr-2 h-4 w-4" />
+                        )}
+                        {isLoading ? 'Checking...' : 'Scan Item to Report'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Scan an item's barcode to check its data and report an issue.</p>
+                    </TooltipContent>
+                   </Tooltip>
                 </form>
               </Form>
             </CardContent>
@@ -685,21 +693,42 @@ export default function AvailabilityPage() {
                   <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
                       <div className="flex flex-wrap items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={handleCopyHtml}>
-                              <Mail className="mr-2 h-4 w-4" />
-                              Copy for Email
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={handleCopyData}>
-                              <Copy className="mr-2 h-4 w-4" />
-                              Copy TSV
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Clear
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={handleCopyHtml}>
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Copy for Email
                               </Button>
-                            </AlertDialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy the list as a rich HTML table, ready to paste into an email.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={handleCopyData}>
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Copy TSV
+                              </Button>
+                            </TooltipTrigger>
+                             <TooltipContent>
+                              <p>Copy the list as Tab-Separated Values, ready for a spreadsheet.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <AlertDialog>
+                           <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Clear
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Clear all items from the report list.</p>
+                              </TooltipContent>
+                            </Tooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -749,6 +778,7 @@ export default function AvailabilityPage() {
                   </CardContent>
               </Card>
           }
+        </TooltipProvider>
       </main>
     </div>
   );

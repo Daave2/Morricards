@@ -49,6 +49,7 @@ import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
 import InstallPrompt from '@/components/InstallPrompt';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
@@ -511,7 +512,7 @@ function PickingList() {
       </Dialog>
       
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <div>
+        <TooltipProvider>
           <header className="text-center mb-12">
             <div className="inline-flex items-center gap-4">
                <ShoppingBasket className="w-12 h-12 text-primary" />
@@ -561,15 +562,22 @@ function PickingList() {
                       <FormItem>
                          <div className="flex justify-between items-center">
                           <FormLabel>Product SKUs / EANs</FormLabel>
-                          <Button
-                            type="button"
-                            variant='outline'
-                            size="sm"
-                            onClick={handleScanButtonClick}
-                          >
-                            <ScanLine className="mr-2 h-4 w-4" />
-                            {getScanButtonLabel()}
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant='outline'
+                                size="sm"
+                                onClick={handleScanButtonClick}
+                              >
+                                <ScanLine className="mr-2 h-4 w-4" />
+                                {getScanButtonLabel()}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Use your device's camera to scan barcodes.</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                         <FormControl>
                           <Textarea
@@ -628,17 +636,31 @@ function PickingList() {
                           />
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4 w-full sm:w-auto">
-                          <Button 
-                              variant={"outline"}
-                              onClick={handleScanButtonClick}
-                            >
-                               <ScanLine className="mr-2 h-4 w-4" />
-                               {getScanButtonLabel()}
-                            </Button>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                  variant={"outline"}
+                                  onClick={handleScanButtonClick}
+                                >
+                                  <ScanLine className="mr-2 h-4 w-4" />
+                                  {getScanButtonLabel()}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Use your device's camera to scan and pick items from the list.</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <Select value={sortConfig} onValueChange={setSortConfig}>
-                              <SelectTrigger className="w-full sm:w-[200px]">
-                                  <SelectValue placeholder="Sort by..." />
-                              </SelectTrigger>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <SelectTrigger className="w-full sm:w-[200px]">
+                                      <SelectValue placeholder="Sort by..." />
+                                  </SelectTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Change the sort order of the product list.</p>
+                                </TooltipContent>
+                              </Tooltip>
                               <SelectContent>
                                   <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
                                   <SelectItem value="stockQuantity-desc">Stock (High to Low)</SelectItem>
@@ -649,24 +671,52 @@ function PickingList() {
                                   <SelectItem value="name-desc">Name (Z-A)</SelectItem>
                               </SelectContent>
                           </Select>
-                           <Button variant="outline" onClick={handleOpenExportModal}>
-                                <Share2 className="mr-2 h-4 w-4" />
-                                Export
-                            </Button>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                               <Button variant="outline" onClick={handleOpenExportModal}>
+                                    <Share2 className="mr-2 h-4 w-4" />
+                                    Export
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Share this list with another device via a link or QR code.</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
-                              <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
-                                  <LayoutGrid className="h-5 w-5"/>
-                              </Button>
-                              <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')}>
-                                  <List className="h-5 w-5"/>
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
+                                      <LayoutGrid className="h-5 w-5"/>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Grid View</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')}>
+                                      <List className="h-5 w-5"/>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>List View</p>
+                                </TooltipContent>
+                              </Tooltip>
                           </div>
                            <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="icon">
-                                  <Trash2 className="h-5 w-5" />
-                              </Button>
-                            </AlertDialogTrigger>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon">
+                                        <Trash2 className="h-5 w-5" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Clear all items from the list.</p>
+                                </TooltipContent>
+                            </Tooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -707,7 +757,7 @@ function PickingList() {
                   <p>We couldn't find any products for the SKUs you entered.</p>
               </div>
           ) : null}
-        </div>
+        </TooltipProvider>
       </main>
     </div>
   );
