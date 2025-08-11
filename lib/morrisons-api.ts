@@ -13,13 +13,13 @@ const API_KEY = '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
 const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
+const PRODUCT_PROXY_URL = '/api/morrisons/product?sku=';
 
 export interface FetchMorrisonsDataInput {
   locationId: string;
   skus: string[];
   bearerToken?: string;      // If available, send it for Stock/PI/History
   debugMode?: boolean;
-  productProxyUrl?: string;  // e.g. '/api/morrisons/product?sku=' (server-side proxy)
 }
 
 type Product = components['schemas']['Product'];
@@ -139,11 +139,9 @@ async function fetchJson<T>(
 // Product: do NOT hit from browser; use server proxy if you need rich details.
 async function getProductViaProxy(
   sku: string,
-  productProxyUrl?: string,
   debug?: boolean
 ): Promise<Product | null> {
-  if (!productProxyUrl) return null;
-  const url = `${productProxyUrl}${encodeURIComponent(sku)}`;
+  const url = `${PRODUCT_PROXY_URL}${encodeURIComponent(sku)}`;
   return fetchJson<Product>(url, { debug, bearer: undefined, preferBearer: false });
 }
 
@@ -222,7 +220,7 @@ function extractLocationBits(pi: PriceIntegrity | null): { std: string; secondar
 
 // ───────────────────────────── main API ─────────────────────────────
 export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promise<FetchMorrisonsDataOutput> {
-  const { locationId, skus, bearerToken, debugMode, productProxyUrl } = input;
+  const { locationId, skus, bearerToken, debugMode } = input;
 
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
@@ -233,12 +231,10 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
         // 2) Optional richer Product via proxy
         let product: Product | null = null;
-        if (productProxyUrl) {
-          try {
-            product = await getProductViaProxy(scannedSku, productProxyUrl, debugMode);
-          } catch (e) {
-            if (debugMode) console.warn(`Product via proxy failed for ${scannedSku}:`, e);
-          }
+        try {
+          product = await getProductViaProxy(scannedSku, debugMode);
+        } catch (e) {
+          if (debugMode) console.warn(`Product via proxy failed for ${scannedSku}:`, e);
         }
 
         // internal SKU we’ll use for stock/PI alignment
