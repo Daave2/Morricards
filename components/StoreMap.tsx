@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface StoreMapProps {
   highlightedAisle?: string | null;
@@ -9,93 +10,33 @@ interface StoreMapProps {
 
 const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
     const svgRef = useRef<SVGSVGElement>(null);
-    const searchRef = useRef<HTMLInputElement>(null);
-    const zoomRef = useRef<HTMLInputElement>(null);
-    const boardRef = useRef<HTMLDivElement>(null);
-    const hintRef = useRef<HTMLDivElement>(null);
 
-    const [selectedZone, setSelectedZone] = useState<Element | null>(null);
-
-    const applySearch = (query: string) => {
-        const q = query.trim().toLowerCase();
+    const applySearch = (query: string | null) => {
+        const q = query ? query.trim().toLowerCase() : '';
         const svg = svgRef.current;
         if (!svg) return;
+        
         const zones = Array.from(svg.querySelectorAll('.zone'));
+        
         zones.forEach(z => {
             const name = ((z as HTMLElement).dataset.name || '').toLowerCase();
+            const keywords = name.split(/, | & | and /).map(k => k.trim());
+            
             if (!q) {
                 z.classList.remove('match');
                 return;
             }
-            z.classList.toggle('match', name.includes(q));
+
+            const searchTerms = q.split(/, | & | and /).map(k => k.trim());
+            const isMatch = searchTerms.some(term => keywords.some(kw => kw.includes(term)));
+            
+            z.classList.toggle('match', isMatch);
         });
     };
     
     useEffect(() => {
-        if (highlightedAisle) {
-            applySearch(highlightedAisle);
-        }
-    }, [highlightedAisle])
-
-
-    useEffect(() => {
-        const svg = svgRef.current;
-        const board = boardRef.current;
-        const search = searchRef.current;
-        const zoom = zoomRef.current;
-        const hint = hintRef.current;
-        
-        if (!svg || !board || !search || !zoom || !hint) return;
-        
-        const zones = Array.from(svg.querySelectorAll('.zone'));
-        let selected: Element | null = null;
-        
-        const handleSearchInput = () => {
-            applySearch(search.value);
-        }
-
-        const handleZoneClick = (e: Event) => {
-            const z = e.currentTarget as Element;
-            if (selected) selected.classList.remove('selected');
-            selected = z;
-            z.classList.add('selected');
-            if(hint) hint.textContent = (z as HTMLElement).dataset.name || "Unknown Zone";
-            setSelectedZone(z);
-        };
-        
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                if (selected) selected.classList.remove('selected');
-                selected = null;
-                search.value = '';
-                applySearch('');
-                if (hint) hint.textContent = 'Click a zone or use search to highlight. Esc clears selection.';
-                setSelectedZone(null);
-            }
-        };
-
-        const setZoom = () => {
-            const v = Number(zoom.value) / 100;
-            board.style.transform = `scale(${v})`;
-            board.style.transformOrigin = 'top center';
-        };
-
-        search.addEventListener('input', handleSearchInput);
-        zoom.addEventListener('input', setZoom);
-        zones.forEach(z => z.addEventListener('click', handleZoneClick));
-        window.addEventListener('keydown', handleKeyDown);
-
-        setZoom();
-
-        return () => {
-            search.removeEventListener('input', handleSearchInput);
-            zoom.removeEventListener('input', setZoom);
-            zones.forEach(z => z.removeEventListener('click', handleZoneClick));
-            window.removeEventListener('keydown', handleKeyDown);
-        }
-
-    }, []);
-    
+        applySearch(highlightedAisle);
+    }, [highlightedAisle]);
 
   return (
     <>
@@ -115,20 +56,6 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
           --bev: #dbeafe;          /* light blue */
           --front: #fde68a;        /* yellow */
         }
-        .map-header {
-          display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between;
-          padding: 1rem 1.25rem; background: rgba(255,255,255,.85);
-          backdrop-filter: blur(6px); border-bottom: 1px solid #e5e7eb;
-        }
-        .map-header h1 { font-size: clamp(1.1rem, 1.2rem + .8vw, 1.8rem); margin: 0; font-weight: 800; }
-
-        .map-controls { display:flex; gap: .75rem; align-items: center; }
-        .map-controls input[type="search"]{
-          padding: .55rem .75rem; border: 1px solid #cbd5e1; border-radius: .6rem; min-width: 16rem; font-size: .95rem;
-        }
-        .map-controls .zoom { display:flex; gap:.5rem; align-items:center; font-size:.9rem; color:var(--muted); }
-
-        .canvas-wrap { padding: 1rem; background-color: #f6f7fb; }
         .board {
           width: 100%; margin: 0 auto; background: white; border-radius: 16px;
           overflow: hidden; position: relative;
@@ -137,7 +64,7 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
         .map-svg { width: 100%; height: auto; display: block; background: white; }
 
         /* Zones */
-        .zone rect { stroke: #334155; stroke-width: 2; rx: 10; }
+        .zone rect { stroke: #334155; stroke-width: 2; rx: 10; transition: stroke-width 0.2s ease-in-out, stroke 0.2s ease-in-out; }
         .zone text { font-weight: 800; fill: #111827; letter-spacing: .2px; }
 
         .zone[data-type="chilled"] rect { fill: var(--chilled); }
@@ -147,31 +74,17 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
         .zone[data-type="bev"] rect { fill: var(--bev); }
         .zone[data-type="front"] rect { fill: var(--front); }
 
-        .zone { cursor: pointer; transition: filter .2s ease, opacity .2s ease; }
-        .zone:hover { filter: brightness(1.02) drop-shadow(0 2px 4px rgba(0,0,0,.08)); }
-
-        .zone.match rect, .zone.selected rect { stroke: #16a34a; stroke-width: 4px; }
-
-        .hint {
-          position: absolute; bottom: 12px; left: 12px; background: rgba(15,23,42,.9); color: #f8fafc;
-          padding: .6rem .8rem; border-radius: .6rem; font-size: .9rem; box-shadow: 0 6px 16px rgba(2,6,23,.3);
+        .zone.match rect {
+            stroke: var(--accent);
+            stroke-width: 5px;
         }
-        .legend { display:flex; flex-wrap: wrap; gap:.5rem .9rem; align-items:center; font-size:.9rem; color:var(--muted); }
-        .swatch { width: 14px; height: 14px; border-radius: 4px; display:inline-block; vertical-align: middle; margin-right:.4rem; border:1px solid #94a3b8; }
       `}</style>
-      <header className="map-header">
-        <h1>Store Floor Plan</h1>
-        <div className="map-controls">
-          <label className="zoom" htmlFor="zoom">Zoom <input ref={zoomRef} id="zoom" type="range" min="50" max="200" defaultValue="100"/></label>
-          <input ref={searchRef} id="search" type="search" placeholder="Search for an area..." />
-        </div>
-      </header>
 
-      <div className="canvas-wrap">
-        <div ref={boardRef} className="board">
+      <div className="canvas-wrap p-4 bg-muted/20">
+        <div className="board">
           <svg ref={svgRef} className="map-svg" viewBox="0 0 1600 900" aria-labelledby="title desc" role="img">
             <title id="title">Store plan</title>
-            <desc id="desc">Interactive, scalable floor plan of store departments and aisles.</desc>
+            <desc id="desc">Floor plan of store departments and aisles.</desc>
 
             <defs>
               <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -382,18 +295,6 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
               <text x="1350" y="868" fontSize="20" textAnchor="middle">Meal Deal</text>
             </g>
           </svg>
-          <div ref={hintRef} id="hint" className="hint">Click a zone or use search to highlight. Esc clears selection.</div>
-        </div>
-
-        <div style={{maxWidth: '1600px', margin:'10px auto 0', display:'flex', justifyContent: 'space-between', alignItems:'center', gap:'1rem', flexWrap:'wrap', padding: '0 .25rem'}}>
-          <div className="legend">
-            <span><i className="swatch" style={{background:'var(--chilled)'}}></i>Chilled & Fresh</span>
-            <span><i className="swatch" style={{background:'var(--grocery)'}}></i>Grocery</span>
-            <span><i className="swatch" style={{background:'var(--household)'}}></i>Household</span>
-            <span><i className="swatch" style={{background:'var(--bev)'}}></i>Beverages</span>
-            <span><i className="swatch" style={{background:'var(--alcohol)'}}></i>Beer/Wine/Spirits</span>
-            <span><i className="swatch" style={{background:'var(--front)'}}></i>Front of Store</span>
-          </div>
         </div>
       </div>
     </>
