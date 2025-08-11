@@ -464,6 +464,17 @@ export default function AvailabilityPage() {
   
   const productForModal = editingItem || scannedProduct;
 
+  const handleCopyRawData = useCallback(() => {
+    if (productForModal) {
+      const rawJson = JSON.stringify(productForModal, null, 2);
+      navigator.clipboard.writeText(rawJson).then(() => {
+        toast({ title: 'Raw Data Copied', description: 'The raw JSON data has been copied to your clipboard.' });
+      }).catch(err => {
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+      });
+    }
+  }, [productForModal, toast]);
+
   return (
     <div className="min-h-screen bg-background">
       <InstallPrompt />
@@ -549,15 +560,17 @@ export default function AvailabilityPage() {
                                 </AccordionContent>
                              </AccordionItem>
                           )}
-                           <AccordionItem value="raw-data">
-                              <AccordionTrigger className='py-2 text-xs font-semibold'>Raw Data</AccordionTrigger>
-                              <AccordionContent className="pt-2">
-                                <pre className="bg-muted p-2 rounded-md overflow-auto text-[10px] leading-tight whitespace-pre-wrap break-all">
-                                    {JSON.stringify(productForModal, null, 2)}
-                                </pre>
-                              </AccordionContent>
-                           </AccordionItem>
                         </Accordion>
+                         <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-2"
+                            onClick={handleCopyRawData}
+                          >
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy Raw Data
+                          </Button>
                     </div>
                   </div>
               )}
@@ -797,5 +810,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
