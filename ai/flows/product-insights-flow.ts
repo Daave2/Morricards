@@ -21,6 +21,7 @@ const ProductInsightsOutputSchema = z.object({
   price: z.string().optional().describe('The promotional or regular price of the item, formatted with a pound sign e.g. £1.25.'),
   crossSell: z.array(z.string()).describe('Two logical product categories or specific items that would be good to cross-sell with this item.'),
   customerFriendlyLocation: z.string().describe("A customer-friendly description of where to find the product in the store based on its location data. For example, 'You can find this on Aisle 14, on your right-hand side.'"),
+  recipeIdeas: z.array(z.string()).optional().describe("If the item is a food product, suggest one or two simple recipe ideas or serving suggestions. For non-food items, this can be omitted."),
 });
 export type ProductInsightsOutput = z.infer<typeof ProductInsightsOutputSchema>;
 
@@ -38,6 +39,7 @@ Analyze the following product JSON data and generate a helpful summary.
 - Explicitly state the price using the data provided.
 - Suggest two other product categories they might be interested in.
 - Convert the structured location data into a friendly, easy-to-understand direction for a customer. For example, if the location is "Aisle 14, Right bay 2, shelf 3", you could say "You'll find this on Aisle 14, on your right about halfway down."
+- If the item is a food product, provide one or two simple and appealing recipe ideas or serving suggestions.
 
 Product Data:
 \`\`\`json

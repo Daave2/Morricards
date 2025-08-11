@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart } from 'lucide-react';
+import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
@@ -32,13 +32,27 @@ const FormSchema = z.object({
 
 const InsightSection = ({ title, content, icon }: { title: string; content: React.ReactNode, icon?: React.ReactNode; }) => {
   if (!content) return null;
+  
+  const contentArray = Array.isArray(content) ? content : [content];
+  if (contentArray.length === 0) return null;
+
   return (
     <div>
       <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
         {icon || <Sparkles className="h-5 w-5 text-primary" />}
         {title}
       </h3>
-      <div className="text-sm prose prose-sm max-w-none">{content}</div>
+      <div className="text-sm prose prose-sm max-w-none">
+          {Array.isArray(content) ? (
+            <ul className="list-disc pl-5 space-y-1">
+                {content.map((item, index) => (
+                    <li key={index}>{item}</li>
+                ))}
+            </ul>
+        ) : (
+            <p>{content}</p>
+        )}
+      </div>
     </div>
   );
 };
@@ -270,13 +284,14 @@ export default function AssistantPage() {
                                 <InsightSection
                                   title="You might also like..."
                                   icon={<ShoppingCart className="h-5 w-5 text-primary" />}
-                                  content={
-                                    <ul className="list-disc pl-5 space-y-1">
-                                      {insights.crossSell.map((item, index) => (
-                                        <li key={index}>{item}</li>
-                                      ))}
-                                    </ul>
-                                  }
+                                  content={insights.crossSell}
+                                />
+                            )}
+                            {insights.recipeIdeas && insights.recipeIdeas.length > 0 && (
+                                <InsightSection
+                                  title="Recipe Ideas"
+                                  icon={<ChefHat className="h-5 w-5 text-primary" />}
+                                  content={insights.recipeIdeas}
                                 />
                             )}
                         </div>
