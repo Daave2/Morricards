@@ -31,8 +31,8 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     return (
         <div className="flex items-start gap-3">
             <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
-            <div className='flex-grow'>
-                <span className="font-bold">{label}:</span> <span className={cn(valueClassName)}>{value}</span>
+            <div className='flex-grow min-w-0'>
+                <span className="font-bold">{label}:</span> <span className={cn('break-words', valueClassName)}>{value}</span>
             </div>
         </div>
     );
@@ -231,7 +231,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
           </CardContent>
 
           <CollapsibleContent>
-              <div className={cn("px-6 pb-4 overflow-y-auto max-h-96", layout === 'list' && 'px-4')}>
+              <div className={cn("px-6 pb-4 overflow-hidden max-h-96", layout === 'list' && 'px-4')}>
                   <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
@@ -342,7 +342,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
 
                       <details className="pt-2 text-xs">
                           <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                          <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">
+                          <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
                               {JSON.stringify(product, null, 2)}
                           </pre>
                       </details>
@@ -384,4 +384,3 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
-
