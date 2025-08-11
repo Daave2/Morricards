@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -13,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -36,11 +35,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import ZXingScanner from '@/components/ZXingScanner';
@@ -132,7 +130,6 @@ export default function AvailabilityPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isScanMode, setIsScanMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
   const [lastDeletedItem, setLastDeletedItem] = useState<{ item: ReportedItem; index: number } | null>(null);
@@ -259,7 +256,6 @@ export default function AvailabilityPage() {
 
           reasonForm.reset({ reason: defaultReason, comment: '' });
           setIsModalOpen(true);
-          setIsMoreInfoOpen(false);
         }
     }
   }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline]);
@@ -323,7 +319,6 @@ export default function AvailabilityPage() {
       setScannedProduct(null);
       reasonForm.reset({ reason: item.reason, comment: item.comment || '' });
       setIsModalOpen(true);
-      setIsMoreInfoOpen(false);
   }
 
   const handleUndoDelete = useCallback(() => {
@@ -497,9 +492,9 @@ export default function AvailabilityPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              {productForModal && (
-                  <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen} className="rounded-md border">
-                    <div className="flex items-start gap-4 p-4 bg-muted/50">
+                {productForModal && (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
                         <Image
                           src={productForModal.imageUrl || `https://placehold.co/100x100.png`}
                           alt={productForModal.name}
@@ -520,24 +515,16 @@ export default function AvailabilityPage() {
                           {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
                         </div>
                     </div>
-                     <CollapsibleContent>
-                        <div className="border-t p-4 space-y-3 text-xs text-muted-foreground overflow-y-auto max-h-60">
-                           <div className="grid grid-cols-1 gap-3">
-                                <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
-                                <DataRow icon={<Info />} label="Status" value={productForModal.status} />
-                                <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
-                                <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
-                                <DataRow icon={<Crown />} label="Brand" value={productForModal.productDetails.brand} />
-                                <DataRow icon={<Globe />} label="Country of Origin" value={productForModal.productDetails.countryOfOrigin} />
-                                <DataRow icon={<Thermometer />} label="Temperature" value={productForModal.temperature} />
-                                <DataRow icon={<Weight />} label="Weight" value={productForModal.weight ? `${productForModal.weight} kg` : null} />
-                            </div>
+                    <div className="px-4 space-y-3 text-xs text-muted-foreground max-h-60 overflow-y-auto">
+                        <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
+                        <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
+                        <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
 
-                            <Separator />
-                            <div>
-                              <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
-                              <div className="grid grid-cols-1 gap-3">
-                                 {productForModal.lastStockChange?.lastCountDateTime && (
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="stock">
+                             <AccordionTrigger className='py-2 text-xs font-semibold'>Stock & Logistics</AccordionTrigger>
+                             <AccordionContent className="space-y-3 pt-2">
+                                {productForModal.lastStockChange?.lastCountDateTime && (
                                     <DataRow
                                         icon={<History />}
                                         label="Last Stock Event"
@@ -549,40 +536,32 @@ export default function AvailabilityPage() {
                                  <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={productForModal.productDetails.productLife ? `${productForModal.productDetails.productLife.minimumCPCAcceptanceLife} / ${productForModal.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
                                  <DataRow icon={<Flag />} label="Perishable" value={productForModal.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
                                  <DataRow icon={<Flag />} label="Manual Order" value={productForModal.productDetails.manuallyStoreOrderedItem} />
-                              </div>
-                            </div>
-                            
-                            {productForModal.productDetails.commercialHierarchy && (
-                                <>
-                                <Separator />
-                                <div>
-                                    <h4 className="font-bold mb-3 flex items-center gap-2"><Building2 className="h-5 w-5" /> Classification</h4>
-                                    <p className="text-xs">
+                             </AccordionContent>
+                          </AccordionItem>
+                          {productForModal.productDetails.commercialHierarchy && (
+                             <AccordionItem value="classification">
+                                <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                   <p className="text-xs">
                                         {productForModal.productDetails.commercialHierarchy.divisionName} &rarr; {productForModal.productDetails.commercialHierarchy.groupName} &rarr; {productForModal.productDetails.commercialHierarchy.className} &rarr; {productForModal.productDetails.commercialHierarchy.subclassName}
                                     </p>
-                                </div>
-                                </>
-                            )}
-                             <details className="pt-2">
-                                <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                                <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                                </AccordionContent>
+                             </AccordionItem>
+                          )}
+                           <AccordionItem value="raw-data">
+                              <AccordionTrigger className='py-2 text-xs font-semibold'>Raw Data</AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                <pre className="bg-muted p-2 rounded-md overflow-auto text-[10px] leading-tight whitespace-pre-wrap break-all">
                                     {JSON.stringify(productForModal, null, 2)}
                                 </pre>
-                            </details>
-                        </div>
-                     </CollapsibleContent>
-                     <div className="border-t">
-                        <CollapsibleTrigger asChild>
-                            <Button variant="ghost" className="w-full text-xs h-8 text-muted-foreground">
-                                {isMoreInfoOpen ? 'Show Less' : 'Show More'}
-                                <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isMoreInfoOpen && "rotate-180")} />
-                            </Button>
-                        </CollapsibleTrigger>
-                     </div>
-                  </Collapsible>
+                              </AccordionContent>
+                           </AccordionItem>
+                        </Accordion>
+                    </div>
+                  </div>
               )}
               
-              <div className="px-6 space-y-4">
+              <div className="px-6 space-y-4 pt-4">
                 <FormField
                   control={reasonForm.control}
                   name="reason"
@@ -817,5 +796,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
