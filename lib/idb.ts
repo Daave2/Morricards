@@ -39,19 +39,30 @@ interface SMU_DB extends DBSchema {
 
 export async function db() {
   return openDB<SMU_DB>(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db, oldVersion, newVersion, transaction) {
       if (oldVersion < 1) {
-        const availabilityStore = db.createObjectStore('availability-captures', { keyPath: 'id' });
-        availabilityStore.createIndex('synced', 'synced');
-        availabilityStore.createIndex('capturedAt', 'capturedAt');
+        if (!db.objectStoreNames.contains('availability-captures')) {
+            const availabilityStore = db.createObjectStore('availability-captures', { keyPath: 'id' });
+            availabilityStore.createIndex('synced', 'synced');
+            availabilityStore.createIndex('capturedAt', 'capturedAt');
+        }
       }
       if (oldVersion < 2) {
+          // Handle migration from 'captures' to 'availability-captures'
           if (db.objectStoreNames.contains('captures')) {
-              db.renameObjectStore('captures', 'availability-captures');
+              db.deleteObjectStore('captures');
           }
-          const productStore = db.createObjectStore('product-fetches', { keyPath: 'id'});
-          productStore.createIndex('synced', 'synced');
-          productStore.createIndex('capturedAt', 'capturedAt');
+           if (!db.objectStoreNames.contains('availability-captures')) {
+              const availabilityStore = db.createObjectStore('availability-captures', { keyPath: 'id' });
+              availabilityStore.createIndex('synced', 'synced');
+              availabilityStore.createIndex('capturedAt', 'capturedAt');
+           }
+
+          if (!db.objectStoreNames.contains('product-fetches')) {
+            const productStore = db.createObjectStore('product-fetches', { keyPath: 'id'});
+            productStore.createIndex('synced', 'synced');
+            productStore.createIndex('capturedAt', 'capturedAt');
+          }
       }
     }
   });
