@@ -11,9 +11,9 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync, Bolt } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -48,6 +48,8 @@ import { useNetworkSync } from '@/hooks/useNetworkSync';
 import { queueAvailabilityCapture } from '@/lib/offlineQueue';
 import InstallPrompt from '@/components/InstallPrompt';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -129,6 +131,7 @@ export default function AvailabilityPage() {
   const [reportedItems, setReportedItems] = useState<ReportedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isScanMode, setIsScanMode] = useState(false);
+  const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
@@ -141,6 +144,14 @@ export default function AvailabilityPage() {
 
 
   const scannerRef = useRef<{ start: () => void } | null>(null);
+
+  const startScannerWithDelay = useCallback(() => {
+    setTimeout(() => {
+        if (isScanMode && scannerRef.current) {
+            scannerRef.current.start();
+        }
+    }, 1500); // 1.5 second delay
+  }, [isScanMode]);
 
   useEffect(() => {
     if (isScanMode) {
@@ -184,15 +195,30 @@ export default function AvailabilityPage() {
     const sku = text.split(',')[0].trim();
     if (!sku) return;
     
-    setIsScanMode(false); // Close scanner on scan
+    if (!isSpeedMode) {
+        setIsScanMode(false); // Close scanner on scan only if not in speed mode
+    }
     
     const locationId = form.getValues('locationId');
     if (!locationId) {
         playError();
         toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID before scanning.' });
+        if (isSpeedMode) startScannerWithDelay();
         return;
     }
     
+    if (reportedItems.some(item => item.sku === sku || item.scannedSku === sku)) {
+        playError();
+        const existingItem = reportedItems.find(item => item.sku === sku || item.scannedSku === sku);
+        toast({
+            variant: 'destructive',
+            title: 'Item Already Reported',
+            description: `${existingItem?.name} is already on the report list.`
+        });
+        if (isSpeedMode) startScannerWithDelay();
+        return;
+    }
+
     if (!isOnline) {
         playSuccess();
         toast({
@@ -201,8 +227,7 @@ export default function AvailabilityPage() {
             icon: <WifiOff className="h-5 w-5" />
         });
         await queueAvailabilityCapture({ sku, locationId, reason: 'Other', comment: 'Offline Scan - details needed' });
-        // Even offline, we might want to add a placeholder or do something.
-        // For now, we just queue and notify.
+        if (isSpeedMode) startScannerWithDelay();
         return;
     }
     
@@ -231,11 +256,44 @@ export default function AvailabilityPage() {
                 </ToastAction>
             ),
         });
-        setIsScanMode(true); // Re-open scanner on error
+        if (isSpeedMode) {
+            setIsScanMode(true);
+            startScannerWithDelay();
+        } else {
+             setIsScanMode(true);
+        }
     } else {
         const product = data[0];
-        
-        if (!product.location.standard && product.stockQuantity <= 0) {
+        let defaultReason = 'Early Sellout';
+        if (product.stockQuantity === 0) {
+            defaultReason = 'No Stock';
+        } else if (product.stockQuantity < 10) {
+            defaultReason = 'Low Stock';
+        }
+
+        if (isSpeedMode) {
+            playSuccess();
+            const newReportedItem: ReportedItem = {
+                ...product,
+                reportId: `${product.sku}-${Date.now()}`,
+                reason: defaultReason,
+                comment: `Added in Speed Mode`,
+            };
+            setReportedItems(prev => [newReportedItem, ...prev]);
+
+            if (defaultReason === 'Early Sellout' && product.stockQuantity >= 10) {
+                 toast({
+                    variant: 'default',
+                    title: 'Item Reported',
+                    description: `${product.name} reported. Note: Stock is ${product.stockQuantity}, but was added as 'Early Sellout'.`,
+                    icon: <AlertTriangle className="h-5 w-5 text-amber-500" />
+                });
+            } else {
+                 toast({ title: 'Item Reported', description: `${product.name} added to the report list.` });
+            }
+            startScannerWithDelay();
+
+        } else if (!product.location.standard && product.stockQuantity <= 0) {
             playError();
             toast({ 
                 variant: 'destructive', 
@@ -248,19 +306,11 @@ export default function AvailabilityPage() {
           playSuccess();
           setScannedProduct(product);
           setEditingItem(null);
-          
-          let defaultReason = 'Early Sellout';
-          if (product.stockQuantity === 0) {
-              defaultReason = 'No Stock';
-          } else if (product.stockQuantity < 10) {
-              defaultReason = 'Low Stock';
-          }
-
           reasonForm.reset({ reason: defaultReason, comment: '' });
           setIsModalOpen(true);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -283,7 +333,6 @@ export default function AvailabilityPage() {
     if (!open) {
       setScannedProduct(null);
       setEditingItem(null);
-      // Re-open scanner when modal is closed, but only if we were in scan mode before
       if (!editingItem) {
           setIsScanMode(true);
       }
@@ -672,7 +721,7 @@ export default function AvailabilityPage() {
           </header>
           
            <Card className="max-w-4xl mx-auto mb-8 shadow-md">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-4">
               <Form {...form}>
                 <form className="flex flex-col sm:flex-row items-center gap-4">
                   <FormField
@@ -702,7 +751,7 @@ export default function AvailabilityPage() {
                         ) : (
                            <ScanLine className="mr-2 h-4 w-4" />
                         )}
-                        {isLoading ? 'Checking...' : 'Scan Item to Report'}
+                        {isLoading ? 'Checking...' : isScanMode ? 'Stop Scanning' : 'Scan Item to Report'}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -711,6 +760,13 @@ export default function AvailabilityPage() {
                    </Tooltip>
                 </form>
               </Form>
+              <div className="flex items-center space-x-2 justify-center pt-2">
+                <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
+                <Label htmlFor="speed-mode" className="flex items-center gap-2">
+                    <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
+                    Speed Mode
+                </Label>
+              </div>
             </CardContent>
           </Card>
         </div>
