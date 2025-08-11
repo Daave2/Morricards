@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync, Bolt } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -36,19 +36,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import ZXingScanner from '@/components/ZXingScanner';
 import { ToastAction } from '@/components/ui/toast';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
-import { queueCapture } from '@/lib/offlineQueue';
+import { queueAvailabilityCapture } from '@/lib/offlineQueue';
 import InstallPrompt from '@/components/InstallPrompt';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import SkuQrCode from '@/components/SkuQrCode';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -78,45 +81,79 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     return (
         <div className="flex items-start gap-3">
             <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
-            <div className='flex-grow'>
-                <span className="font-bold">{label}:</span> <span className={cn(valueClassName)}>{value}</span>
+            <div className='flex-grow min-w-0'>
+                <span className="font-bold">{label}:</span> <span className={cn('break-words', valueClassName)}>{value}</span>
             </div>
         </div>
     );
 }
 
+const StatusIndicator = () => {
+  const { isOnline, lastSync } = useNetworkSync();
+  const [timeAgo, setTimeAgo] = useState('');
+
+  useEffect(() => {
+    if (lastSync) {
+      const update = () => {
+        const seconds = Math.floor((Date.now() - lastSync) / 1000);
+        if (seconds < 60) setTimeAgo('just now');
+        else if (seconds < 3600) setTimeAgo(`${Math.floor(seconds / 60)}m ago`);
+        else setTimeAgo(`${Math.floor(seconds / 3600)}h ago`);
+      };
+      update();
+      const interval = setInterval(update, 60000); // every minute
+      return () => clearInterval(interval);
+    }
+  }, [lastSync]);
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
+            {lastSync && (
+              <>
+                <CloudSync className="h-4 w-4" />
+                <span>Synced: {timeAgo}</span>
+              </>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
+          {lastSync && <p>Last data sync was {timeAgo}.</p>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 export default function AvailabilityPage() {
   const [reportedItems, setReportedItems] = useState<ReportedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isScanMode, setIsScanMode] = useState(false);
+  const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
   const [lastDeletedItem, setLastDeletedItem] = useState<{ item: ReportedItem; index: number } | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
-  const { lastSync } = useNetworkSync();
+  const { isOnline } = useNetworkSync();
 
 
   const scannerRef = useRef<{ start: () => void } | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'onLine' in navigator) {
-      setIsOnline(navigator.onLine);
-      const onlineHandler = () => setIsOnline(true);
-      const offlineHandler = () => setIsOnline(false);
-      window.addEventListener('online', onlineHandler);
-      window.addEventListener('offline', offlineHandler);
-      return () => {
-        window.removeEventListener('online', onlineHandler);
-        window.removeEventListener('offline', offlineHandler);
-      };
-    }
-  }, []);
+  const startScannerWithDelay = useCallback(() => {
+    setTimeout(() => {
+        if (isScanMode && scannerRef.current) {
+            scannerRef.current.start();
+        }
+    }, 1500); // 1.5 second delay
+  }, [isScanMode]);
 
   useEffect(() => {
     if (isScanMode) {
@@ -160,22 +197,39 @@ export default function AvailabilityPage() {
     const sku = text.split(',')[0].trim();
     if (!sku) return;
     
-    setIsScanMode(false); // Close scanner on scan
+    if (!isSpeedMode) {
+        setIsScanMode(false); // Close scanner on scan only if not in speed mode
+    }
     
     const locationId = form.getValues('locationId');
     if (!locationId) {
         playError();
         toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID before scanning.' });
+        if (isSpeedMode) startScannerWithDelay();
         return;
     }
     
+    if (reportedItems.some(item => item.sku === sku || item.scannedSku === sku)) {
+        playError();
+        const existingItem = reportedItems.find(item => item.sku === sku || item.scannedSku === sku);
+        toast({
+            variant: 'destructive',
+            title: 'Item Already Reported',
+            description: `${existingItem?.name} is already on the report list.`
+        });
+        if (isSpeedMode) startScannerWithDelay();
+        return;
+    }
+
     if (!isOnline) {
-        await queueCapture({ sku, locationId, reason: 'Other', comment: 'Offline Scan - details needed' });
+        playSuccess();
         toast({
             title: "Queued for Sync",
-            description: `Item ${sku} was captured while offline and will be processed later. You can edit the details from the list.`,
+            description: `Item ${sku} was captured while offline and will be processed later when you reconnect.`,
             icon: <WifiOff className="h-5 w-5" />
         });
+        await queueAvailabilityCapture({ sku, locationId, reason: 'Other', comment: 'Offline Scan - details needed' });
+        if (isSpeedMode) startScannerWithDelay();
         return;
     }
     
@@ -204,11 +258,44 @@ export default function AvailabilityPage() {
                 </ToastAction>
             ),
         });
-        setIsScanMode(true); // Re-open scanner on error
+        if (isSpeedMode) {
+            setIsScanMode(true);
+            startScannerWithDelay();
+        } else {
+             setIsScanMode(true);
+        }
     } else {
         const product = data[0];
-        
-        if (!product.location.standard && product.stockQuantity <= 0) {
+        let defaultReason = 'Early Sellout';
+        if (product.stockQuantity === 0) {
+            defaultReason = 'No Stock';
+        } else if (product.stockQuantity < 10) {
+            defaultReason = 'Low Stock';
+        }
+
+        if (isSpeedMode) {
+            playSuccess();
+            const newReportedItem: ReportedItem = {
+                ...product,
+                reportId: `${product.sku}-${Date.now()}`,
+                reason: defaultReason,
+                comment: `Added in Speed Mode`,
+            };
+            setReportedItems(prev => [newReportedItem, ...prev]);
+
+            if (defaultReason === 'Early Sellout' && product.stockQuantity >= 10) {
+                 toast({
+                    variant: 'default',
+                    title: 'Item Reported',
+                    description: `${product.name} reported. Note: Stock is ${product.stockQuantity}, but was added as 'Early Sellout'.`,
+                    icon: <AlertTriangle className="h-5 w-5 text-amber-500" />
+                });
+            } else {
+                 toast({ title: 'Item Reported', description: `${product.name} added to the report list.` });
+            }
+            startScannerWithDelay();
+
+        } else if (!product.location.standard && product.stockQuantity <= 0) {
             playError();
             toast({ 
                 variant: 'destructive', 
@@ -221,18 +308,11 @@ export default function AvailabilityPage() {
           playSuccess();
           setScannedProduct(product);
           setEditingItem(null);
-          
-          let defaultReason = '';
-          if (product.stockQuantity === 0) {
-              defaultReason = 'No Stock';
-          }
-
           reasonForm.reset({ reason: defaultReason, comment: '' });
           setIsModalOpen(true);
-          setIsMoreInfoOpen(false);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -255,7 +335,6 @@ export default function AvailabilityPage() {
     if (!open) {
       setScannedProduct(null);
       setEditingItem(null);
-      // Re-open scanner when modal is closed, but only if we were in scan mode before
       if (!editingItem) {
           setIsScanMode(true);
       }
@@ -293,7 +372,6 @@ export default function AvailabilityPage() {
       setScannedProduct(null);
       reasonForm.reset({ reason: item.reason, comment: item.comment || '' });
       setIsModalOpen(true);
-      setIsMoreInfoOpen(false);
   }
 
   const handleUndoDelete = useCallback(() => {
@@ -349,16 +427,17 @@ export default function AvailabilityPage() {
   }
 
   const handleCopyData = () => {
-    const tsv = 'SKU\tName\tStock\tLocation\tReason\tComment\n' + reportedItems.map(p => 
-        [
+    const tsv = 'SKU\tName\tStock\tLocation\tReason\tComment\n' + reportedItems.map(p => {
+        const comment = p.comment === 'Added in Speed Mode' ? '' : p.comment || '';
+        return [
             p.sku,
             p.name.replace(/\s+/g, ' '),
             p.stockQuantity,
             p.location.standard,
             p.reason,
-            p.comment || '',
-        ].join('\t')
-    ).join('\n');
+            comment,
+        ].join('\t');
+    }).join('\n');
 
     navigator.clipboard.writeText(tsv).then(() => {
         toast({ title: 'Copied to Clipboard', description: 'The report data has been copied in TSV format.'});
@@ -383,7 +462,7 @@ export default function AvailabilityPage() {
         stock: p.stockQuantity,
         location: p.location.standard || 'N/A',
         reason: p.reason,
-        comment: p.comment || ''
+        comment: p.comment === 'Added in Speed Mode' ? '' : p.comment || ''
     }));
 
     const head = `
@@ -438,6 +517,17 @@ export default function AvailabilityPage() {
   
   const productForModal = editingItem || scannedProduct;
 
+  const handleCopyRawData = useCallback(() => {
+    if (productForModal) {
+      const rawJson = JSON.stringify(productForModal, null, 2);
+      navigator.clipboard.writeText(rawJson).then(() => {
+        toast({ title: 'Raw Data Copied', description: 'The raw JSON data has been copied to your clipboard.' });
+      }).catch(err => {
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+      });
+    }
+  }, [productForModal, toast]);
+
   return (
     <div className="min-h-screen bg-background">
       <InstallPrompt />
@@ -457,7 +547,7 @@ export default function AvailabilityPage() {
       )}
       
        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-xl">
           <Form {...reasonForm}>
             <form onSubmit={reasonForm.handleSubmit(handleReasonSubmit)} className="space-y-4">
               <DialogHeader>
@@ -467,19 +557,19 @@ export default function AvailabilityPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              {productForModal && (
-                  <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen}>
-                    <div className="flex items-start gap-4 p-4 rounded-md border bg-muted/50">
+                {productForModal && (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
                         <Image
                           src={productForModal.imageUrl || `https://placehold.co/100x100.png`}
                           alt={productForModal.name}
                           width={80}
                           height={80}
-                          className="rounded-md object-cover"
+                          className="rounded-md object-cover flex-shrink-0"
                           data-ai-hint="product image"
                         />
-                        <div className="text-sm space-y-1 flex-grow">
-                          <p className="font-bold">{productForModal.name}</p>
+                        <div className="text-sm space-y-1 flex-grow min-w-0">
+                          <p className="font-bold break-words">{productForModal.name}</p>
                            {productForModal.price.promotional && (
                               <div className="pt-1">
                                 <Badge variant="destructive" className="bg-accent text-accent-foreground">{productForModal.price.promotional}</Badge>
@@ -490,24 +580,20 @@ export default function AvailabilityPage() {
                           {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
                         </div>
                     </div>
-                     <CollapsibleContent>
-                        <div className="border-t p-4 space-y-3 text-xs text-muted-foreground overflow-y-auto max-h-60">
-                           <div className="grid grid-cols-1 gap-3">
-                                <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
-                                <DataRow icon={<Info />} label="Status" value={productForModal.status} />
-                                <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
-                                <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
-                                <DataRow icon={<Crown />} label="Brand" value={productForModal.productDetails.brand} />
-                                <DataRow icon={<Globe />} label="Country of Origin" value={productForModal.productDetails.countryOfOrigin} />
-                                <DataRow icon={<Thermometer />} label="Temperature" value={productForModal.temperature} />
-                                <DataRow icon={<Weight />} label="Weight" value={productForModal.weight ? `${productForModal.weight} kg` : null} />
-                            </div>
+                    <div className="px-4 space-y-3 text-xs text-muted-foreground max-h-[60vh] overflow-y-auto">
+                        <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
+                        <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
+                        <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
 
-                            <Separator />
-                            <div>
-                              <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
-                              <div className="grid grid-cols-1 gap-3">
-                                 {productForModal.lastStockChange?.lastCountDateTime && (
+                        <div className="flex justify-center py-2">
+                          <SkuQrCode sku={productForModal.sku} />
+                        </div>
+
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="stock">
+                             <AccordionTrigger className='py-2 text-xs font-semibold'>Stock & Logistics</AccordionTrigger>
+                             <AccordionContent className="space-y-3 pt-2">
+                                {productForModal.lastStockChange?.lastCountDateTime && (
                                     <DataRow
                                         icon={<History />}
                                         label="Last Stock Event"
@@ -519,40 +605,34 @@ export default function AvailabilityPage() {
                                  <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={productForModal.productDetails.productLife ? `${productForModal.productDetails.productLife.minimumCPCAcceptanceLife} / ${productForModal.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
                                  <DataRow icon={<Flag />} label="Perishable" value={productForModal.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
                                  <DataRow icon={<Flag />} label="Manual Order" value={productForModal.productDetails.manuallyStoreOrderedItem} />
-                              </div>
-                            </div>
-                            
-                            {productForModal.productDetails.commercialHierarchy && (
-                                <>
-                                <Separator />
-                                <div>
-                                    <h4 className="font-bold mb-3 flex items-center gap-2"><Building2 className="h-5 w-5" /> Classification</h4>
-                                    <p className="text-xs">
+                             </AccordionContent>
+                          </AccordionItem>
+                          {productForModal.productDetails.commercialHierarchy && (
+                             <AccordionItem value="classification">
+                                <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                   <p className="text-xs">
                                         {productForModal.productDetails.commercialHierarchy.divisionName} &rarr; {productForModal.productDetails.commercialHierarchy.groupName} &rarr; {productForModal.productDetails.commercialHierarchy.className} &rarr; {productForModal.productDetails.commercialHierarchy.subclassName}
                                     </p>
-                                </div>
-                                </>
-                            )}
-                             <details className="pt-2">
-                                <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                                <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">
-                                    {JSON.stringify(productForModal, null, 2)}
-                                </pre>
-                            </details>
-                        </div>
-                     </CollapsibleContent>
-                     <div className="border-t">
-                        <CollapsibleTrigger asChild>
-                            <Button variant="ghost" className="w-full text-xs h-8 text-muted-foreground">
-                                {isMoreInfoOpen ? 'Show Less' : 'Show More'}
-                                <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isMoreInfoOpen && "rotate-180")} />
-                            </Button>
-                        </CollapsibleTrigger>
-                     </div>
-                  </Collapsible>
+                                </AccordionContent>
+                             </AccordionItem>
+                          )}
+                        </Accordion>
+                         <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-2"
+                            onClick={handleCopyRawData}
+                          >
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy Raw Data
+                          </Button>
+                    </div>
+                  </div>
               )}
               
-              <div className="px-6 space-y-4">
+              <div className="px-6 space-y-4 pt-4">
                 <FormField
                   control={reasonForm.control}
                   name="reason"
@@ -607,16 +687,22 @@ export default function AvailabilityPage() {
           "container mx-auto px-4 py-8 md:py-12 transition-all duration-300",
           isScanMode && "pt-[calc(100vw/1.77+2rem)] sm:pt-[calc(448px/1.77+2rem)]"
       )}>
-        
+        <TooltipProvider>
         <div className={cn(isScanMode && "hidden")}>
-          <header className="text-center mb-8">
-            <div className="inline-flex items-center gap-3">
-               <ServerCrash className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold tracking-tight text-primary">
+           <header className="text-center mb-12">
+            <div className="flex justify-center items-center gap-4 relative">
+               <ServerCrash className="w-12 h-12 text-primary" />
+              <h1 className="text-5xl font-bold tracking-tight text-primary">
                 Availability Report
               </h1>
+               <div className="absolute right-0 top-0">
+                <StatusIndicator />
+              </div>
             </div>
-             <div className="mt-2 space-x-2">
+             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Scan items to check their data and report any availability issues you find.
+            </p>
+            <div className="mt-2 space-x-2">
                 <Button variant="link" asChild className="text-sm">
                     <Link href="/">
                         <LinkIcon className="mr-2 h-4 w-4" />
@@ -642,7 +728,7 @@ export default function AvailabilityPage() {
           </header>
           
            <Card className="max-w-4xl mx-auto mb-8 shadow-md">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-4">
               <Form {...form}>
                 <form className="flex flex-col sm:flex-row items-center gap-4">
                   <FormField
@@ -658,22 +744,36 @@ export default function AvailabilityPage() {
                       </FormItem>
                     )}
                   />
-                   <Button
-                      type="button"
-                      className="w-full sm:w-auto flex-shrink-0"
-                      variant='outline'
-                      onClick={handleScanButtonClick}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                         <ScanLine className="mr-2 h-4 w-4" />
-                      )}
-                      {isLoading ? 'Checking...' : 'Scan Item to Report'}
-                    </Button>
+                   <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        className="w-full sm:w-auto flex-shrink-0"
+                        variant='outline'
+                        onClick={handleScanButtonClick}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                           <ScanLine className="mr-2 h-4 w-4" />
+                        )}
+                        {isLoading ? 'Checking...' : isScanMode ? 'Stop Scanning' : 'Scan Item to Report'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Scan an item's barcode to check its data and report an issue.</p>
+                    </TooltipContent>
+                   </Tooltip>
                 </form>
               </Form>
+              <div className="flex items-center space-x-2 justify-center pt-2">
+                <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
+                <Label htmlFor="speed-mode" className="flex items-center gap-2">
+                    <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
+                    Speed Mode
+                </Label>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -684,21 +784,42 @@ export default function AvailabilityPage() {
                   <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
                       <div className="flex flex-wrap items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={handleCopyHtml}>
-                              <Mail className="mr-2 h-4 w-4" />
-                              Copy for Email
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={handleCopyData}>
-                              <Copy className="mr-2 h-4 w-4" />
-                              Copy TSV
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Clear
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={handleCopyHtml}>
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Copy for Email
                               </Button>
-                            </AlertDialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy the list as a rich HTML table, ready to paste into an email.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={handleCopyData}>
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Copy TSV
+                              </Button>
+                            </TooltipTrigger>
+                             <TooltipContent>
+                              <p>Copy the list as Tab-Separated Values, ready for a spreadsheet.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <AlertDialog>
+                           <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Clear
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Clear all items from the report list.</p>
+                              </TooltipContent>
+                            </Tooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -748,6 +869,7 @@ export default function AvailabilityPage() {
                   </CardContent>
               </Card>
           }
+        </TooltipProvider>
       </main>
     </div>
   );
