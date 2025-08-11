@@ -75,9 +75,9 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
         .zone[data-type="front"] rect { fill: var(--front); }
 
         .zone.match rect {
-            stroke: hsl(var(--accent-hsl));
+            stroke: hsl(var(--accent));
             stroke-width: 5px;
-            fill: hsla(var(--accent-hsl), 0.3);
+            fill: rgba(253, 224, 71, 0.3);
         }
       `}</style>
 
