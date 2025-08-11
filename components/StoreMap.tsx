@@ -28,7 +28,7 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
             }
 
             const searchTerms = q.split(/, | & | and /).map(k => k.trim());
-            const isMatch = searchTerms.some(term => keywords.some(kw => kw.includes(term)));
+            const isMatch = keywords.some(kw => searchTerms.some(term => kw.includes(term)));
             
             z.classList.toggle('match', isMatch);
         });
