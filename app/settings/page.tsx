@@ -87,86 +87,88 @@ export default function SettingsPage() {
                     Manage API credentials, appearance, and other application settings.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-8">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                     <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                            Theme
-                        </FormLabel>
-                        <FormDescription>
-                            Select a theme for the application.
-                        </FormDescription>
-                     </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="icon">
-                            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                            <span className="sr-only">Toggle theme</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setTheme("light")}>
-                            Light
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTheme("dark")}>
-                            Dark
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTheme("system")}>
-                            System
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                </div>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                        <FormField
-                        control={form.control}
-                        name="bearerToken"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Default Bearer Token</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Enter bearer token..." {...field} />
-                                </FormControl>
-                                <FormDescription>
-                                This token is used for certain API requests.
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="debugMode"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">
-                                  Debug Mode
-                                </FormLabel>
-                                <FormDescription>
-                                  Show detailed error information for API requests.
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <div className="flex justify-between">
-                            <Button type="button" variant="destructive" onClick={handleReset}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Reset to Defaults
+            <CardContent>
+              <Form {...form}>
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                              Theme
+                          </FormLabel>
+                          <FormDescription>
+                              Select a theme for the application.
+                          </FormDescription>
+                      </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                              <span className="sr-only">Toggle theme</span>
                             </Button>
-                            <Button type="submit">Save Settings</Button>
-                        </div>
-                    </form>
-                </Form>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setTheme("light")}>
+                              Light
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("dark")}>
+                              Dark
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("system")}>
+                              System
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                  </div>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                      <FormField
+                      control={form.control}
+                      name="bearerToken"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Default Bearer Token</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="Enter bearer token..." {...field} />
+                              </FormControl>
+                              <FormDescription>
+                              This token is used for certain API requests.
+                              </FormDescription>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="debugMode"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">
+                                Debug Mode
+                              </FormLabel>
+                              <FormDescription>
+                                Show detailed error information for API requests.
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex justify-between">
+                          <Button type="button" variant="destructive" onClick={handleReset}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Reset to Defaults
+                          </Button>
+                          <Button type="submit">Save Settings</Button>
+                      </div>
+                  </form>
+                </div>
+              </Form>
             </CardContent>
           </Card>
     </main>
