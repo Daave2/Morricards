@@ -16,6 +16,7 @@ import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Skeleton } from './ui/skeleton';
+import QRCode from 'qrcode';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'], isOffline?: boolean };
 
@@ -40,8 +41,19 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
 
 export default function ProductCard({ product, layout, onPick, isPicker = false }: ProductCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   
   const isPicked = product.picked;
+
+  useEffect(() => {
+    if (product.sku) {
+      QRCode.toDataURL(product.sku, { width: 128, margin: 1, errorCorrectionLevel: 'low' })
+        .then(setQrCodeDataUrl)
+        .catch(err => {
+          console.error('Failed to generate QR code for SKU', err);
+        });
+    }
+  }, [product.sku]);
 
   const handlePick = () => {
     if (onPick) {
@@ -243,6 +255,18 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                         <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
                         <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
                       </div>
+                      
+                      {qrCodeDataUrl && (
+                        <div className="flex justify-center py-2">
+                          <Image
+                            src={qrCodeDataUrl}
+                            alt={`QR Code for SKU ${product.sku}`}
+                            width={128}
+                            height={128}
+                            data-ai-hint="QR code SKU"
+                          />
+                        </div>
+                      )}
 
                        <Separator />
                         <div>
