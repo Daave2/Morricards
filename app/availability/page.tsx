@@ -505,7 +505,7 @@ export default function AvailabilityPage() {
                           alt={productForModal.name}
                           width={80}
                           height={80}
-                          className="rounded-md object-cover"
+                          className="rounded-md object-cover flex-shrink-0"
                           data-ai-hint="product image"
                         />
                         <div className="text-sm space-y-1 flex-grow min-w-0">
