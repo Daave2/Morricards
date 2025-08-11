@@ -11,13 +11,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Map, Search } from 'lucide-react';
+import { Loader2, Map, Search, ChevronLeft } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import StoreMap from '@/components/StoreMap';
-import { ChevronLeft } from 'lucide-react';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -26,9 +24,23 @@ const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
 
+const AISLE_NAME_MAP: Record<string, string> = {
+    'Ambient Grocery': 'International, Soup/Veg, Spices/meat',
+    'Confectionery, Snacks & Biscuits': 'Sweets, Biscuits, Crisps',
+    'Drinks': 'Pop, Water',
+    'Household & Pet': 'Paper, Cleaning, Cat, Dog, Home',
+    'News, Mags, Tobacco & Home': 'Stationery, Home, Leisure',
+    'Beers, Wines & Spirits': 'Beer, Wine, Spirits',
+    'Produce': 'Fruit & Veg',
+    'Chilled Foods': 'Dairy, Cheese, Butter, Ready Meals, Dips, Pizzas, Coleslaw',
+    'Bakery': 'Bakery',
+    'Deli': 'Deli, Ham',
+    'Meat & Fish': 'Meat, Seafood',
+    'Frozen Foods': 'Frozen',
+};
+
 export default function MapPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [product, setProduct] = useState<Product | null>(null);
   const [highlightedAisle, setHighlightedAisle] = useState<string | null>(null);
 
   const { toast } = useToast();
@@ -41,7 +53,6 @@ export default function MapPage() {
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
-    setProduct(null);
     setHighlightedAisle(null);
 
     const { data, error } = await getProductData({
@@ -57,10 +68,11 @@ export default function MapPage() {
       toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for: ${values.sku}` });
     } else {
       const foundProduct = data[0];
-      setProduct(foundProduct);
       const aisle = foundProduct.productDetails.commercialHierarchy?.groupName || foundProduct.productDetails.commercialHierarchy?.className || null;
-      setHighlightedAisle(aisle);
-      toast({ title: 'Product Found', description: `Showing location for ${foundProduct.name}.` });
+      const mappedAisle = aisle ? (AISLE_NAME_MAP[aisle] || aisle) : null;
+      
+      setHighlightedAisle(mappedAisle);
+      toast({ title: 'Product Found', description: `Showing location for ${foundProduct.name}. Highlight: ${mappedAisle}` });
     }
   };
 
@@ -83,10 +95,10 @@ export default function MapPage() {
           </Button>
         </header>
 
-        <Card className="max-w-2xl mx-auto mb-8 shadow-md">
-            <CardHeader>
-                <CardTitle>Find a Product</CardTitle>
-            </CardHeader>
+        <Card className="max-w-4xl mx-auto mb-8 shadow-md">
+          <CardHeader>
+              <CardTitle>Find a Product</CardTitle>
+          </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col sm:flex-row items-end gap-4">
@@ -133,18 +145,7 @@ export default function MapPage() {
           </CardContent>
         </Card>
 
-        {product && (
-            <Card className='max-w-2xl mx-auto mb-8 shadow-lg'>
-                <CardHeader>
-                    <CardTitle>{product.name}</CardTitle>
-                    <CardDescription>
-                        Aisle: <span className="font-semibold text-primary">{highlightedAisle || 'N/A'}</span>
-                    </CardDescription>
-                </CardHeader>
-            </Card>
-        )}
-
-        <div className="p-4 md:p-8 border rounded-lg bg-card shadow-lg">
+        <div className="border rounded-lg bg-card shadow-lg overflow-hidden">
             <StoreMap highlightedAisle={highlightedAisle} />
         </div>
 
