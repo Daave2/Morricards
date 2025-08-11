@@ -79,8 +79,8 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     return (
         <div className="flex items-start gap-3">
             <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
-            <div className='flex-grow'>
-                <span className="font-bold">{label}:</span> <span className={cn(valueClassName)}>{value}</span>
+            <div className='flex-grow min-w-0'>
+                <span className="font-bold">{label}:</span> <span className={cn('break-words', valueClassName)}>{value}</span>
             </div>
         </div>
     );
@@ -522,7 +522,7 @@ export default function AvailabilityPage() {
                     </div>
                      <CollapsibleContent>
                         <div className="border-t p-4 space-y-3 text-xs text-muted-foreground overflow-y-auto max-h-60">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                           <div className="grid grid-cols-1 gap-3">
                                 <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
                                 <DataRow icon={<Info />} label="Status" value={productForModal.status} />
                                 <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
@@ -536,7 +536,7 @@ export default function AvailabilityPage() {
                             <Separator />
                             <div>
                               <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="grid grid-cols-1 gap-3">
                                  {productForModal.lastStockChange?.lastCountDateTime && (
                                     <DataRow
                                         icon={<History />}
@@ -565,7 +565,7 @@ export default function AvailabilityPage() {
                             )}
                              <details className="pt-2">
                                 <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                                <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">
+                                <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
                                     {JSON.stringify(productForModal, null, 2)}
                                 </pre>
                             </details>
@@ -818,3 +818,4 @@ export default function AvailabilityPage() {
   );
 }
 
+    
