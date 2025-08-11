@@ -216,21 +216,15 @@ function PickingList() {
 
   const handlePick = useCallback((sku: string) => {
     const productCard = document.querySelector(`[data-sku="${sku}"]`);
-    if (productCard) {
-        productCard.classList.add('picked-animation');
-    }
-
-    requestAnimationFrame(() => {
-        setProducts(prevProducts => {
-            const productToUpdate = prevProducts.find(p => p.sku === sku || p.scannedSku === sku);
-            if (!productToUpdate) return prevProducts;
-            const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
-            return [...updatedProducts];
-        });
-    });
-
     const productToUpdate = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
-    if(productToUpdate && !productToUpdate.picked) {
+
+    if (productCard && productToUpdate && !productToUpdate.picked) {
+        productCard.classList.add('picked-animation');
+        
+        productCard.addEventListener('animationend', () => {
+             setProducts(prev => prev.map(p => p.sku === sku ? { ...p, picked: true } : p));
+        }, { once: true });
+        
         setTimeout(() => dismiss(), 0);
         playSuccess();
         setTimeout(() => toast({
@@ -244,6 +238,9 @@ function PickingList() {
                 </ToastAction>
             ),
         }), 0);
+    } else if (productToUpdate?.picked) {
+        // Unpicking is immediate
+        setProducts(prev => prev.map(p => p.sku === sku ? { ...p, picked: false } : p));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
