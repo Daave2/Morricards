@@ -508,8 +508,8 @@ export default function AvailabilityPage() {
                           className="rounded-md object-cover"
                           data-ai-hint="product image"
                         />
-                        <div className="text-sm space-y-1 flex-grow">
-                          <p className="font-bold">{productForModal.name}</p>
+                        <div className="text-sm space-y-1 flex-grow min-w-0">
+                          <p className="font-bold break-words">{productForModal.name}</p>
                            {productForModal.price.promotional && (
                               <div className="pt-1">
                                 <Badge variant="destructive" className="bg-accent text-accent-foreground">{productForModal.price.promotional}</Badge>
@@ -817,5 +817,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
