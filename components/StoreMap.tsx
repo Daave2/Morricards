@@ -28,7 +28,7 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
             }
 
             const searchTerms = q.split(/, | & | and /).map(k => k.trim());
-            const isMatch = keywords.some(kw => searchTerms.some(term => kw.includes(term)));
+            const isMatch = searchTerms.some(term => keywords.some(kw => kw.includes(term) || term.includes(kw)));
             
             z.classList.toggle('match', isMatch);
         });
@@ -46,7 +46,7 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
           --ink: #0f172a;
           --muted: #6b7280;
           --grid: #d4d4d8;
-          --accent: #16a34a;
+          --accent-hsl: var(--accent); /* Now we pass HSL values directly */
 
           /* Category fills */
           --chilled: #cfe8ff;      /* blues */
@@ -64,7 +64,7 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
         .map-svg { width: 100%; height: auto; display: block; background: white; }
 
         /* Zones */
-        .zone rect { stroke: #334155; stroke-width: 2; rx: 10; transition: stroke-width 0.2s ease-in-out, stroke 0.2s ease-in-out; }
+        .zone rect { stroke: #334155; stroke-width: 2; rx: 10; transition: stroke-width 0.2s ease-in-out, stroke 0.2s ease-in-out, fill 0.2s ease-in-out; }
         .zone text { font-weight: 800; fill: #111827; letter-spacing: .2px; }
 
         .zone[data-type="chilled"] rect { fill: var(--chilled); }
@@ -75,8 +75,9 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
         .zone[data-type="front"] rect { fill: var(--front); }
 
         .zone.match rect {
-            stroke: var(--accent);
+            stroke: hsl(var(--accent-hsl));
             stroke-width: 5px;
+            fill: hsla(var(--accent-hsl), 0.3);
         }
       `}</style>
 
