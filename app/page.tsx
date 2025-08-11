@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback, Suspense } from 'react';
@@ -182,11 +181,11 @@ function PickingList() {
     },
   });
 
+  const skusFromUrl = searchParams.get('skus');
+  const locationFromUrl = searchParams.get('location');
+
   // Handle dynamic links
   useEffect(() => {
-    const skusFromUrl = searchParams.get('skus');
-    const locationFromUrl = searchParams.get('location');
-
     if (skusFromUrl && locationFromUrl) {
       form.setValue('skus', skusFromUrl);
       form.setValue('locationId', locationFromUrl);
@@ -196,7 +195,7 @@ function PickingList() {
       router.replace('/', undefined);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [skusFromUrl, locationFromUrl]);
 
   
   const handleUndoPick = useCallback((skuToUndo: string) => {
@@ -826,3 +825,5 @@ export default function Home() {
     </Suspense>
   );
 }
+
+    
