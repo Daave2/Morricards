@@ -34,7 +34,7 @@ const InsightSection = ({ title, content, icon }: { title: string; content: Reac
   if (!content) return null;
   
   const contentArray = Array.isArray(content) ? content : [content];
-  if (contentArray.length === 0) return null;
+  if (contentArray.length === 0 || (contentArray.length === 1 && !contentArray[0])) return null;
 
   return (
     <div>
@@ -272,12 +272,12 @@ export default function AssistantPage() {
                             <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
                         </Avatar>
                         <div className='flex-grow space-y-4 text-sm'>
-                            <InsightSection title="About this product" content={<p>{insights.customerFacingSummary}</p>} />
+                            <InsightSection title="About this product" content={insights.customerFacingSummary} />
                             {insights.customerFriendlyLocation && (
                                 <InsightSection
                                   title="Where to find it"
                                   icon={<MapPin className="h-5 w-5 text-primary" />}
-                                  content={<p>{insights.customerFriendlyLocation}</p>}
+                                  content={insights.customerFriendlyLocation}
                                 />
                             )}
                             {insights.crossSell && insights.crossSell.length > 0 && (
