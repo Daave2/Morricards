@@ -426,16 +426,17 @@ export default function AvailabilityPage() {
   }
 
   const handleCopyData = () => {
-    const tsv = 'SKU\tName\tStock\tLocation\tReason\tComment\n' + reportedItems.map(p => 
-        [
+    const tsv = 'SKU\tName\tStock\tLocation\tReason\tComment\n' + reportedItems.map(p => {
+        const comment = p.comment === 'Added in Speed Mode' ? '' : p.comment || '';
+        return [
             p.sku,
             p.name.replace(/\s+/g, ' '),
             p.stockQuantity,
             p.location.standard,
             p.reason,
-            p.comment || '',
-        ].join('\t')
-    ).join('\n');
+            comment,
+        ].join('\t');
+    }).join('\n');
 
     navigator.clipboard.writeText(tsv).then(() => {
         toast({ title: 'Copied to Clipboard', description: 'The report data has been copied in TSV format.'});
@@ -460,7 +461,7 @@ export default function AvailabilityPage() {
         stock: p.stockQuantity,
         location: p.location.standard || 'N/A',
         reason: p.reason,
-        comment: p.comment || ''
+        comment: p.comment === 'Added in Speed Mode' ? '' : p.comment || ''
     }));
 
     const head = `
@@ -868,3 +869,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
