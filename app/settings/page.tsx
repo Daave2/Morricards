@@ -19,11 +19,22 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Settings, Trash2, Moon, Sun } from 'lucide-react';
+import { Home, Settings, Trash2, Moon, Sun, DatabaseZap } from 'lucide-react';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const FormSchema = z.object({
   bearerToken: z.string(),
@@ -31,7 +42,7 @@ const FormSchema = z.object({
 });
 
 export default function SettingsPage() {
-  const { settings, setSettings } = useApiSettings();
+  const { settings, setSettings, clearAllData } = useApiSettings();
   const { setTheme } = useTheme()
 
 
@@ -60,6 +71,14 @@ export default function SettingsPage() {
     });
   }
 
+  function handleClearData() {
+    clearAllData();
+     toast({
+      title: 'Application Data Cleared',
+      description: 'All lists and offline data have been removed.',
+    });
+  }
+
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-12">
@@ -80,7 +99,7 @@ export default function SettingsPage() {
             </Button>
           </header>
 
-          <Card className="max-w-2xl mx-auto">
+          <Card className="max-w-2xl mx-auto mb-8">
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
                 <CardDescription>
@@ -160,7 +179,7 @@ export default function SettingsPage() {
                         )}
                       />
                       <div className="flex justify-between">
-                          <Button type="button" variant="destructive" onClick={handleReset}>
+                          <Button type="button" variant="outline" onClick={handleReset}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               Reset to Defaults
                           </Button>
@@ -169,6 +188,39 @@ export default function SettingsPage() {
                   </form>
                 </div>
               </Form>
+            </CardContent>
+          </Card>
+
+          <Card className="max-w-2xl mx-auto border-destructive/50">
+             <CardHeader>
+                <CardTitle>Data Management</CardTitle>
+                <CardDescription>
+                    Permanently clear all stored application data from this browser, including picking lists and offline items.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="w-full">
+                            <DatabaseZap className="mr-2 h-4 w-4" />
+                            Clear All Application Data
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete all picking lists, availability reports, and queued offline data from this device.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearData}>
+                            Yes, delete all data
+                        </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardContent>
           </Card>
     </main>

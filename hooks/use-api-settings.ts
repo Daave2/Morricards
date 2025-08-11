@@ -1,9 +1,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { openDB } from 'idb';
 
 const LOCAL_STORAGE_KEY_SETTINGS = 'morricards-api-settings';
+const LOCAL_STORAGE_KEY_PRODUCTS = 'morricards-products';
+const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
+const DB_NAME = 'smu';
 
 export interface ApiSettings {
   bearerToken: string;
@@ -48,6 +52,37 @@ export function useApiSettings() {
     setSettings(prev => ({...prev, ...newSettings}));
   }
 
+  const clearAllData = useCallback(() => {
+    try {
+      // Clear local storage items
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY_PRODUCTS);
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY_AVAILABILITY);
+
+      // Clear IndexedDB stores
+      const clearDB = async () => {
+        const db = await openDB(DB_NAME);
+        if (db.objectStoreNames.contains('availability-captures')) {
+          await db.clear('availability-captures');
+        }
+        if (db.objectStoreNames.contains('product-fetches')) {
+           await db.clear('product-fetches');
+        }
+        db.close();
+      }
+      clearDB();
+      
+      // Optionally, reset settings to default here as well or keep them.
+      // Let's keep them for now, as user might just want to clear data, not settings.
+
+    } catch (error) {
+       console.error("Failed to clear application data", error);
+    }
+  }, []);
+
   // Return default settings on server or before mount, and real settings after mount
-  return { settings: isMounted ? settings : DEFAULT_SETTINGS, setSettings: updateSettings };
+  return { 
+    settings: isMounted ? settings : DEFAULT_SETTINGS, 
+    setSettings: updateSettings,
+    clearAllData
+  };
 }
