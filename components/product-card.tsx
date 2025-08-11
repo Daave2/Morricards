@@ -64,7 +64,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
         <Card 
             data-sku={product.sku}
             className={cn(
-                "w-full transition-all duration-300 flex flex-col relative bg-muted/30", 
+                "w-full transition-all duration-300 flex flex-col relative bg-muted/30 overflow-hidden", 
                 layout === 'list' && "flex-row",
             )}>
             <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
@@ -367,7 +367,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
         <Card 
             data-sku={product.sku}
             className={cn(
-                "w-full transition-all duration-300 flex flex-col relative", 
+                "w-full transition-all duration-300 flex flex-col relative overflow-hidden", 
                 layout === 'list' && "flex-row",
                 isPicker && isPicked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
                 isAgeRestricted ? 'bg-red-50/50' : 
@@ -384,3 +384,4 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
+
