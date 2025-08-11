@@ -16,6 +16,7 @@ import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
 import StoreMap from '@/components/StoreMap';
+import { findAisleForProduct } from '@/ai/flows/aisle-finder-flow';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -24,20 +25,16 @@ const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
 
-const AISLE_NAME_MAP: Record<string, string> = {
-    'Ambient Grocery': 'International, Soup/Veg, Spices/meat, Home Bake, Desserts/Tea, Cereal/Sugar, Bread/Jam, Free From',
-    'Confectionery, Snacks & Biscuits': 'Sweets, Biscuits, Crisps',
-    'Drinks': 'Pop, Water',
-    'Household & Pet': 'Paper, Cleaning, Cat, Dog, Home, Health & Beauty, Baby, Clothes, Seasonal, Leisure, Cook shop',
-    'News, Mags, Tobacco & Home': 'Stationery, Home, Leisure, Partyware',
-    'Beers, Wines & Spirits': 'Beer, Wine, Spirits',
-    'Produce': 'Fruit & Veg',
-    'Chilled Foods': 'Dairy, Cheese, Butter, Ready Meals, Dips, Pizzas, Coleslaw',
-    'Bakery': 'Bakery, Cakes',
-    'Deli': 'Deli, Ham',
-    'Meat & Fish': 'Meat, Seafood',
-    'Frozen Foods': 'Frozen',
-};
+const ALL_AISLE_NAMES = [
+    'Meat', 'Cakes', 'Bakery', 'Deli', 'Ovens', 'Ham', 'Seafood', 'Butter', 
+    'Cheese', 'Dairy', 'Frozen', 'Frozen 2', 'Ready Meals', 'Dips', 'Pizzas', 
+    'Coleslaw', 'Fruit & Veg', 'Free From', 'Bread/Jam', 'Cereal/Sugar', 
+    'Desserts/Tea', 'Home Bake', 'Spices/meat', 'Soup/Veg', 'International', 
+    'Sweets', 'Biscuits', 'Crisps', 'Beer', 'Spirits', 'Wine', 'Paper', 
+    'Cleaning', 'Cat', 'Dog', 'Health & Beauty', 'Baby', 'Clothes', 'Seasonal', 
+    'Home', 'Leisure', 'Cook shop', 'Pop', 'Water', 'Checkout Sweets', 
+    'Stationery', 'Partyware', 'Meal Deal'
+];
 
 export default function MapPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -62,17 +59,36 @@ export default function MapPage() {
       debugMode: settings.debugMode,
     });
 
-    setIsLoading(false);
 
     if (error || !data || data.length === 0) {
+      setIsLoading(false);
       toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for: ${values.sku}` });
     } else {
       const foundProduct = data[0];
-      const aisle = foundProduct.productDetails.commercialHierarchy?.groupName || foundProduct.productDetails.commercialHierarchy?.className || null;
-      const mappedAisle = aisle ? (AISLE_NAME_MAP[aisle] || aisle) : null;
+      const productCategory = foundProduct.productDetails.commercialHierarchy?.groupName || foundProduct.productDetails.commercialHierarchy?.className || null;
       
-      setHighlightedAisle(mappedAisle);
-      toast({ title: 'Product Found', description: `Showing location for ${foundProduct.name}. Highlight: ${mappedAisle}` });
+      if (productCategory) {
+          toast({ title: 'Product Found', description: `Asking AI to find aisle for ${foundProduct.name}...` });
+          try {
+            const aiResult = await findAisleForProduct({
+                productCategory,
+                aisleNames: ALL_AISLE_NAMES,
+            });
+
+            if (aiResult.bestAisleName) {
+                setHighlightedAisle(aiResult.bestAisleName);
+                toast({ title: 'Location Found!', description: `Highlighting: ${aiResult.bestAisleName}` });
+            } else {
+                toast({ variant: 'destructive', title: 'AI Could Not Match', description: `The AI could not find a specific aisle for "${productCategory}".` });
+            }
+          } catch (aiError) {
+              console.error("AI aisle finder failed:", aiError);
+              toast({ variant: 'destructive', title: 'AI Error', description: 'The AI assistant failed to find the location.' });
+          }
+      } else {
+         toast({ variant: 'destructive', title: 'Location Data Missing', description: `No category information found for ${foundProduct.name} to locate it.` });
+      }
+      setIsLoading(false);
     }
   };
 
