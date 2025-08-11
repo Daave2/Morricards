@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -499,8 +498,8 @@ export default function AvailabilityPage() {
               </DialogHeader>
 
               {productForModal && (
-                  <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen}>
-                    <div className="flex items-start gap-4 p-4 rounded-md border bg-muted/50">
+                  <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen} className="overflow-hidden rounded-md border">
+                    <div className="flex items-start gap-4 p-4 bg-muted/50">
                         <Image
                           src={productForModal.imageUrl || `https://placehold.co/100x100.png`}
                           alt={productForModal.name}
