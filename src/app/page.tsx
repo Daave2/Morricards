@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, CloudSync, Bolt, Bot } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -48,9 +48,14 @@ import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
 import InstallPrompt from '@/components/InstallPrompt';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { queueProductFetch } from '@/lib/offlineQueue';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { ocrFlow } from '@/ai/flows/ocr-flow';
 
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
 
 const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
@@ -59,49 +64,89 @@ const FormSchema = z.object({
 
 const LOCAL_STORAGE_KEY = 'morricards-products';
 
+const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
+  const { isOnline, lastSync } = useNetworkSync();
+  const [timeAgo, setTimeAgo] = useState('');
+
+  useEffect(() => {
+    if (lastSync) {
+      const update = () => {
+        const seconds = Math.floor((Date.now() - lastSync) / 1000);
+        if (seconds < 60) setTimeAgo('just now');
+        else if (seconds < 3600) setTimeAgo(`${Math.floor(seconds / 60)}m ago`);
+        else setTimeAgo(`${Math.floor(seconds / 3600)}h ago`);
+      };
+      update();
+      const interval = setInterval(update, 60000); // every minute
+      return () => clearInterval(interval);
+    }
+  }, [lastSync]);
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
+            {lastSync && !isFetching && (
+              <>
+                <CloudSync className="h-4 w-4" />
+                <span>Synced: {timeAgo}</span>
+              </>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+           <p>{isFetching ? 'Fetching data...' : isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
+          {lastSync && <p>Last data sync was {timeAgo}.</p>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 
 function PickingList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [loadingSkuCount, setLoadingSkuCount] = useState(0);
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [isScanMode, setIsScanMode] = useState(false);
+  const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
-  const [isOnline, setIsOnline] = useState(true);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
   const { settings } = useApiSettings();
-  const { lastSync } = useNetworkSync();
+  const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
-  const scannerRef = useRef<{ start: () => void } | null>(null);
+  const scannerRef = useRef<{ start: () => void; stop: () => void; } | null>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
 
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'onLine' in navigator) {
-      setIsOnline(navigator.onLine);
-      const onlineHandler = () => setIsOnline(true);
-      const offlineHandler = () => setIsOnline(false);
-      window.addEventListener('online', onlineHandler);
-      window.addEventListener('offline', offlineHandler);
-      return () => {
-        window.removeEventListener('online', onlineHandler);
-        window.removeEventListener('offline', offlineHandler);
-      };
-    }
-  }, []);
+  const startScannerWithDelay = useCallback(() => {
+    setTimeout(() => {
+        if (isScanMode && scannerRef.current) {
+            scannerRef.current.start();
+        }
+    }, 1500); // 1.5 second delay
+  }, [isScanMode]);
 
   useEffect(() => {
     if (isScanMode) {
       scannerRef.current?.start();
+    } else {
+      scannerRef.current?.stop();
     }
   }, [isScanMode]);
 
@@ -125,11 +170,24 @@ function PickingList() {
   // Save products to local storage whenever they change
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+      // Don't save offline placeholders permanently if they fail to resolve
+      const productsToSave = products.filter(p => !p.isOffline || p.name !== 'Offline Item');
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(productsToSave));
     } catch (error) {
       console.error("Failed to save products to local storage", error);
     }
   }, [products]);
+
+  // When synced items come back from the network hook, update the product list
+  useEffect(() => {
+    if (syncedItems.length > 0) {
+      setProducts(prevProducts => {
+        const syncedSkus = new Set(syncedItems.map(item => item.sku));
+        const otherProducts = prevProducts.filter(p => !syncedSkus.has(p.sku));
+        return [...otherProducts, ...syncedItems.map(p => ({ ...p, picked: false }))];
+      });
+    }
+  }, [syncedItems]);
 
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -140,11 +198,11 @@ function PickingList() {
     },
   });
 
+  const skusFromUrl = searchParams.get('skus');
+  const locationFromUrl = searchParams.get('location');
+
   // Handle dynamic links
   useEffect(() => {
-    const skusFromUrl = searchParams.get('skus');
-    const locationFromUrl = searchParams.get('location');
-
     if (skusFromUrl && locationFromUrl) {
       form.setValue('skus', skusFromUrl);
       form.setValue('locationId', locationFromUrl);
@@ -154,7 +212,7 @@ function PickingList() {
       router.replace('/', undefined);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [skusFromUrl, locationFromUrl]);
 
   
   const handleUndoPick = useCallback((skuToUndo: string) => {
@@ -175,21 +233,15 @@ function PickingList() {
 
   const handlePick = useCallback((sku: string) => {
     const productCard = document.querySelector(`[data-sku="${sku}"]`);
-    if (productCard) {
-        productCard.classList.add('picked-animation');
-    }
-
-    requestAnimationFrame(() => {
-        setProducts(prevProducts => {
-            const productToUpdate = prevProducts.find(p => p.sku === sku || p.scannedSku === sku);
-            if (!productToUpdate) return prevProducts;
-            const updatedProducts = prevProducts.map(p => (p.sku === sku || p.scannedSku === sku) ? { ...p, picked: !p.picked } : p);
-            return [...updatedProducts];
-        });
-    });
-
     const productToUpdate = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
-    if(productToUpdate && !productToUpdate.picked) {
+
+    if (productCard && productToUpdate && !productToUpdate.picked) {
+        productCard.classList.add('picked-animation');
+        
+        productCard.addEventListener('animationend', () => {
+             setProducts(prev => prev.map(p => p.sku === sku ? { ...p, picked: true } : p));
+        }, { once: true });
+        
         setTimeout(() => dismiss(), 0);
         playSuccess();
         setTimeout(() => toast({
@@ -203,6 +255,9 @@ function PickingList() {
                 </ToastAction>
             ),
         }), 0);
+    } else if (productToUpdate?.picked) {
+        // Unpicking is immediate
+        setProducts(prev => prev.map(p => p.sku === sku ? { ...p, picked: false } : p));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -210,6 +265,10 @@ function PickingList() {
   const handleScanResult = useCallback(async (text: string) => {
     const sku = text.split(',')[0].trim();
     if (!sku) return;
+
+    if (!isSpeedMode) {
+        setIsScanMode(false); // Close scanner on scan only if not in speed mode
+    }
 
     const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
 
@@ -220,14 +279,31 @@ function PickingList() {
         } else {
             handlePick(productToPick.sku);
         }
+        if (isSpeedMode) startScannerWithDelay();
+        return;
     } else {
+        const locationId = form.getValues('locationId');
+        if (!isOnline) {
+            playSuccess();
+            toast({ 
+                title: 'Offline: Item Queued', 
+                description: `Item ${sku} will be fetched when you're back online.`,
+                icon: <WifiOff className="h-5 w-5" />
+            });
+            const placeholder = await queueProductFetch({ sku, locationId });
+            setProducts(prev => [...prev, { ...placeholder, picked: false, isOffline: true }]);
+            if (isSpeedMode) startScannerWithDelay();
+            return;
+        }
+
         playSuccess();
         toast({ title: 'New Item Scanned', description: `Fetching details for EAN: ${sku}` });
 
         setLoadingSkuCount(prev => prev + 1);
         setIsLoading(true);
+        setIsFetching(true);
 
-        const locationId = form.getValues('locationId');
+        
         const { data, error } = await getProductData({
           locationId,
           skus: [sku],
@@ -235,6 +311,7 @@ function PickingList() {
           debugMode: settings.debugMode,
         });
         
+        setIsFetching(false);
         if (error || !data || data.length === 0) {
             const errText = error || `Could not find product for EAN: ${sku}`;
             playError();
@@ -258,16 +335,10 @@ function PickingList() {
         
         setIsLoading(false);
         setLoadingSkuCount(prev => Math.max(0, prev - 1));
+        if (isSpeedMode) startScannerWithDelay();
     }
-
-    // Restart scanning after a short delay
-    setTimeout(() => {
-        if (scannerRef.current) { // Check if the ref is still mounted and scanner is active
-          scannerRef.current?.start();
-        }
-    }, 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode]);
+  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode, isOnline, isSpeedMode, startScannerWithDelay]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -282,6 +353,27 @@ function PickingList() {
             </ToastAction>
         ),
       });
+    }
+  };
+
+  const handleOcrRequest = async (imageDataUri: string) => {
+    setIsOcrLoading(true);
+    toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
+    try {
+        const result = await ocrFlow({ imageDataUri });
+        if (result.eanOrSku) {
+            toast({ title: 'AI OCR Success', description: `Found number: ${result.eanOrSku}` });
+            await handleScanResult(result.eanOrSku);
+        } else {
+            playError();
+            toast({ variant: 'destructive', title: 'AI OCR Failed', description: 'Could not find a valid SKU or EAN on the label.' });
+        }
+    } catch (e) {
+        console.error("OCR flow failed", e);
+        playError();
+        toast({ variant: 'destructive', title: 'AI OCR Error', description: 'An error occurred while reading the image.' });
+    } finally {
+        setIsOcrLoading(false);
     }
   };
 
@@ -302,6 +394,7 @@ function PickingList() {
     
     setLoadingSkuCount(newSkus.length);
     setIsLoading(true);
+    setIsFetching(true);
 
     const { data, error } = await getProductData({
       ...values,
@@ -310,6 +403,7 @@ function PickingList() {
       debugMode: settings.debugMode,
     });
 
+    setIsFetching(false);
     if (error) {
       toast({
         variant: 'destructive',
@@ -469,7 +563,9 @@ function PickingList() {
                 <ZXingScanner 
                     ref={scannerRef} 
                     onResult={handleScanResult} 
-                    onError={handleScanError} 
+                    onError={handleScanError}
+                    onOcrRequest={handleOcrRequest}
+                    isOcrLoading={isOcrLoading}
                 />
                 <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
                    <X className="h-5 w-5" />
@@ -510,13 +606,16 @@ function PickingList() {
       </Dialog>
       
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <div>
+        <TooltipProvider>
           <header className="text-center mb-12">
-            <div className="inline-flex items-center gap-4">
+            <div className="flex justify-center items-center gap-4 relative">
                <ShoppingBasket className="w-12 h-12 text-primary" />
               <h1 className="text-5xl font-bold tracking-tight text-primary">
                 Store mobile <span className="text-foreground">ULTRA</span>
               </h1>
+               <div className="absolute right-0 top-0">
+                <StatusIndicator isFetching={isFetching} />
+              </div>
             </div>
              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
@@ -532,6 +631,12 @@ function PickingList() {
                     <Link href="/settings">
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
+                    </Link>
+                </Button>
+                 <Button variant="link" asChild>
+                    <Link href="/assistant">
+                        <Bot className="mr-2 h-4 w-4" />
+                        AI Product Assistant
                     </Link>
                 </Button>
             </div>
@@ -560,15 +665,22 @@ function PickingList() {
                       <FormItem>
                          <div className="flex justify-between items-center">
                           <FormLabel>Product SKUs / EANs</FormLabel>
-                          <Button
-                            type="button"
-                            variant='outline'
-                            size="sm"
-                            onClick={handleScanButtonClick}
-                          >
-                            <ScanLine className="mr-2 h-4 w-4" />
-                            {getScanButtonLabel()}
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant='outline'
+                                size="sm"
+                                onClick={handleScanButtonClick}
+                              >
+                                <ScanLine className="mr-2 h-4 w-4" />
+                                {getScanButtonLabel()}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Use your device's camera to scan barcodes.</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                         <FormControl>
                           <Textarea
@@ -594,6 +706,13 @@ function PickingList() {
                       </FormItem>
                     )}
                   />
+                  <div className="flex items-center space-x-2 justify-end pt-2">
+                    <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
+                    <Label htmlFor="speed-mode" className="flex items-center gap-2">
+                        <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
+                        Speed Mode
+                    </Label>
+                  </div>
                   <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
                     {isLoading ? (
                       <>
@@ -627,17 +746,31 @@ function PickingList() {
                           />
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4 w-full sm:w-auto">
-                          <Button 
-                              variant={"outline"}
-                              onClick={handleScanButtonClick}
-                            >
-                               <ScanLine className="mr-2 h-4 w-4" />
-                               {getScanButtonLabel()}
-                            </Button>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                  variant={"outline"}
+                                  onClick={handleScanButtonClick}
+                                >
+                                  <ScanLine className="mr-2 h-4 w-4" />
+                                  {getScanButtonLabel()}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Use your device's camera to scan and pick items from the list.</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <Select value={sortConfig} onValueChange={setSortConfig}>
-                              <SelectTrigger className="w-full sm:w-[200px]">
-                                  <SelectValue placeholder="Sort by..." />
-                              </SelectTrigger>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <SelectTrigger className="w-full sm:w-[200px]">
+                                      <SelectValue placeholder="Sort by..." />
+                                  </SelectTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Change the sort order of the product list.</p>
+                                </TooltipContent>
+                              </Tooltip>
                               <SelectContent>
                                   <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
                                   <SelectItem value="stockQuantity-desc">Stock (High to Low)</SelectItem>
@@ -648,24 +781,52 @@ function PickingList() {
                                   <SelectItem value="name-desc">Name (Z-A)</SelectItem>
                               </SelectContent>
                           </Select>
-                           <Button variant="outline" onClick={handleOpenExportModal}>
-                                <Share2 className="mr-2 h-4 w-4" />
-                                Export
-                            </Button>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                               <Button variant="outline" onClick={handleOpenExportModal}>
+                                    <Share2 className="mr-2 h-4 w-4" />
+                                    Export
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Share this list with another device via a link or QR code.</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
-                              <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
-                                  <LayoutGrid className="h-5 w-5"/>
-                              </Button>
-                              <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')}>
-                                  <List className="h-5 w-5"/>
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
+                                      <LayoutGrid className="h-5 w-5"/>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Grid View</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')}>
+                                      <List className="h-5 w-5"/>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>List View</p>
+                                </TooltipContent>
+                              </Tooltip>
                           </div>
                            <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="icon">
-                                  <Trash2 className="h-5 w-5" />
-                              </Button>
-                            </AlertDialogTrigger>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon">
+                                        <Trash2 className="h-5 w-5" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Clear all items from the list.</p>
+                                </TooltipContent>
+                            </Tooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -706,7 +867,7 @@ function PickingList() {
                   <p>We couldn't find any products for the SKUs you entered.</p>
               </div>
           ) : null}
-        </div>
+        </TooltipProvider>
       </main>
     </div>
   );
