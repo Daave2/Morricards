@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History, WifiOff } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -15,8 +15,10 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Skeleton } from './ui/skeleton';
+import SkuQrCode from './SkuQrCode';
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'], isOffline?: boolean };
 
 interface ProductCardProps {
   product: Product;
@@ -30,8 +32,8 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     return (
         <div className="flex items-start gap-3">
             <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
-            <div className='flex-grow'>
-                <span className="font-bold">{label}:</span> <span className={cn(valueClassName)}>{value}</span>
+            <div className='flex-grow min-w-0'>
+                <span className="font-bold">{label}:</span> <span className={cn('break-words', valueClassName)}>{value}</span>
             </div>
         </div>
     );
@@ -57,6 +59,30 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
 
   const lastStockChangeEvent = product.lastStockChange;
+
+  if (product.isOffline) {
+    return (
+        <Card 
+            data-sku={product.sku}
+            className={cn(
+                "w-full transition-all duration-300 flex flex-col relative bg-muted/30 overflow-hidden", 
+                layout === 'list' && "flex-row",
+            )}>
+            <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
+                <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-center gap-4', 'pb-2')}>
+                    <div className='flex-grow space-y-2'>
+                        <CardTitle className="text-lg leading-tight flex items-center gap-2 text-muted-foreground">
+                            <WifiOff className="h-5 w-5" /> Offline Item
+                        </CardTitle>
+                        <Skeleton className="h-4 w-3/4" />
+                        <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                        <p className="text-xs text-amber-600">Details will be fetched when back online.</p>
+                    </div>
+                </CardHeader>
+            </div>
+        </Card>
+    )
+  }
 
 
   const cardContent = (
@@ -110,7 +136,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                 </div>
               </ImageModal>
             )}
-            <div className='flex-grow'>
+            <div className='flex-grow min-w-0'>
                 <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-2">
                     {product.temperature === 'Chilled' && (
@@ -206,7 +232,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
           </CardContent>
 
           <CollapsibleContent>
-              <div className={cn("px-6 pb-4 overflow-y-auto max-h-96", layout === 'list' && 'px-4')}>
+              <div className={cn("px-6 pb-4 overflow-hidden max-h-96", layout === 'list' && 'px-4')}>
                   <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
@@ -217,6 +243,10 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                         <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
                         <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
                         <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
+                      </div>
+                      
+                      <div className="flex justify-center py-2">
+                        <SkuQrCode sku={product.sku} />
                       </div>
 
                        <Separator />
@@ -317,7 +347,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
 
                       <details className="pt-2 text-xs">
                           <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                          <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight">
+                          <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
                               {JSON.stringify(product, null, 2)}
                           </pre>
                       </details>
@@ -342,7 +372,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
         <Card 
             data-sku={product.sku}
             className={cn(
-                "w-full transition-all duration-300 flex flex-col relative", 
+                "w-full transition-all duration-300 flex flex-col relative overflow-hidden", 
                 layout === 'list' && "flex-row",
                 isPicker && isPicked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
                 isAgeRestricted ? 'bg-red-50/50' : 
