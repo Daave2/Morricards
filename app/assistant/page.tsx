@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, ChevronLeft, Loader2, ScanLine, Sparkles, User, X, ShoppingCart } from 'lucide-react';
+import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
@@ -259,6 +259,13 @@ export default function AssistantPage() {
                         </Avatar>
                         <div className='flex-grow space-y-4 text-sm'>
                             <InsightSection title="About this product" content={<p>{insights.customerFacingSummary}</p>} />
+                            {insights.customerFriendlyLocation && (
+                                <InsightSection
+                                  title="Where to find it"
+                                  icon={<MapPin className="h-5 w-5 text-primary" />}
+                                  content={<p>{insights.customerFriendlyLocation}</p>}
+                                />
+                            )}
                             {insights.crossSell && insights.crossSell.length > 0 && (
                                 <InsightSection
                                   title="You might also like..."
@@ -302,4 +309,3 @@ export default function AssistantPage() {
     </div>
   );
 }
-
