@@ -487,7 +487,7 @@ export default function AvailabilityPage() {
       )}
       
        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-xl">
           <Form {...reasonForm}>
             <form onSubmit={reasonForm.handleSubmit(handleReasonSubmit)} className="space-y-4">
               <DialogHeader>
@@ -498,7 +498,7 @@ export default function AvailabilityPage() {
               </DialogHeader>
 
               {productForModal && (
-                  <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen} className="overflow-hidden rounded-md border">
+                  <Collapsible open={isMoreInfoOpen} onOpenChange={setIsMoreInfoOpen} className="rounded-md border">
                     <div className="flex items-start gap-4 p-4 bg-muted/50">
                         <Image
                           src={productForModal.imageUrl || `https://placehold.co/100x100.png`}
@@ -522,7 +522,7 @@ export default function AvailabilityPage() {
                     </div>
                      <CollapsibleContent>
                         <div className="border-t p-4 space-y-3 text-xs text-muted-foreground overflow-y-auto max-h-60">
-                           <div className="grid grid-cols-1 gap-3">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
                                 <DataRow icon={<Info />} label="Status" value={productForModal.status} />
                                 <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
@@ -536,7 +536,7 @@ export default function AvailabilityPage() {
                             <Separator />
                             <div>
                               <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
-                              <div className="grid grid-cols-1 gap-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                  {productForModal.lastStockChange?.lastCountDateTime && (
                                     <DataRow
                                         icon={<History />}
@@ -817,3 +817,4 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
