@@ -17,10 +17,9 @@ const ProductInsightsInputSchema = z.object({
 export type ProductInsightsInput = z.infer<typeof ProductInsightsInputSchema>;
 
 const ProductInsightsOutputSchema = z.object({
-  sellingPoints: z.array(z.string()).describe('Three key, concise selling points for the product. Highlight benefits, not just features.'),
-  customerProfile: z.string().describe('A brief description of the ideal customer for this product.'),
+  customerFacingSummary: z.string().describe('A friendly, helpful summary for a customer. Include key features, benefits, and potential uses. Mention the price if available in the data.'),
+  price: z.string().optional().describe('The promotional or regular price of the item, formatted with a pound sign e.g. £1.25.'),
   crossSell: z.array(z.string()).describe('Two logical product categories or specific items that would be good to cross-sell with this item.'),
-  placementNotes: z.string().describe('A short suggestion on where this item could be placed in-store for maximum visibility or to encourage impulse buys, beyond its standard location.'),
 });
 export type ProductInsightsOutput = z.infer<typeof ProductInsightsOutputSchema>;
 
@@ -29,12 +28,14 @@ export async function productInsightsFlow(input: ProductInsightsInput): Promise<
     name: 'productInsightsPrompt',
     input: { schema: ProductInsightsInputSchema },
     output: { schema: ProductInsightsOutputSchema },
-    prompt: `You are a retail marketing expert for Morrisons supermarket. 
-Analyze the following product JSON data and generate actionable insights for a store employee. 
-The insights should be brief, practical, and easy to understand.
+    prompt: `You are a friendly and knowledgeable Morrisons AI shopping assistant.
+A customer has just scanned an item and you need to give them some helpful information.
+Analyze the following product JSON data and generate a helpful summary.
 
-Focus on what makes the product appealing and how to sell it effectively to the average shopper.
-Avoid just repeating facts from the data; provide genuine marketing and sales advice.
+- Your tone should be helpful and engaging.
+- The summary should highlight what the product is, its key benefits, and maybe a serving suggestion or use case.
+- Explicitly state the price using the data provided.
+- Suggest two other product categories they might be interested in.
 
 Product Data:
 \`\`\`json
@@ -46,3 +47,4 @@ Product Data:
   const { output } = await prompt(input);
   return output!;
 }
+

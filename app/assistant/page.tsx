@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, ChevronLeft, Loader2, ScanLine, Sparkles, User, X } from 'lucide-react';
+import { Bot, ChevronLeft, Loader2, ScanLine, Sparkles, User, X, ShoppingCart } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ import { productInsightsFlow, ProductInsightsOutput } from '@/ai/flows/product-i
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
+import { Badge } from '@/components/ui/badge';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -29,25 +30,15 @@ const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
 
-const InsightSection = ({ title, content }: { title: string; content: string | string[] }) => {
+const InsightSection = ({ title, content, icon }: { title: string; content: React.ReactNode, icon?: React.ReactNode; }) => {
   if (!content) return null;
-  const contentArray = Array.isArray(content) ? content : content.split('\n').filter(s => s.trim().length > 0);
-
   return (
     <div>
       <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-primary" />
+        {icon || <Sparkles className="h-5 w-5 text-primary" />}
         {title}
       </h3>
-      {Array.isArray(contentArray) ? (
-         <ul className="list-disc pl-5 space-y-1 text-sm">
-          {contentArray.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm">{content}</p>
-      )}
+      <div className="text-sm prose prose-sm max-w-none">{content}</div>
     </div>
   );
 };
@@ -241,6 +232,11 @@ export default function AssistantPage() {
                 <div className='flex-grow'>
                     <CardTitle>{product.name}</CardTitle>
                     <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
+                     {insights?.price && (
+                        <div className="mt-2">
+                          <Badge className="text-lg" variant="secondary">{insights.price}</Badge>
+                        </div>
+                     )}
                 </div>
               </div>
             </CardHeader>
@@ -262,10 +258,20 @@ export default function AssistantPage() {
                             <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
                         </Avatar>
                         <div className='flex-grow space-y-4 text-sm'>
-                            <InsightSection title="Key Selling Points" content={insights.sellingPoints} />
-                            <InsightSection title="Ideal Customer" content={insights.customerProfile} />
-                            <InsightSection title="Cross-Sell & Up-Sell" content={insights.crossSell} />
-                            <InsightSection title="Placement Notes" content={insights.placementNotes} />
+                            <InsightSection title="About this product" content={<p>{insights.customerFacingSummary}</p>} />
+                            {insights.crossSell && insights.crossSell.length > 0 && (
+                                <InsightSection
+                                  title="You might also like..."
+                                  icon={<ShoppingCart className="h-5 w-5 text-primary" />}
+                                  content={
+                                    <ul className="list-disc pl-5 space-y-1">
+                                      {insights.crossSell.map((item, index) => (
+                                        <li key={index}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  }
+                                />
+                            )}
                         </div>
                     </div>
                 )}
@@ -296,3 +302,4 @@ export default function AssistantPage() {
     </div>
   );
 }
+
