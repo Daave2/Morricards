@@ -50,9 +50,10 @@ import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
 import InstallPrompt from '@/components/InstallPrompt';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { queueProductFetch } from '@/lib/offlineQueue';
 
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
 
 const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
@@ -118,7 +119,7 @@ function PickingList() {
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
   const { settings } = useApiSettings();
-  const { isOnline } = useNetworkSync();
+  const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
   const scannerRef = useRef<{ start: () => void } | null>(null);
@@ -153,11 +154,24 @@ function PickingList() {
   // Save products to local storage whenever they change
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+      // Don't save offline placeholders permanently if they fail to resolve
+      const productsToSave = products.filter(p => !p.isOffline || p.name !== 'Offline Item');
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(productsToSave));
     } catch (error) {
       console.error("Failed to save products to local storage", error);
     }
   }, [products]);
+
+  // When synced items come back from the network hook, update the product list
+  useEffect(() => {
+    if (syncedItems.length > 0) {
+      setProducts(prevProducts => {
+        const syncedSkus = new Set(syncedItems.map(item => item.sku));
+        const otherProducts = prevProducts.filter(p => !syncedSkus.has(p.sku));
+        return [...otherProducts, ...syncedItems.map(p => ({ ...p, picked: false }))];
+      });
+    }
+  }, [syncedItems]);
 
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -249,13 +263,26 @@ function PickingList() {
             handlePick(productToPick.sku);
         }
     } else {
+        const locationId = form.getValues('locationId');
+        if (!isOnline) {
+            playSuccess();
+            toast({ 
+                title: 'Offline: Item Queued', 
+                description: `Item ${sku} will be fetched when you're back online.`,
+                icon: <WifiOff className="h-5 w-5" />
+            });
+            const placeholder = await queueProductFetch({ sku, locationId });
+            setProducts(prev => [...prev, { ...placeholder, picked: false, isOffline: true }]);
+            return;
+        }
+
         playSuccess();
         toast({ title: 'New Item Scanned', description: `Fetching details for EAN: ${sku}` });
 
         setLoadingSkuCount(prev => prev + 1);
         setIsLoading(true);
 
-        const locationId = form.getValues('locationId');
+        
         const { data, error } = await getProductData({
           locationId,
           skus: [sku],
@@ -295,7 +322,7 @@ function PickingList() {
         }
     }, 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode]);
+  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode, isOnline]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();

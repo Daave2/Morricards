@@ -1,10 +1,11 @@
 
-import { openDB } from 'idb';
+
+import { openDB, DBSchema } from 'idb';
 
 const DB_NAME = 'smu';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bump version for schema change
 
-export type Capture = {
+export type AvailabilityCapture = {
   id: string; // uuid
   sku: string;
   locationId: string;
@@ -14,29 +15,60 @@ export type Capture = {
   synced?: boolean;
 };
 
+export type ProductFetch = {
+    id: string; // uuid - can be the SKU for simplicity if unique fetches are needed
+    sku: string;
+    locationId: string;
+    capturedAt: number;
+    synced?: boolean;
+}
+
+interface SMU_DB extends DBSchema {
+    'availability-captures': {
+        key: string;
+        value: AvailabilityCapture;
+        indexes: { 'synced': number, 'capturedAt': number };
+    };
+    'product-fetches': {
+        key: string;
+        value: ProductFetch;
+        indexes: { 'synced': number, 'capturedAt': number };
+    }
+}
+
+
 export async function db() {
-  return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains('captures')) {
-        const s = db.createObjectStore('captures', { keyPath: 'id' });
-        s.createIndex('synced', 'synced');
-        s.createIndex('capturedAt', 'capturedAt');
+  return openDB<SMU_DB>(DB_NAME, DB_VERSION, {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        const availabilityStore = db.createObjectStore('availability-captures', { keyPath: 'id' });
+        availabilityStore.createIndex('synced', 'synced');
+        availabilityStore.createIndex('capturedAt', 'capturedAt');
+      }
+      if (oldVersion < 2) {
+          if (db.objectStoreNames.contains('captures')) {
+              db.renameObjectStore('captures', 'availability-captures');
+          }
+          const productStore = db.createObjectStore('product-fetches', { keyPath: 'id'});
+          productStore.createIndex('synced', 'synced');
+          productStore.createIndex('capturedAt', 'capturedAt');
       }
     }
   });
 }
 
-export async function addCapture(c: Capture) {
-  return (await db()).put('captures', c);
+// Availability Captures
+export async function addAvailabilityCapture(c: AvailabilityCapture) {
+  return (await db()).put('availability-captures', c);
 }
 
-export async function listUnsynced() {
-  return (await db()).getAllFromIndex('captures', 'synced', 0);
+export async function listUnsyncedAvailability() {
+  return (await db()).getAllFromIndex('availability-captures', 'synced', 0);
 }
 
-export async function markSynced(ids: string[]) {
+export async function markAvailabilitySynced(ids: string[]) {
   const d = await db();
-  const tx = d.transaction('captures', 'readwrite');
+  const tx = d.transaction('availability-captures', 'readwrite');
   for (const id of ids) {
     const rec = await tx.store.get(id);
     if (rec) { rec.synced = true; await tx.store.put(rec); }
@@ -44,12 +76,50 @@ export async function markSynced(ids: string[]) {
   await tx.done;
 }
 
+// Product Fetches
+export async function addProductFetch(p: ProductFetch) {
+    return (await db()).put('product-fetches', p);
+}
+
+export async function getProductFetch(id: string) {
+    return (await db()).get('product-fetches', id);
+}
+
+export async function listUnsyncedProducts() {
+    return (await db()).getAllFromIndex('product-fetches', 'synced', 0);
+}
+
+export async function markProductsSynced(ids: string[]) {
+    const d = await db();
+    const tx = d.transaction('product-fetches', 'readwrite');
+    for (const id of ids) {
+        const rec = await tx.store.get(id);
+        if (rec) {
+            rec.synced = true;
+            await tx.store.put(rec);
+        }
+    }
+    await tx.done;
+}
+
+
 export async function clearOld(days = 14) {
   const cutoff = Date.now() - days * 86400000;
   const d = await db();
-  let cursor = await d.transaction('captures').store.openCursor();
-  while (cursor) {
-    if (cursor.value.capturedAt < cutoff) await cursor.delete();
-    cursor = await cursor.continue();
+  
+  const tx1 = d.transaction('availability-captures', 'readwrite');
+  let cursor1 = await tx1.store.openCursor();
+  while (cursor1) {
+    if (cursor1.value.capturedAt < cutoff) await cursor1.delete();
+    cursor1 = await cursor1.continue();
   }
+  await tx1.done;
+
+  const tx2 = d.transaction('product-fetches', 'readwrite');
+  let cursor2 = await tx2.store.openCursor();
+  while(cursor2) {
+      if (cursor2.value.capturedAt < cutoff) await cursor2.delete();
+      cursor2 = await cursor2.continue();
+  }
+  await tx2.done;
 }

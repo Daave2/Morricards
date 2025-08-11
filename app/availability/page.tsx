@@ -48,7 +48,7 @@ import ZXingScanner from '@/components/ZXingScanner';
 import { ToastAction } from '@/components/ui/toast';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
-import { queueCapture } from '@/lib/offlineQueue';
+import { queueAvailabilityCapture } from '@/lib/offlineQueue';
 import InstallPrompt from '@/components/InstallPrompt';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -198,12 +198,15 @@ export default function AvailabilityPage() {
     }
     
     if (!isOnline) {
-        await queueCapture({ sku, locationId, reason: 'Other', comment: 'Offline Scan - details needed' });
+        playSuccess();
         toast({
             title: "Queued for Sync",
-            description: `Item ${sku} was captured while offline and will be processed later. You can edit the details from the list.`,
+            description: `Item ${sku} was captured while offline and will be processed later when you reconnect.`,
             icon: <WifiOff className="h-5 w-5" />
         });
+        await queueAvailabilityCapture({ sku, locationId, reason: 'Other', comment: 'Offline Scan - details needed' });
+        // Even offline, we might want to add a placeholder or do something.
+        // For now, we just queue and notify.
         return;
     }
     

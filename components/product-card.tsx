@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History, WifiOff } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -15,8 +15,9 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Skeleton } from './ui/skeleton';
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'] };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'], isOffline?: boolean };
 
 interface ProductCardProps {
   product: Product;
@@ -57,6 +58,30 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
 
   const lastStockChangeEvent = product.lastStockChange;
+
+  if (product.isOffline) {
+    return (
+        <Card 
+            data-sku={product.sku}
+            className={cn(
+                "w-full transition-all duration-300 flex flex-col relative bg-muted/30", 
+                layout === 'list' && "flex-row",
+            )}>
+            <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
+                <CardHeader className={cn(layout === 'list' && 'p-4 flex-row items-center gap-4', 'pb-2')}>
+                    <div className='flex-grow space-y-2'>
+                        <CardTitle className="text-lg leading-tight flex items-center gap-2 text-muted-foreground">
+                            <WifiOff className="h-5 w-5" /> Offline Item
+                        </CardTitle>
+                        <Skeleton className="h-4 w-3/4" />
+                        <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                        <p className="text-xs text-amber-600">Details will be fetched when back online.</p>
+                    </div>
+                </CardHeader>
+            </div>
+        </Card>
+    )
+  }
 
 
   const cardContent = (
@@ -359,5 +384,3 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
-
-    
