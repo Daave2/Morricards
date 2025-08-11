@@ -26,7 +26,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   Dialog,
@@ -250,9 +249,11 @@ export default function AvailabilityPage() {
           setScannedProduct(product);
           setEditingItem(null);
           
-          let defaultReason = '';
+          let defaultReason = 'Early Sellout';
           if (product.stockQuantity === 0) {
               defaultReason = 'No Stock';
+          } else if (product.stockQuantity < 10) {
+              defaultReason = 'Low Stock';
           }
 
           reasonForm.reset({ reason: defaultReason, comment: '' });
@@ -810,3 +811,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
