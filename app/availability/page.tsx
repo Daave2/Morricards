@@ -516,7 +516,7 @@ export default function AvailabilityPage() {
                           {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
                         </div>
                     </div>
-                    <div className="px-4 space-y-3 text-xs text-muted-foreground max-h-60 overflow-y-auto">
+                    <div className="px-4 space-y-3 text-xs text-muted-foreground max-h-[60vh] overflow-y-auto">
                         <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
                         <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
                         <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
