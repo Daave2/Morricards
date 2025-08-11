@@ -63,7 +63,7 @@ const FormSchema = z.object({
 
 const LOCAL_STORAGE_KEY = 'morricards-products';
 
-const StatusIndicator = () => {
+const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
   const { isOnline, lastSync } = useNetworkSync();
   const [timeAgo, setTimeAgo] = useState('');
 
@@ -86,8 +86,9 @@ const StatusIndicator = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
             {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
-            {lastSync && (
+            {lastSync && !isFetching && (
               <>
                 <CloudSync className="h-4 w-4" />
                 <span>Synced: {timeAgo}</span>
@@ -96,7 +97,7 @@ const StatusIndicator = () => {
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
+           <p>{isFetching ? 'Fetching data...' : isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
           {lastSync && <p>Last data sync was {timeAgo}.</p>}
         </TooltipContent>
       </Tooltip>
@@ -108,6 +109,7 @@ const StatusIndicator = () => {
 function PickingList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [loadingSkuCount, setLoadingSkuCount] = useState(0);
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
@@ -295,6 +297,7 @@ function PickingList() {
 
         setLoadingSkuCount(prev => prev + 1);
         setIsLoading(true);
+        setIsFetching(true);
 
         
         const { data, error } = await getProductData({
@@ -304,6 +307,7 @@ function PickingList() {
           debugMode: settings.debugMode,
         });
         
+        setIsFetching(false);
         if (error || !data || data.length === 0) {
             const errText = error || `Could not find product for EAN: ${sku}`;
             playError();
@@ -365,6 +369,7 @@ function PickingList() {
     
     setLoadingSkuCount(newSkus.length);
     setIsLoading(true);
+    setIsFetching(true);
 
     const { data, error } = await getProductData({
       ...values,
@@ -373,6 +378,7 @@ function PickingList() {
       debugMode: settings.debugMode,
     });
 
+    setIsFetching(false);
     if (error) {
       toast({
         variant: 'destructive',
@@ -581,7 +587,7 @@ function PickingList() {
                 Store mobile <span className="text-foreground">ULTRA</span>
               </h1>
                <div className="absolute right-0 top-0">
-                <StatusIndicator />
+                <StatusIndicator isFetching={isFetching} />
               </div>
             </div>
              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">

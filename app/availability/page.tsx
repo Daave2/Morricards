@@ -88,7 +88,7 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     );
 }
 
-const StatusIndicator = () => {
+const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
   const { isOnline, lastSync } = useNetworkSync();
   const [timeAgo, setTimeAgo] = useState('');
 
@@ -111,8 +111,9 @@ const StatusIndicator = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
             {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
-            {lastSync && (
+            {lastSync && !isFetching && (
               <>
                 <CloudSync className="h-4 w-4" />
                 <span>Synced: {timeAgo}</span>
@@ -121,7 +122,7 @@ const StatusIndicator = () => {
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
+          <p>{isFetching ? 'Fetching data...' : isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
           {lastSync && <p>Last data sync was {timeAgo}.</p>}
         </TooltipContent>
       </Tooltip>
@@ -132,6 +133,7 @@ const StatusIndicator = () => {
 export default function AvailabilityPage() {
   const [reportedItems, setReportedItems] = useState<ReportedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [isScanMode, setIsScanMode] = useState(false);
   const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -234,6 +236,7 @@ export default function AvailabilityPage() {
     }
     
     setIsLoading(true);
+    setIsFetching(true);
 
     const { data, error } = await getProductData({
       locationId,
@@ -243,6 +246,8 @@ export default function AvailabilityPage() {
     });
 
     setIsLoading(false);
+    setIsFetching(false);
+
 
     if (error || !data || data.length === 0) {
         const errText = error || `Could not find product data for EAN: ${sku}`;
@@ -696,7 +701,7 @@ export default function AvailabilityPage() {
                 Availability Report
               </h1>
                <div className="absolute right-0 top-0">
-                <StatusIndicator />
+                <StatusIndicator isFetching={isFetching} />
               </div>
             </div>
              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
