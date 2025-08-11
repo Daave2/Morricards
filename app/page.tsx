@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, CloudSync } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, CloudSync, Bolt } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -50,6 +50,8 @@ import { useNetworkSync } from '@/hooks/useNetworkSync';
 import InstallPrompt from '@/components/InstallPrompt';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { queueProductFetch } from '@/lib/offlineQueue';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
@@ -111,6 +113,7 @@ function PickingList() {
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [isScanMode, setIsScanMode] = useState(false);
+  const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
@@ -126,6 +129,14 @@ function PickingList() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+
+  const startScannerWithDelay = useCallback(() => {
+    setTimeout(() => {
+        if (isScanMode && scannerRef.current) {
+            scannerRef.current.start();
+        }
+    }, 1500); // 1.5 second delay
+  }, [isScanMode]);
 
   useEffect(() => {
     if (isScanMode) {
@@ -249,6 +260,10 @@ function PickingList() {
     const sku = text.split(',')[0].trim();
     if (!sku) return;
 
+    if (!isSpeedMode) {
+        setIsScanMode(false); // Close scanner on scan only if not in speed mode
+    }
+
     const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
 
     if (productToPick) {
@@ -258,6 +273,8 @@ function PickingList() {
         } else {
             handlePick(productToPick.sku);
         }
+        if (isSpeedMode) startScannerWithDelay();
+        return;
     } else {
         const locationId = form.getValues('locationId');
         if (!isOnline) {
@@ -269,6 +286,7 @@ function PickingList() {
             });
             const placeholder = await queueProductFetch({ sku, locationId });
             setProducts(prev => [...prev, { ...placeholder, picked: false, isOffline: true }]);
+            if (isSpeedMode) startScannerWithDelay();
             return;
         }
 
@@ -309,16 +327,10 @@ function PickingList() {
         
         setIsLoading(false);
         setLoadingSkuCount(prev => Math.max(0, prev - 1));
+        if (isSpeedMode) startScannerWithDelay();
     }
-
-    // Restart scanning after a short delay
-    setTimeout(() => {
-        if (scannerRef.current) { // Check if the ref is still mounted and scanner is active
-          scannerRef.current?.start();
-        }
-    }, 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode, isOnline]);
+  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode, isOnline, isSpeedMode, startScannerWithDelay]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -655,6 +667,13 @@ function PickingList() {
                       </FormItem>
                     )}
                   />
+                  <div className="flex items-center space-x-2 justify-end pt-2">
+                    <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
+                    <Label htmlFor="speed-mode" className="flex items-center gap-2">
+                        <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
+                        Speed Mode
+                    </Label>
+                  </div>
                   <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
                     {isLoading ? (
                       <>
