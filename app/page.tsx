@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, CloudSync, Bolt } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, CloudSync, Bolt, Bot } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -52,6 +52,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { queueProductFetch } from '@/lib/offlineQueue';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { ocrFlow } from '@/ai/flows/ocr-flow';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
@@ -110,6 +111,7 @@ function PickingList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [loadingSkuCount, setLoadingSkuCount] = useState(0);
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
@@ -126,7 +128,7 @@ function PickingList() {
   const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
-  const scannerRef = useRef<{ start: () => void } | null>(null);
+  const scannerRef = useRef<{ start: () => void; stop: () => void; } | null>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -143,6 +145,8 @@ function PickingList() {
   useEffect(() => {
     if (isScanMode) {
       scannerRef.current?.start();
+    } else {
+      scannerRef.current?.stop();
     }
   }, [isScanMode]);
 
@@ -352,6 +356,27 @@ function PickingList() {
     }
   };
 
+  const handleOcrRequest = async (imageDataUri: string) => {
+    setIsOcrLoading(true);
+    toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
+    try {
+        const result = await ocrFlow({ imageDataUri });
+        if (result.eanOrSku) {
+            toast({ title: 'AI OCR Success', description: `Found number: ${result.eanOrSku}` });
+            await handleScanResult(result.eanOrSku);
+        } else {
+            playError();
+            toast({ variant: 'destructive', title: 'AI OCR Failed', description: 'Could not find a valid SKU or EAN on the label.' });
+        }
+    } catch (e) {
+        console.error("OCR flow failed", e);
+        playError();
+        toast({ variant: 'destructive', title: 'AI OCR Error', description: 'An error occurred while reading the image.' });
+    } finally {
+        setIsOcrLoading(false);
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof FormSchema>) {
     const existingSkus = new Set(products.map(p => p.sku));
     const newSkus = values.skus
@@ -538,7 +563,9 @@ function PickingList() {
                 <ZXingScanner 
                     ref={scannerRef} 
                     onResult={handleScanResult} 
-                    onError={handleScanError} 
+                    onError={handleScanError}
+                    onOcrRequest={handleOcrRequest}
+                    isOcrLoading={isOcrLoading}
                 />
                 <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
                    <X className="h-5 w-5" />
@@ -604,6 +631,12 @@ function PickingList() {
                     <Link href="/settings">
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
+                    </Link>
+                </Button>
+                 <Button variant="link" asChild>
+                    <Link href="/assistant">
+                        <Bot className="mr-2 h-4 w-4" />
+                        AI Product Assistant
                     </Link>
                 </Button>
             </div>

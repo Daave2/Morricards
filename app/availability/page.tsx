@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync, Bolt } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync, Bolt, Bot } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -52,6 +52,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
+import { ocrFlow } from '@/ai/flows/ocr-flow';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -134,6 +135,7 @@ export default function AvailabilityPage() {
   const [reportedItems, setReportedItems] = useState<ReportedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [isScanMode, setIsScanMode] = useState(false);
   const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -147,7 +149,7 @@ export default function AvailabilityPage() {
   const { isOnline } = useNetworkSync();
 
 
-  const scannerRef = useRef<{ start: () => void } | null>(null);
+  const scannerRef = useRef<{ start: () => void; stop: () => void; } | null>(null);
 
   const startScannerWithDelay = useCallback(() => {
     setTimeout(() => {
@@ -160,6 +162,8 @@ export default function AvailabilityPage() {
   useEffect(() => {
     if (isScanMode) {
       scannerRef.current?.start();
+    } else {
+      scannerRef.current?.stop();
     }
   }, [isScanMode]);
 
@@ -334,6 +338,27 @@ export default function AvailabilityPage() {
       });
     }
   }
+
+  const handleOcrRequest = async (imageDataUri: string) => {
+    setIsOcrLoading(true);
+    toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
+    try {
+        const result = await ocrFlow({ imageDataUri });
+        if (result.eanOrSku) {
+            toast({ title: 'AI OCR Success', description: `Found number: ${result.eanOrSku}` });
+            await handleScanSuccess(result.eanOrSku);
+        } else {
+            playError();
+            toast({ variant: 'destructive', title: 'AI OCR Failed', description: 'Could not find a valid SKU or EAN on the label.' });
+        }
+    } catch (e) {
+        console.error("OCR flow failed", e);
+        playError();
+        toast({ variant: 'destructive', title: 'AI OCR Error', description: 'An error occurred while reading the image.' });
+    } finally {
+        setIsOcrLoading(false);
+    }
+  };
   
   const handleModalOpenChange = (open: boolean) => {
     setIsModalOpen(open);
@@ -543,6 +568,8 @@ export default function AvailabilityPage() {
                     ref={scannerRef}
                     onResult={(text) => handleScanSuccess(text)} 
                     onError={handleScanError} 
+                    onOcrRequest={handleOcrRequest}
+                    isOcrLoading={isOcrLoading}
                 />
                  <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
                     <X className="h-5 w-5" />
@@ -720,6 +747,12 @@ export default function AvailabilityPage() {
                         Settings
                     </Link>
                 </Button>
+                 <Button variant="link" asChild>
+                    <Link href="/assistant">
+                        <Bot className="mr-2 h-4 w-4" />
+                        AI Product Assistant
+                    </Link>
+                </Button>
             </div>
               {!isOnline && (
                 <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
@@ -879,5 +912,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
