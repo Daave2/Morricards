@@ -74,10 +74,17 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
         .zone[data-type="bev"] rect { fill: var(--bev); }
         .zone[data-type="front"] rect { fill: var(--front); }
 
+        @keyframes flash {
+          0%, 100% { fill-opacity: 0.3; }
+          50% { fill-opacity: 0.7; }
+        }
+
         .zone.match rect {
             stroke: hsl(var(--accent));
             stroke-width: 5px;
-            fill: rgba(253, 224, 71, 0.3);
+            fill: hsla(45, 93%, 47%, 1); /* Fallback for fill */
+            fill: hsl(var(--accent));
+            animation: flash 1.5s infinite;
         }
       `}</style>
 
