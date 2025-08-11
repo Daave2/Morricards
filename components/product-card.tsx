@@ -147,7 +147,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                 </div>
               </ImageModal>
             )}
-            <div className='flex-grow'>
+            <div className='flex-grow min-w-0'>
                 <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground mt-2">
                     {product.temperature === 'Chilled' && (
