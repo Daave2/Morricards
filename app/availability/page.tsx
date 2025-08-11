@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudSync } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -87,6 +87,47 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     );
 }
 
+const StatusIndicator = () => {
+  const { isOnline, lastSync } = useNetworkSync();
+  const [timeAgo, setTimeAgo] = useState('');
+
+  useEffect(() => {
+    if (lastSync) {
+      const update = () => {
+        const seconds = Math.floor((Date.now() - lastSync) / 1000);
+        if (seconds < 60) setTimeAgo('just now');
+        else if (seconds < 3600) setTimeAgo(`${Math.floor(seconds / 60)}m ago`);
+        else setTimeAgo(`${Math.floor(seconds / 3600)}h ago`);
+      };
+      update();
+      const interval = setInterval(update, 60000); // every minute
+      return () => clearInterval(interval);
+    }
+  }, [lastSync]);
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
+            {lastSync && (
+              <>
+                <CloudSync className="h-4 w-4" />
+                <span>Synced: {timeAgo}</span>
+              </>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
+          {lastSync && <p>Last data sync was {timeAgo}.</p>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 export default function AvailabilityPage() {
   const [reportedItems, setReportedItems] = useState<ReportedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,29 +137,14 @@ export default function AvailabilityPage() {
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
   const [lastDeletedItem, setLastDeletedItem] = useState<{ item: ReportedItem; index: number } | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
-  const { lastSync } = useNetworkSync();
+  const { isOnline } = useNetworkSync();
 
 
   const scannerRef = useRef<{ start: () => void } | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'onLine' in navigator) {
-      setIsOnline(navigator.onLine);
-      const onlineHandler = () => setIsOnline(true);
-      const offlineHandler = () => setIsOnline(false);
-      window.addEventListener('online', onlineHandler);
-      window.addEventListener('offline', offlineHandler);
-      return () => {
-        window.removeEventListener('online', onlineHandler);
-        window.removeEventListener('offline', offlineHandler);
-      };
-    }
-  }, []);
 
   useEffect(() => {
     if (isScanMode) {
@@ -611,14 +637,20 @@ export default function AvailabilityPage() {
       )}>
         <TooltipProvider>
         <div className={cn(isScanMode && "hidden")}>
-          <header className="text-center mb-8">
-            <div className="inline-flex items-center gap-3">
-               <ServerCrash className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold tracking-tight text-primary">
+           <header className="text-center mb-12">
+            <div className="flex justify-center items-center gap-4 relative">
+               <ServerCrash className="w-12 h-12 text-primary" />
+              <h1 className="text-5xl font-bold tracking-tight text-primary">
                 Availability Report
               </h1>
+               <div className="absolute right-0 top-0">
+                <StatusIndicator />
+              </div>
             </div>
-             <div className="mt-2 space-x-2">
+             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Scan items to check their data and report any availability issues you find.
+            </p>
+            <div className="mt-2 space-x-2">
                 <Button variant="link" asChild className="text-sm">
                     <Link href="/">
                         <LinkIcon className="mr-2 h-4 w-4" />

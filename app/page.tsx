@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, CloudSync } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -61,6 +61,47 @@ const FormSchema = z.object({
 
 const LOCAL_STORAGE_KEY = 'morricards-products';
 
+const StatusIndicator = () => {
+  const { isOnline, lastSync } = useNetworkSync();
+  const [timeAgo, setTimeAgo] = useState('');
+
+  useEffect(() => {
+    if (lastSync) {
+      const update = () => {
+        const seconds = Math.floor((Date.now() - lastSync) / 1000);
+        if (seconds < 60) setTimeAgo('just now');
+        else if (seconds < 3600) setTimeAgo(`${Math.floor(seconds / 60)}m ago`);
+        else setTimeAgo(`${Math.floor(seconds / 3600)}h ago`);
+      };
+      update();
+      const interval = setInterval(update, 60000); // every minute
+      return () => clearInterval(interval);
+    }
+  }, [lastSync]);
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
+            {lastSync && (
+              <>
+                <CloudSync className="h-4 w-4" />
+                <span>Synced: {timeAgo}</span>
+              </>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isOnline ? 'You are currently online.' : 'You are currently offline.'}</p>
+          {lastSync && <p>Last data sync was {timeAgo}.</p>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 
 function PickingList() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -73,12 +114,11 @@ function PickingList() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
-  const [isOnline, setIsOnline] = useState(true);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
   const { settings } = useApiSettings();
-  const { lastSync } = useNetworkSync();
+  const { isOnline } = useNetworkSync();
 
   const productsRef = useRef(products);
   const scannerRef = useRef<{ start: () => void } | null>(null);
@@ -86,20 +126,6 @@ function PickingList() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'onLine' in navigator) {
-      setIsOnline(navigator.onLine);
-      const onlineHandler = () => setIsOnline(true);
-      const offlineHandler = () => setIsOnline(false);
-      window.addEventListener('online', onlineHandler);
-      window.addEventListener('offline', offlineHandler);
-      return () => {
-        window.removeEventListener('online', onlineHandler);
-        window.removeEventListener('offline', offlineHandler);
-      };
-    }
-  }, []);
 
   useEffect(() => {
     if (isScanMode) {
@@ -514,11 +540,14 @@ function PickingList() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         <TooltipProvider>
           <header className="text-center mb-12">
-            <div className="inline-flex items-center gap-4">
+            <div className="flex justify-center items-center gap-4 relative">
                <ShoppingBasket className="w-12 h-12 text-primary" />
               <h1 className="text-5xl font-bold tracking-tight text-primary">
                 Store mobile <span className="text-foreground">ULTRA</span>
               </h1>
+               <div className="absolute right-0 top-0">
+                <StatusIndicator />
+              </div>
             </div>
              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
