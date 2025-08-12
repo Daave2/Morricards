@@ -22,8 +22,8 @@ import { productInsightsFlow, ProductInsightsOutput } from '@/ai/flows/product-i
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
-import { Badge } from '@/components/ui/badge';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
+import { Badge } from '@/components/ui/badge';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -54,11 +54,11 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
 }
 
 
-const InsightSection = ({ title, content, icon }: { title: string; content: React.ReactNode, icon?: React.ReactNode; }) => {
-  if (!content) return null;
+const InsightSection = ({ title, content, icon, children }: { title: string; content?: React.ReactNode, icon?: React.ReactNode; children?: React.ReactNode }) => {
+  if (!content && !children) return null;
   
-  const contentArray = Array.isArray(content) ? content : [content];
-  if (contentArray.length === 0 || (contentArray.length === 1 && !contentArray[0])) return null;
+  const contentArray = content && (Array.isArray(content) ? content : [content]);
+  if (contentArray && (contentArray.length === 0 || (contentArray.length === 1 && !contentArray[0]))) return null;
 
   return (
     <div>
@@ -67,7 +67,7 @@ const InsightSection = ({ title, content, icon }: { title: string; content: Reac
         {title}
       </h3>
       <div className="text-sm prose prose-sm max-w-none">
-          {Array.isArray(content) ? (
+          {content && (Array.isArray(content) ? (
             <ul className="list-disc pl-5 space-y-1">
                 {content.map((item, index) => (
                     <li key={index}>{item}</li>
@@ -75,8 +75,9 @@ const InsightSection = ({ title, content, icon }: { title: string; content: Reac
             </ul>
         ) : (
             <p>{content}</p>
-        )}
+        ))}
       </div>
+      {children}
     </div>
   );
 };
@@ -251,100 +252,88 @@ export default function AssistantPage() {
         )}
 
         {product && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            <div className="space-y-6">
-                <Card className="shadow-lg">
-                    <CardHeader>
-                    <div className='flex items-start gap-4'>
-                        <Image
-                            src={product.imageUrl || 'https://placehold.co/100x100.png'}
-                            alt={product.name}
-                            width={100}
-                            height={100}
-                            className="rounded-lg border object-cover"
-                        />
-                        <div className='flex-grow'>
-                            <CardTitle>{product.name}</CardTitle>
-                            <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
-                            {insights?.price && (
-                                <div className="mt-2">
-                                <Badge className="text-lg" variant="secondary">{insights.price}</Badge>
-                                </div>
-                            )}
-                        </div>
+          <div className="max-w-4xl mx-auto">
+            <Card className="shadow-lg">
+                <CardHeader>
+                <div className='flex items-start gap-4'>
+                    <Image
+                        src={product.imageUrl || 'https://placehold.co/100x100.png'}
+                        alt={product.name}
+                        width={100}
+                        height={100}
+                        className="rounded-lg border object-cover"
+                    />
+                    <div className='flex-grow'>
+                        <CardTitle>{product.name}</CardTitle>
+                        <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
+                        {insights?.price && (
+                            <div className="mt-2">
+                            <Badge className="text-lg" variant="secondary">{insights.price}</Badge>
+                            </div>
+                        )}
                     </div>
-                    </CardHeader>
-                    <CardContent className='space-y-6'>
-                        {isGeneratingInsights && (
-                            <div className='flex items-center gap-4 p-4 bg-muted/50 rounded-lg'>
-                                <Avatar>
-                                    <AvatarFallback><Bot /></AvatarFallback>
-                                </Avatar>
-                                <div className='space-y-2'>
-                                <p className='font-medium'>Generating insights...</p>
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                                </div>
+                </div>
+                </CardHeader>
+                <CardContent className='space-y-6'>
+                    {isGeneratingInsights && (
+                        <div className='flex items-center gap-4 p-4 bg-muted/50 rounded-lg'>
+                            <Avatar>
+                                <AvatarFallback><Bot /></AvatarFallback>
+                            </Avatar>
+                            <div className='space-y-2'>
+                            <p className='font-medium'>Generating insights...</p>
+                            <Loader2 className="h-5 w-5 animate-spin" />
                             </div>
-                        )}
-                        {insights && (
-                            <div className='flex items-start gap-4 p-4 bg-muted/50 rounded-lg'>
-                                <Avatar>
-                                    <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
-                                </Avatar>
-                                <div className='flex-grow space-y-4 text-sm'>
-                                    <InsightSection title="About this product" content={insights.customerFacingSummary} />
-                                    {insights.customerFriendlyLocation && (
-                                        <InsightSection
-                                        title="Where to find it"
-                                        icon={<MapPin className="h-5 w-5 text-primary" />}
-                                        content={insights.customerFriendlyLocation}
-                                        />
-                                    )}
-                                    {insights.crossSell && insights.crossSell.length > 0 && (
-                                        <InsightSection
-                                        title="You might also like..."
-                                        icon={<ShoppingCart className="h-5 w-5 text-primary" />}
-                                        content={insights.crossSell}
-                                        />
-                                    )}
-                                    {insights.recipeIdeas && insights.recipeIdeas.length > 0 && (
-                                        <InsightSection
-                                        title="Recipe Ideas"
-                                        icon={<ChefHat className="h-5 w-5 text-primary" />}
-                                        content={insights.recipeIdeas}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {!isGeneratingInsights && !insights && (
-                            <Alert variant="destructive">
-                                <Bot className="h-4 w-4" />
-                                <AlertTitle>Insights Failed</AlertTitle>
-                                <AlertDescription>
-                                    The AI assistant could not generate insights for this product. Please try again.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-            <div className="lg:sticky lg:top-4">
-                 <Card className="shadow-lg">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Map className="h-5 w-5"/> Store Map</CardTitle>
-                        <CardDescription>
-                            {product.location.standard ? `Showing location for ${product.name}.` : `No location data available for this product.`}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex-grow w-full border rounded-lg bg-card overflow-x-auto">
-                            <StoreMap productLocation={productLocation} />
                         </div>
-                    </CardContent>
-                 </Card>
-            </div>
+                    )}
+                    {insights && (
+                        <div className='flex items-start gap-4 p-4 bg-muted/50 rounded-lg'>
+                            <Avatar>
+                                <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
+                            </Avatar>
+                            <div className='flex-grow space-y-4 text-sm'>
+                                <InsightSection title="About this product" content={insights.customerFacingSummary} />
+                                <InsightSection
+                                  title="Where to find it"
+                                  icon={<MapPin className="h-5 w-5 text-primary" />}
+                                  content={insights.customerFriendlyLocation}
+                                >
+                                  {productLocation && (
+                                    <div className="mt-4 border rounded-lg bg-card overflow-x-auto">
+                                      <StoreMap productLocation={productLocation} />
+                                    </div>
+                                  )}
+                                </InsightSection>
+
+                                {insights.crossSell && insights.crossSell.length > 0 && (
+                                    <InsightSection
+                                    title="You might also like..."
+                                    icon={<ShoppingCart className="h-5 w-5 text-primary" />}
+                                    content={insights.crossSell}
+                                    />
+                                )}
+                                {insights.recipeIdeas && insights.recipeIdeas.length > 0 && (
+                                    <InsightSection
+                                    title="Recipe Ideas"
+                                    icon={<ChefHat className="h-5 w-5 text-primary" />}
+                                    content={insights.recipeIdeas}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {!isGeneratingInsights && !insights && (
+                        <Alert variant="destructive">
+                            <Bot className="h-4 w-4" />
+                            <AlertTitle>Insights Failed</AlertTitle>
+                            <AlertDescription>
+                                The AI assistant could not generate insights for this product. Please try again.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+            </Card>
           </div>
         )}
 
@@ -356,7 +345,6 @@ export default function AssistantPage() {
                 </CardContent>
             </Card>
         )}
-
       </main>
     </div>
   );
