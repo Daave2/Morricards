@@ -113,109 +113,110 @@ export default function MapPage() {
         </header>
 
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-          <div className="w-full lg:w-[350px] flex-shrink-0 space-y-8">
-            <Card className="shadow-md sticky top-4">
-              <CardHeader>
-                  <CardTitle>Find a Product</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="sku"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>SKU or EAN</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter product number..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="locationId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Store ID</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., 218" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Search className="mr-2 h-4 w-4" />
-                      )}
-                      Find Product
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-
-            {isLoading && (
-                 <Card className="shadow-lg animate-pulse">
-                    <CardHeader className="flex flex-row items-start gap-4">
-                        <div className="w-[80px] h-[80px] bg-muted rounded-lg"/>
-                        <div className="space-y-2">
-                            <div className="h-5 w-48 bg-muted rounded-md"/>
-                             <div className="h-4 w-32 bg-muted rounded-md"/>
-                        </div>
-                    </CardHeader>
-                     <CardContent>
-                         <div className="h-10 w-full bg-muted rounded-md"/>
-                    </CardContent>
-                </Card>
-            )}
-
-            {product && productLocation && (
-              <Card className="shadow-lg animate-in fade-in-50 sticky top-4">
-                <CardHeader className="flex flex-row items-start gap-4">
-                  <Image
-                    src={product.imageUrl || 'https://placehold.co/100x100.png'}
-                    alt={product.name}
-                    width={80}
-                    height={80}
-                    className="rounded-lg border object-cover"
-                  />
-                  <div>
-                    <CardTitle className="text-lg">{product.name}</CardTitle>
-                    <CardDescription>SKU: {product.sku}</CardDescription>
-                  </div>
+          <div className="w-full lg:w-[350px] flex-shrink-0">
+            <div className="sticky top-4 space-y-8">
+              <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle>Find a Product</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Alert>
-                    <Map className="h-4 w-4" />
-                    <AlertTitle>Location</AlertTitle>
-                    <AlertDescription className="font-semibold text-foreground">
-                      {product.location.standard}
-                    </AlertDescription>
-                  </Alert>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="sku"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>SKU or EAN</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter product number..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="locationId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Store ID</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., 218" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="mr-2 h-4 w-4" />
+                        )}
+                        Find Product
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
-            )}
 
-            {!productLocation && !isLoading && (
-                <Alert className="lg:col-span-1 sticky top-4">
-                    <Map className="h-4 w-4" />
-                    <AlertTitle>Ready to Search</AlertTitle>
-                    <AlertDescription>
-                        Enter a product SKU or EAN above to see its precise location on the map.
-                    </AlertDescription>
-                </Alert>
-            )}
+              {isLoading && (
+                  <Card className="shadow-lg animate-pulse">
+                      <CardHeader className="flex flex-row items-start gap-4">
+                          <div className="w-[80px] h-[80px] bg-muted rounded-lg"/>
+                          <div className="space-y-2">
+                              <div className="h-5 w-48 bg-muted rounded-md"/>
+                              <div className="h-4 w-32 bg-muted rounded-md"/>
+                          </div>
+                      </CardHeader>
+                      <CardContent>
+                          <div className="h-10 w-full bg-muted rounded-md"/>
+                      </CardContent>
+                  </Card>
+              )}
 
+              {product && productLocation && (
+                <Card className="shadow-lg animate-in fade-in-50">
+                  <CardHeader className="flex flex-row items-start gap-4">
+                    <Image
+                      src={product.imageUrl || 'https://placehold.co/100x100.png'}
+                      alt={product.name}
+                      width={80}
+                      height={80}
+                      className="rounded-lg border object-cover"
+                    />
+                    <div>
+                      <CardTitle className="text-lg">{product.name}</CardTitle>
+                      <CardDescription>SKU: {product.sku}</CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Alert>
+                      <Map className="h-4 w-4" />
+                      <AlertTitle>Location</AlertTitle>
+                      <AlertDescription className="font-semibold text-foreground">
+                        {product.location.standard}
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!productLocation && !isLoading && (
+                  <Alert className="lg:col-span-1">
+                      <Map className="h-4 w-4" />
+                      <AlertTitle>Ready to Search</AlertTitle>
+                      <AlertDescription>
+                          Enter a product SKU or EAN above to see its precise location on the map.
+                      </AlertDescription>
+                  </Alert>
+              )}
+            </div>
           </div>
 
           <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto">
