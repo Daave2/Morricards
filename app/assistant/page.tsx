@@ -23,12 +23,36 @@ import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import { Badge } from '@/components/ui/badge';
+import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 
 type Product = FetchMorrisonsDataOutput[0];
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
+
+function parseLocationString(location: string | undefined): ProductLocation | null {
+  if (!location) return null;
+
+  const aisleRegex = /Aisle\s*(\d+)/i;
+  const bayRegex = /bay\s*(\d+)/i;
+  const sideRegex = /(Left|Right)/i;
+  
+  const aisleMatch = location.match(aisleRegex);
+  const bayMatch = location.match(bayRegex);
+  const sideMatch = location.match(sideRegex);
+
+  if (aisleMatch && bayMatch && sideMatch) {
+    return {
+      aisle: aisleMatch[1],
+      bay: bayMatch[1],
+      side: sideMatch[1] as 'Left' | 'Right',
+    };
+  }
+  
+  return null;
+}
+
 
 const InsightSection = ({ title, content, icon }: { title: string; content: React.ReactNode, icon?: React.ReactNode; }) => {
   if (!content) return null;
@@ -64,6 +88,7 @@ export default function AssistantPage() {
   const [isOcrLoading, setIsOcrLoading] = useState(false);
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
 
   const { toast } = useToast();
@@ -89,6 +114,7 @@ export default function AssistantPage() {
     setIsFetchingProduct(true);
     setProduct(null);
     setInsights(null);
+    setProductLocation(null);
 
     const locationId = form.getValues('locationId');
     if (!locationId) {
@@ -114,6 +140,7 @@ export default function AssistantPage() {
       playSuccess();
       const foundProduct = data[0];
       setProduct(foundProduct);
+      setProductLocation(parseLocationString(foundProduct.location.standard));
       toast({ title: 'Product Found', description: `Generating AI insights for ${foundProduct.name}...` });
       
       setIsGeneratingInsights(true);
@@ -224,88 +251,101 @@ export default function AssistantPage() {
         )}
 
         {product && (
-          <Card className="max-w-2xl mx-auto shadow-lg">
-            <CardHeader>
-              <div className='flex items-start gap-4'>
-                <Image
-                    src={product.imageUrl || 'https://placehold.co/100x100.png'}
-                    alt={product.name}
-                    width={100}
-                    height={100}
-                    className="rounded-lg border object-cover"
-                />
-                <div className='flex-grow'>
-                    <CardTitle>{product.name}</CardTitle>
-                    <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
-                     {insights?.price && (
-                        <div className="mt-2">
-                          <Badge className="text-lg" variant="secondary">{insights.price}</Badge>
-                        </div>
-                     )}
-                </div>
-                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/map?sku=${product.sku}&locationId=${form.getValues('locationId')}`}>
-                    <Map className="mr-2 h-4 w-4" />
-                    Map
-                  </Link>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className='space-y-6'>
-                {isGeneratingInsights && (
-                    <div className='flex items-center gap-4 p-4 bg-muted/50 rounded-lg'>
-                        <Avatar>
-                            <AvatarFallback><Bot /></AvatarFallback>
-                        </Avatar>
-                        <div className='space-y-2'>
-                           <p className='font-medium'>Generating insights...</p>
-                           <Loader2 className="h-5 w-5 animate-spin" />
-                        </div>
-                    </div>
-                )}
-                {insights && (
-                     <div className='flex items-start gap-4 p-4 bg-muted/50 rounded-lg'>
-                        <Avatar>
-                            <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
-                        </Avatar>
-                        <div className='flex-grow space-y-4 text-sm'>
-                            <InsightSection title="About this product" content={insights.customerFacingSummary} />
-                            {insights.customerFriendlyLocation && (
-                                <InsightSection
-                                  title="Where to find it"
-                                  icon={<MapPin className="h-5 w-5 text-primary" />}
-                                  content={insights.customerFriendlyLocation}
-                                />
-                            )}
-                            {insights.crossSell && insights.crossSell.length > 0 && (
-                                <InsightSection
-                                  title="You might also like..."
-                                  icon={<ShoppingCart className="h-5 w-5 text-primary" />}
-                                  content={insights.crossSell}
-                                />
-                            )}
-                            {insights.recipeIdeas && insights.recipeIdeas.length > 0 && (
-                                <InsightSection
-                                  title="Recipe Ideas"
-                                  icon={<ChefHat className="h-5 w-5 text-primary" />}
-                                  content={insights.recipeIdeas}
-                                />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <div className="space-y-6">
+                <Card className="shadow-lg">
+                    <CardHeader>
+                    <div className='flex items-start gap-4'>
+                        <Image
+                            src={product.imageUrl || 'https://placehold.co/100x100.png'}
+                            alt={product.name}
+                            width={100}
+                            height={100}
+                            className="rounded-lg border object-cover"
+                        />
+                        <div className='flex-grow'>
+                            <CardTitle>{product.name}</CardTitle>
+                            <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
+                            {insights?.price && (
+                                <div className="mt-2">
+                                <Badge className="text-lg" variant="secondary">{insights.price}</Badge>
+                                </div>
                             )}
                         </div>
                     </div>
-                )}
+                    </CardHeader>
+                    <CardContent className='space-y-6'>
+                        {isGeneratingInsights && (
+                            <div className='flex items-center gap-4 p-4 bg-muted/50 rounded-lg'>
+                                <Avatar>
+                                    <AvatarFallback><Bot /></AvatarFallback>
+                                </Avatar>
+                                <div className='space-y-2'>
+                                <p className='font-medium'>Generating insights...</p>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                </div>
+                            </div>
+                        )}
+                        {insights && (
+                            <div className='flex items-start gap-4 p-4 bg-muted/50 rounded-lg'>
+                                <Avatar>
+                                    <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
+                                </Avatar>
+                                <div className='flex-grow space-y-4 text-sm'>
+                                    <InsightSection title="About this product" content={insights.customerFacingSummary} />
+                                    {insights.customerFriendlyLocation && (
+                                        <InsightSection
+                                        title="Where to find it"
+                                        icon={<MapPin className="h-5 w-5 text-primary" />}
+                                        content={insights.customerFriendlyLocation}
+                                        />
+                                    )}
+                                    {insights.crossSell && insights.crossSell.length > 0 && (
+                                        <InsightSection
+                                        title="You might also like..."
+                                        icon={<ShoppingCart className="h-5 w-5 text-primary" />}
+                                        content={insights.crossSell}
+                                        />
+                                    )}
+                                    {insights.recipeIdeas && insights.recipeIdeas.length > 0 && (
+                                        <InsightSection
+                                        title="Recipe Ideas"
+                                        icon={<ChefHat className="h-5 w-5 text-primary" />}
+                                        content={insights.recipeIdeas}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
-                 {!isGeneratingInsights && !insights && (
-                     <Alert variant="destructive">
-                        <Bot className="h-4 w-4" />
-                        <AlertTitle>Insights Failed</AlertTitle>
-                        <AlertDescription>
-                            The AI assistant could not generate insights for this product. Please try again.
-                        </AlertDescription>
-                    </Alert>
-                )}
-            </CardContent>
-          </Card>
+                        {!isGeneratingInsights && !insights && (
+                            <Alert variant="destructive">
+                                <Bot className="h-4 w-4" />
+                                <AlertTitle>Insights Failed</AlertTitle>
+                                <AlertDescription>
+                                    The AI assistant could not generate insights for this product. Please try again.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="lg:sticky lg:top-4">
+                 <Card className="shadow-lg">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Map className="h-5 w-5"/> Store Map</CardTitle>
+                        <CardDescription>
+                            {product.location.standard ? `Showing location for ${product.name}.` : `No location data available for this product.`}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex-grow w-full border rounded-lg bg-card overflow-x-auto">
+                            <StoreMap productLocation={productLocation} />
+                        </div>
+                    </CardContent>
+                 </Card>
+            </div>
+          </div>
         )}
 
         {!product && !isFetchingProduct && (
