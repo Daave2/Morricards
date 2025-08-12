@@ -19,7 +19,7 @@ export const storeLayout = {
   "aisles": [
     {
       "id": "1",
-      "label": "Aisle 01",
+      "label": "Water",
       "p1": [
         1500,
         880
@@ -33,11 +33,11 @@ export const storeLayout = {
       "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
       "facing": "y+",
-      "locked": false
+      "locked": true
     },
     {
       "id": "2",
-      "label": "Aisle 02",
+      "label": "Pop",
       "p1": [
         1419,
         880
@@ -51,11 +51,11 @@ export const storeLayout = {
       "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
       "facing": "y+",
-      "locked": false
+      "locked": true
     },
     {
       "id": "3",
-      "label": "Aisle 03",
+      "label": "Cookshop",
       "p1": [
         1329,
         880
@@ -73,7 +73,7 @@ export const storeLayout = {
     },
     {
       "id": "4",
-      "label": "Aisle 04",
+      "label": "Home",
       "p1": [
         1239,
         880
@@ -91,7 +91,7 @@ export const storeLayout = {
     },
     {
       "id": "5",
-      "label": "Aisle 05",
+      "label": "Leasure",
       "p1": [
         1160,
         880
@@ -109,7 +109,7 @@ export const storeLayout = {
     },
     {
       "id": "7",
-      "label": "Aisle 07",
+      "label": "Nutmeg",
       "p1": [
         980,
         880
@@ -127,7 +127,7 @@ export const storeLayout = {
     },
     {
       "id": "8",
-      "label": "Aisle 08",
+      "label": "Nutmeg",
       "p1": [
         880,
         880
@@ -145,7 +145,7 @@ export const storeLayout = {
     },
     {
       "id": "9",
-      "label": "Aisle 09",
+      "label": "Baby",
       "p1": [
         780,
         880
@@ -163,7 +163,7 @@ export const storeLayout = {
     },
     {
       "id": "10",
-      "label": "Aisle 10",
+      "label": "H&B",
       "p1": [
         713,
         880
@@ -181,7 +181,7 @@ export const storeLayout = {
     },
     {
       "id": "11",
-      "label": "Aisle 11",
+      "label": "H&B",
       "p1": [
         640,
         880
@@ -199,7 +199,7 @@ export const storeLayout = {
     },
     {
       "id": "12",
-      "label": "Aisle 12",
+      "label": "Dog",
       "p1": [
         540,
         880
@@ -217,7 +217,7 @@ export const storeLayout = {
     },
     {
       "id": "13",
-      "label": "Aisle 13",
+      "label": "Cat",
       "p1": [
         460,
         880
@@ -235,7 +235,7 @@ export const storeLayout = {
     },
     {
       "id": "14",
-      "label": "Aisle 14",
+      "label": "Cleaning",
       "p1": [
         385.5,
         880
@@ -253,7 +253,7 @@ export const storeLayout = {
     },
     {
       "id": "15",
-      "label": "Aisle 15",
+      "label": "Paper",
       "p1": [
         280,
         880
@@ -607,8 +607,8 @@ export const storeLayout = {
       "aisleWidth": 40,
       "bayWidth": 20,
       "baysPerSide": 24,
-      "bayOrder": "p1-to-p2",
       "facing": "y+",
+      "bayOrder": "p1-to-p2",
       "locked": false
     },
     {
