@@ -1,5 +1,5 @@
 
-import { openDB, DBSchema, IDBPDatabase, IDBPTransaction } from 'idb';
+import { openDB, DBSchema, IDBPDatabase, IDBPCursor, IDBDatabase } from 'idb';
 
 const DB_NAME = 'smu';
 const DB_VERSION = 2; 
@@ -81,12 +81,10 @@ function getDb() {
         const storeNames: string[] = Array.from(rawDb.objectStoreNames);
 
         if (oldVersion < 2) {
-            // Safe to refer to 'captures' here because we're on the raw DB object.
             if (storeNames.includes('captures')) {
                 rawDb.deleteObjectStore('captures');
             }
 
-            // Use the typed `db` object for creating new stores
             if (!storeNames.includes(STORES.AVAILABILITY)) {
                 const s = db.createObjectStore(STORES.AVAILABILITY, { keyPath: 'id' });
                 s.createIndex('synced', 'synced');
@@ -108,10 +106,6 @@ function getDb() {
 
 async function putRecord<T extends StoreName>(storeName: T, record: SMU_DB[T]['value']) {
   return (await getDb()).put(storeName, record);
-}
-
-async function getAllRecords<T extends StoreName>(storeName: T, indexName: keyof SMU_DB[T]['indexes'], query: IDBValidKey | IDBKeyRange) {
-    return (await getDb()).getAllFromIndex(storeName, indexName, query);
 }
 
 async function deleteRecord<T extends StoreName>(storeName: T, key: string) {
@@ -172,11 +166,11 @@ export async function addProductFetch(payload: ProductFetchPayload) {
 }
 
 export async function listUnsyncedAvailability(): Promise<AvailabilityCapture[]> {
-    return getAllRecords(STORES.AVAILABILITY, 'synced', 0);
+    return (await getDb()).getAllFromIndex(STORES.AVAILABILITY, 'synced', 0);
 }
 
 export async function listUnsyncedProducts(): Promise<ProductFetch[]> {
-    return getAllRecords(STORES.PRODUCTS, 'synced', 0);
+    return (await getDb()).getAllFromIndex(STORES.PRODUCTS, 'synced', 0);
 }
 
 export async function markAvailabilitySynced(ids: string[]) {
