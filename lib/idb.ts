@@ -1,5 +1,5 @@
 
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, DBSchema, IDBPDatabase, IDBPTransaction } from 'idb';
 
 const DB_NAME = 'smu';
 const DB_VERSION = 2; 
