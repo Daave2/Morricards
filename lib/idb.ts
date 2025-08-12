@@ -53,9 +53,9 @@ interface SMU_DB extends DBSchema {
     }
 }
 
-let db: Promise<IDBPDatabase<SMU_DB>> | null = null;
+let db: IDBPDatabase<SMU_DB> | null = null;
 
-function getDb() {
+function getDb(): IDBPDatabase<SMU_DB> {
   if (typeof window === 'undefined') {
     // Return a mock DB object for server-side rendering
     return {
@@ -98,7 +98,7 @@ function getDb() {
             }
         }
       }
-    });
+    }) as unknown as IDBPDatabase<SMU_DB>;
   }
   return db;
 }
@@ -184,3 +184,4 @@ export async function markAvailabilitySynced(ids: string[]) {
 export async function markProductsSynced(ids: string[]) {
     await markSynced(STORES.PRODUCTS, ids);
 }
+
