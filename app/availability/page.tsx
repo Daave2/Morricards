@@ -53,6 +53,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
+import type { AvailabilityReason } from '@/lib/idb';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -275,7 +276,7 @@ export default function AvailabilityPage() {
         }
     } else {
         const product = data[0];
-        let defaultReason = 'Early Sellout';
+        let defaultReason: AvailabilityReason = 'Early Sellout';
         if (product.stockQuantity === 0) {
             defaultReason = 'No Stock';
         } else if (product.stockQuantity < 10) {
@@ -722,12 +723,38 @@ export default function AvailabilityPage() {
         <TooltipProvider>
         <div className={cn(isScanMode && "hidden")}>
            <header className="text-center mb-12">
-            <h1 className="text-4xl font-bold tracking-tight text-primary">
+            <div className="flex justify-center items-center gap-4 relative">
+               <ServerCrash className="w-12 h-12 text-primary" />
+              <h1 className="text-5xl font-bold tracking-tight text-primary">
                 Availability Report
               </h1>
-             <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
+               <div className="absolute right-0 top-0">
+                <StatusIndicator isFetching={isFetching} />
+              </div>
+            </div>
+             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Scan items to check their data and report any availability issues you find.
             </p>
+            <div className="mt-2 space-x-2">
+                <Button variant="link" asChild className="text-sm">
+                    <Link href="/">
+                        <LinkIcon className="mr-2 h-4 w-4" />
+                        Go to Picking List
+                    </Link>
+                </Button>
+                <Button variant="link" asChild className="text-sm">
+                    <Link href="/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                    </Link>
+                </Button>
+                 <Button variant="link" asChild>
+                    <Link href="/assistant">
+                        <Bot className="mr-2 h-4 w-4" />
+                        AI Product Assistant
+                    </Link>
+                </Button>
+            </div>
               {!isOnline && (
                 <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
                     <WifiOff className="h-4 w-4" />

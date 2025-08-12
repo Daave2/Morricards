@@ -1,5 +1,4 @@
 
-
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'smu';
@@ -12,38 +11,43 @@ export const STORES = {
 
 type StoreName = typeof STORES[keyof typeof STORES];
 
+export type AvailabilityReason = 'No Stock' | 'Low Stock' | 'Early Sellout' | 'Too Much Stock' | 'Other';
 
 export interface AvailabilityCapturePayload {
   sku: string;
   locationId: string;
-  reason: 'No Stock' | 'Low Stock' | 'Early Sellout' | 'Too Much Stock' | 'Other';
+  reason: AvailabilityReason;
   comment?: string;
 }
+
+export interface AvailabilityCapture {
+  id: string;
+  ts: number;
+  payload: AvailabilityCapturePayload
+  synced: boolean,
+};
 
 export interface ProductFetchPayload {
     sku: string;
     locationId: string;
 }
 
+export interface ProductFetch {
+  id: string;
+  ts: number;
+  payload: ProductFetchPayload
+  synced: boolean,
+};
+
 interface SMU_DB extends DBSchema {
     [STORES.AVAILABILITY]: {
         key: string;
-        value: {
-          id: string,
-          ts: number,
-          payload: AvailabilityCapturePayload,
-          synced: boolean,
-        };
+        value: AvailabilityCapture;
         indexes: { 'synced': number, 'ts': number };
     };
     [STORES.PRODUCTS]: {
         key: string;
-        value: {
-          id: string,
-          ts: number,
-          payload: ProductFetchPayload
-          synced: boolean,
-        };
+        value: ProductFetch;
         indexes: { 'synced': number, 'ts': number };
     }
 }
@@ -52,21 +56,26 @@ let db: Promise<IDBPDatabase<SMU_DB>> | null = null;
 
 function getDb() {
   if (typeof window === 'undefined') {
-    // Return a dummy object for server-side rendering
     return {
       put: async () => {},
       getAllFromIndex: async () => [],
       get: async () => undefined,
       delete: async () => {},
       clear: async () => {},
+      transaction: () => ({
+        store: {
+          get: async () => undefined,
+          put: async () => {},
+          openCursor: async () => null,
+        },
+        done: Promise.resolve(),
+      }),
     } as any;
   }
   if (!db) {
     db = openDB<SMU_DB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (oldVersion < 2) {
-            // Handle migration from 'captures' to 'availability-captures'
-            // Use an untyped handle to check for the legacy store.
             const storeNames = Array.from(db.objectStoreNames);
             if (storeNames.includes('captures')) {
                 db.deleteObjectStore('captures');
@@ -90,15 +99,15 @@ function getDb() {
 }
 
 
-export async function putRecord<T extends StoreName>(storeName: T, record: SMU_DB[T]['value']) {
+async function putRecord<T extends StoreName>(storeName: T, record: SMU_DB[T]['value']) {
   return (await getDb()).put(storeName, record);
 }
 
-export async function getAllRecords<T extends StoreName>(storeName: T, indexName: keyof SMU_DB[T]['indexes'], query: IDBValidKey | IDBKeyRange) {
+async function getAllRecords<T extends StoreName>(storeName: T, indexName: keyof SMU_DB[T]['indexes'], query: IDBValidKey | IDBKeyRange) {
     return (await getDb()).getAllFromIndex(storeName, indexName as string, query);
 }
 
-export async function deleteRecord<T extends StoreName>(storeName: T, key: string) {
+async function deleteRecord<T extends StoreName>(storeName: T, key: string) {
     return (await getDb()).delete(storeName, key);
 }
 
@@ -106,19 +115,18 @@ export async function clearStore(storeName: StoreName) {
     return (await getDb()).clear(storeName);
 }
 
-export async function markSynced<T extends StoreName>(storeName: T, ids: string[]) {
+async function markSynced<T extends StoreName>(storeName: T, ids: string[]) {
   const d = await getDb();
   const tx = d.transaction(storeName, 'readwrite');
   for (const id of ids) {
     const rec = await tx.store.get(id);
     if (rec) { 
-        rec.synced = true; 
+        (rec as any).synced = true; 
         await tx.store.put(rec); 
     }
   }
   await tx.done;
 }
-
 
 export async function clearOld(days = 14) {
   const cutoff = Date.now() - days * 86400000;
@@ -133,4 +141,41 @@ export async function clearOld(days = 14) {
       }
       await tx.done;
   }
+}
+
+// Functions moved from offlineQueue.ts
+export async function addAvailabilityCapture(payload: AvailabilityCapturePayload) {
+  const full: AvailabilityCapture = {
+    id: crypto.randomUUID(),
+    ts: Date.now(),
+    payload,
+    synced: false,
+  };
+  await putRecord(STORES.AVAILABILITY, full);
+}
+
+export async function addProductFetch(payload: ProductFetchPayload) {
+    const full: ProductFetch = {
+      id: payload.sku, // Use SKU as ID to prevent duplicate queueing
+      ts: Date.now(),
+      payload,
+      synced: false,
+    };
+    await putRecord(STORES.PRODUCTS, full);
+}
+
+export async function listUnsyncedAvailability(): Promise<AvailabilityCapture[]> {
+    return getAllRecords(STORES.AVAILABILITY, 'synced', 0);
+}
+
+export async function listUnsyncedProducts(): Promise<ProductFetch[]> {
+    return getAllRecords(STORES.PRODUCTS, 'synced', 0);
+}
+
+export async function markAvailabilitySynced(ids: string[]) {
+    await markSynced(STORES.AVAILABILITY, ids);
+}
+
+export async function markProductsSynced(ids: string[]) {
+    await markSynced(STORES.PRODUCTS, ids);
 }

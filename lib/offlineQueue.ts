@@ -1,26 +1,31 @@
 
-
-import { addAvailabilityCapture, listUnsyncedAvailability, markAvailabilitySynced, addProductFetch, listUnsyncedProducts, markProductsSynced, type AvailabilityCapture } from './idb';
+import { 
+    addAvailabilityCapture as dbAddAvailability, 
+    addProductFetch as dbAddProduct,
+    listUnsyncedAvailability, 
+    markAvailabilitySynced,
+    listUnsyncedProducts,
+    markProductsSynced,
+    type AvailabilityCapturePayload,
+    type ProductFetchPayload
+} from './idb';
 import { getProductData } from '@/app/actions';
 import type { FetchMorrisonsDataOutput } from './morrisons-api';
 
 export type SyncedProduct = FetchMorrisonsDataOutput[0];
 
-export async function queueAvailabilityCapture(c: Omit<AvailabilityCapture, 'id' | 'capturedAt' | 'synced'>) {
-  const id = crypto.randomUUID();
-  await addAvailabilityCapture({ id, capturedAt: Date.now(), synced: false, ...c });
-  console.log('Queued availability capture:', id);
-  return id;
+export async function queueAvailabilityCapture(payload: AvailabilityCapturePayload) {
+  await dbAddAvailability(payload);
+  console.log('Queued availability capture for SKU:', payload.sku);
 }
 
-export async function queueProductFetch(c: { sku: string, locationId: string }): Promise<any> {
-    const id = c.sku; // Use SKU as ID to prevent duplicate queueing
-    await addProductFetch({ ...c, id, capturedAt: Date.now(), synced: false });
-    console.log('Queued product fetch:', id);
-    // Return a placeholder structure
+export async function queueProductFetch(payload: ProductFetchPayload): Promise<any> {
+    await dbAddProduct(payload);
+    console.log('Queued product fetch for SKU:', payload.sku);
+    // Return a placeholder structure for immediate UI feedback
     return {
-        sku: c.sku,
-        scannedSku: c.sku,
+        sku: payload.sku,
+        scannedSku: payload.sku,
         name: 'Offline Item',
         price: {},
         stockQuantity: 0,
@@ -29,7 +34,6 @@ export async function queueProductFetch(c: { sku: string, locationId: string }):
         isOffline: true,
     }
 }
-
 
 export async function flushAvailabilityQueue() {
   const items = await listUnsyncedAvailability();
@@ -55,7 +59,6 @@ export async function flushAvailabilityQueue() {
   return { synced: acceptedIds.length };
 }
 
-
 export async function flushProductQueue({ bearerToken, debugMode }: { bearerToken?: string, debugMode?: boolean }): Promise<{ products: SyncedProduct[], syncedCount: number }> {
     const itemsToFetch = await listUnsyncedProducts();
     if (!itemsToFetch.length) {
@@ -66,14 +69,14 @@ export async function flushProductQueue({ bearerToken, debugMode }: { bearerToke
 
     const locationGroups: Record<string, string[]> = {};
     for (const item of itemsToFetch) {
-        if (!locationGroups[item.locationId]) {
-            locationGroups[item.locationId] = [];
+        if (!locationGroups[item.payload.locationId]) {
+            locationGroups[item.payload.locationId] = [];
         }
-        locationGroups[item.locationId].push(item.sku);
+        locationGroups[item.payload.locationId].push(item.payload.sku);
     }
     
     const fetchedProducts: SyncedProduct[] = [];
-    const syncedIds: string[] = [];
+    let syncedCount = 0;
 
     for (const locationId in locationGroups) {
         const skus = locationGroups[locationId];
@@ -92,19 +95,22 @@ export async function flushProductQueue({ bearerToken, debugMode }: { bearerToke
                 fetchedProducts.push(...data);
                 const fetchedSkus = new Set(data.map(p => p.sku));
                 const idsForThisBatch = itemsToFetch
-                    .filter(item => item.locationId === locationId && fetchedSkus.has(item.sku))
+                    .filter(item => item.payload.locationId === locationId && fetchedSkus.has(item.payload.sku))
                     .map(item => item.id);
-                syncedIds.push(...idsForThisBatch);
+                
+                if (idsForThisBatch.length > 0) {
+                  await markProductsSynced(idsForThisBatch);
+                  syncedCount += idsForThisBatch.length;
+                }
             }
         } catch (e) {
             console.error(`Unhandled error fetching products for location ${locationId}:`, e);
         }
     }
 
-    if (syncedIds.length > 0) {
-        await markProductsSynced(syncedIds);
-        console.log(`Sync flush: Successfully fetched and synced ${syncedIds.length} products.`);
+    if (syncedCount > 0) {
+        console.log(`Sync flush: Successfully fetched and synced ${syncedCount} products.`);
     }
 
-    return { products: fetchedProducts, syncedCount: syncedIds.length };
+    return { products: fetchedProducts, syncedCount };
 }

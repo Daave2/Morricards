@@ -4,7 +4,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { flushAvailabilityQueue, flushProductQueue, type SyncedProduct } from '@/lib/offlineQueue';
 import { useToast } from './use-toast';
-import { getProductData } from '@/app/actions';
 import { useApiSettings } from './use-api-settings';
 
 export function useNetworkSync() {
@@ -83,13 +82,15 @@ export function useNetworkSync() {
     window.addEventListener('offline', handleOffline);
 
     // Attempt on mount too
-    trySync();
+    if (isOnline) {
+      trySync();
+    }
 
     return () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
     }
-  }, [toast, trySync]);
+  }, [isOnline, toast, trySync]);
 
   return { lastSync, isOnline, syncedItems };
 }
