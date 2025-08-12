@@ -218,7 +218,7 @@ export default function MapPage() {
 
           </div>
 
-          <div className="flex-grow border rounded-lg bg-card shadow-lg overflow-x-auto">
+          <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto">
               <StoreMap productLocation={productLocation} />
           </div>
         </div>
