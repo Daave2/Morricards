@@ -56,6 +56,7 @@ let db: Promise<IDBPDatabase<SMU_DB>> | null = null;
 
 function getDb() {
   if (typeof window === 'undefined') {
+    // Return a mock DB object for server-side rendering
     return {
       put: async () => {},
       getAllFromIndex: async () => [],
@@ -70,21 +71,27 @@ function getDb() {
         },
         done: Promise.resolve(),
       }),
-    } as any;
+    } as any as IDBPDatabase<SMU_DB>;
   }
   if (!db) {
     db = openDB<SMU_DB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (oldVersion < 2) {
-            const storeNames = Array.from(db.objectStoreNames);
+            // Escape hatch: use the native IDB types ONLY for legacy ops.
+            const rawDb = (db as unknown) as IDBDatabase;
+            const storeNames: string[] = Array.from(rawDb.objectStoreNames);
+
+            // Safe to refer to 'captures' here because we're on the raw DB object.
             if (storeNames.includes('captures')) {
-                db.deleteObjectStore('captures');
+                rawDb.deleteObjectStore('captures');
             }
-             if (!storeNames.includes(STORES.AVAILABILITY)) {
+
+            // Use the typed `db` object for creating new stores
+            if (!storeNames.includes(STORES.AVAILABILITY)) {
                 const s = db.createObjectStore(STORES.AVAILABILITY, { keyPath: 'id' });
                 s.createIndex('synced', 'synced');
                 s.createIndex('ts', 'ts');
-             }
+            }
 
             if (!storeNames.includes(STORES.PRODUCTS)) {
               const s = db.createObjectStore(STORES.PRODUCTS, { keyPath: 'id'});
@@ -143,7 +150,7 @@ export async function clearOld(days = 14) {
   }
 }
 
-// Functions moved from offlineQueue.ts
+// Functions moved from offlineQueue.ts to break circular dependency
 export async function addAvailabilityCapture(payload: AvailabilityCapturePayload) {
   const full: AvailabilityCapture = {
     id: crypto.randomUUID(),
