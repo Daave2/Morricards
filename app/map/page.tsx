@@ -12,33 +12,42 @@ import { Input } from '@/components/ui/input';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Map, Search, ChevronLeft } from 'lucide-react';
-import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
-import StoreMap from '@/components/StoreMap';
-import { findAisleForProduct } from '@/ai/flows/aisle-finder-flow';
-
-type Product = FetchMorrisonsDataOutput[0];
+import StoreMap, { type ProductLocation } from '@/components/StoreMap';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const FormSchema = z.object({
   sku: z.string().min(1, { message: 'SKU or EAN is required.' }),
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
 
-const ALL_AISLE_NAMES = [
-    'Meat', 'Cakes', 'Bakery', 'Deli', 'Ovens', 'Ham', 'Seafood', 'Butter', 
-    'Cheese', 'Dairy', 'Frozen', 'Frozen 2', 'Ready Meals', 'Dips', 'Pizzas', 
-    'Coleslaw', 'Fruit & Veg', 'Free From', 'Bread/Jam', 'Cereal/Sugar', 
-    'Desserts/Tea', 'Home Bake', 'Spices/meat', 'Soup/Veg', 'International', 
-    'Sweets', 'Biscuits', 'Crisps', 'Beer', 'Spirits', 'Wine', 'Paper', 
-    'Cleaning', 'Cat', 'Dog', 'Health & Beauty', 'Baby', 'Clothes', 'Seasonal', 
-    'Home', 'Leisure', 'Cook shop', 'Pop', 'Water', 'Checkout Sweets', 
-    'Stationery', 'Partyware', 'Meal Deal'
-];
+function parseLocationString(location: string | undefined): ProductLocation | null {
+  if (!location) return null;
+
+  const aisleRegex = /Aisle\s*(\d+)/i;
+  const bayRegex = /bay\s*(\d+)/i;
+  const sideRegex = /(Left|Right)/i;
+  
+  const aisleMatch = location.match(aisleRegex);
+  const bayMatch = location.match(bayRegex);
+  const sideMatch = location.match(sideRegex);
+
+  if (aisleMatch && bayMatch && sideMatch) {
+    return {
+      aisle: aisleMatch[1],
+      bay: bayMatch[1],
+      side: sideMatch[1] as 'Left' | 'Right',
+    };
+  }
+  
+  return null;
+}
+
 
 export default function MapPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [highlightedAisle, setHighlightedAisle] = useState<string | null>(null);
+  const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -50,7 +59,7 @@ export default function MapPage() {
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
-    setHighlightedAisle(null);
+    setProductLocation(null);
 
     const { data, error } = await getProductData({
       locationId: values.locationId,
@@ -65,28 +74,13 @@ export default function MapPage() {
       toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for: ${values.sku}` });
     } else {
       const foundProduct = data[0];
-      const productCategory = foundProduct.productDetails.commercialHierarchy?.groupName || foundProduct.productDetails.commercialHierarchy?.className || null;
-      
-      if (productCategory) {
-          toast({ title: 'Product Found', description: `Asking AI to find aisle for ${foundProduct.name}...` });
-          try {
-            const aiResult = await findAisleForProduct({
-                productCategory,
-                aisleNames: ALL_AISLE_NAMES,
-            });
+      const parsedLoc = parseLocationString(foundProduct.location.standard);
 
-            if (aiResult.bestAisleName) {
-                setHighlightedAisle(aiResult.bestAisleName);
-                toast({ title: 'Location Found!', description: `Highlighting: ${aiResult.bestAisleName}` });
-            } else {
-                toast({ variant: 'destructive', title: 'AI Could Not Match', description: `The AI could not find a specific aisle for "${productCategory}".` });
-            }
-          } catch (aiError) {
-              console.error("AI aisle finder failed:", aiError);
-              toast({ variant: 'destructive', title: 'AI Error', description: 'The AI assistant failed to find the location.' });
-          }
+      if (parsedLoc) {
+        setProductLocation(parsedLoc);
+        toast({ title: 'Location Found!', description: `Showing location for ${foundProduct.name}` });
       } else {
-         toast({ variant: 'destructive', title: 'Location Data Missing', description: `No category information found for ${foundProduct.name} to locate it.` });
+         toast({ variant: 'destructive', title: 'Location Data Missing', description: `Could not parse location string: "${foundProduct.location.standard}"` });
       }
       setIsLoading(false);
     }
@@ -98,10 +92,10 @@ export default function MapPage() {
         <header className="text-center mb-12">
           <div className="flex justify-center items-center gap-4">
             <Map className="w-12 h-12 text-primary" />
-            <h1 className="text-5xl font-bold tracking-tight text-primary">Store Map</h1>
+            <h1 className="text-5xl font-bold tracking-tight text-primary">Precise Store Map</h1>
           </div>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Search for a product to see its location highlighted on the map.
+            Search for a product to see its exact location plotted on the map.
           </p>
           <Button variant="link" asChild className="mt-2">
             <Link href="/">
@@ -161,10 +155,18 @@ export default function MapPage() {
           </CardContent>
         </Card>
 
-        <div className="border rounded-lg bg-card shadow-lg overflow-hidden">
-            <StoreMap highlightedAisle={highlightedAisle} />
+        <div className="border rounded-lg bg-card shadow-lg overflow-x-auto">
+            <StoreMap productLocation={productLocation} />
         </div>
-
+         {!productLocation && !isLoading && (
+            <Alert className="mt-8 max-w-4xl mx-auto">
+                <Map className="h-4 w-4" />
+                <AlertTitle>Ready to Search</AlertTitle>
+                <AlertDescription>
+                    Enter a product SKU or EAN above to see its precise location on the map.
+                </AlertDescription>
+            </Alert>
+        )}
       </main>
     </div>
   );
