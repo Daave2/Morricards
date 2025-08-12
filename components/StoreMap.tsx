@@ -39,13 +39,13 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
         let x, y;
         if (isVertical) {
             x = x1;
-            y = Math.min(y1, y2) + distanceAlongAisle;
+            y = (y1 < y2) ? y1 + distanceAlongAisle : y1 - distanceAlongAisle;
         } else {
             y = y1;
-            x = Math.min(x1, x2) + distanceAlongAisle;
+            x = (x1 < x2) ? x1 + distanceAlongAisle : x1 - distanceAlongAisle;
         }
         
-        const offset = aisleData.aisleWidth / 4;
+        const offset = aisleData.aisleWidth / 2;
         if(isVertical) {
             x += (productLocation.side === 'Left' ? -offset : offset);
         } else {
