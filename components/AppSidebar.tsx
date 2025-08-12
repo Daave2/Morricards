@@ -10,6 +10,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket } from 'lucide-react';
 import Link from 'next/link';
@@ -17,6 +18,7 @@ import { usePathname } from 'next/navigation';
 
 export default function AppSidebar() {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -25,11 +27,15 @@ export default function AppSidebar() {
     return pathname.startsWith(path);
   };
 
+  const handleLinkClick = () => {
+    setOpenMobile(false);
+  }
+
   return (
     <>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
+            <Link href="/" className="flex items-center gap-2 font-semibold" onClick={handleLinkClick}>
                 <ShoppingBasket className="h-6 w-6 text-primary" />
                 <span className="text-lg">Store Mobile Ultra</span>
             </Link>
@@ -39,7 +45,7 @@ export default function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive('/')}>
-              <Link href="/">
+              <Link href="/" onClick={handleLinkClick}>
                 <Home />
                 Picking List
               </Link>
@@ -47,7 +53,7 @@ export default function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive('/availability')}>
-              <Link href="/availability">
+              <Link href="/availability" onClick={handleLinkClick}>
                 <ListChecks />
                 Availability Report
               </Link>
@@ -55,7 +61,7 @@ export default function AppSidebar() {
           </SidebarMenuItem>
            <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive('/assistant')}>
-              <Link href="/assistant">
+              <Link href="/assistant" onClick={handleLinkClick}>
                 <Bot />
                 AI Product Assistant
               </Link>
@@ -63,7 +69,7 @@ export default function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive('/map')}>
-              <Link href="/map">
+              <Link href="/map" onClick={handleLinkClick}>
                 <Map />
                 Store Map
               </Link>
@@ -71,7 +77,7 @@ export default function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive('/settings')}>
-              <Link href="/settings">
+              <Link href="/settings" onClick={handleLinkClick}>
                 <Settings />
                 Settings
               </Link>
