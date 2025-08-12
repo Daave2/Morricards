@@ -57,22 +57,6 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
 
   return (
     <>
-      <style jsx global>{`
-        @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(1.5);
-            opacity: 0.7;
-          }
-        }
-        .location-marker {
-          animation: pulse 1.5s infinite;
-          transform-origin: center;
-        }
-      `}</style>
       <div className="canvas-wrap p-4 bg-muted/20">
         <div className="board" style={{ maxWidth: `${layout.W}px` }}>
           <svg viewBox={`0 0 ${layout.W} ${layout.H}`} aria-labelledby="title desc" role="img">
@@ -136,7 +120,6 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
                     fill="hsla(var(--primary), 0.5)"
                     stroke="hsl(var(--primary))"
                     strokeWidth="3"
-                    className="location-marker"
                 />
             )}
           </svg>
