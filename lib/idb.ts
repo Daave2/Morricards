@@ -1,136 +1,136 @@
 
 
-import { openDB, DBSchema } from 'idb';
+import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'smu';
-const DB_VERSION = 2; // Bump version for schema change
+const DB_VERSION = 2; 
 
-export type AvailabilityCapture = {
-  id: string; // uuid
+export const STORES = {
+  AVAILABILITY: 'availability-captures',
+  PRODUCTS: 'product-fetches',
+} as const;
+
+type StoreName = typeof STORES[keyof typeof STORES];
+
+
+export interface AvailabilityCapturePayload {
   sku: string;
   locationId: string;
   reason: 'No Stock' | 'Low Stock' | 'Early Sellout' | 'Too Much Stock' | 'Other';
   comment?: string;
-  capturedAt: number; // Date.now()
-  synced?: boolean;
-};
+}
 
-export type ProductFetch = {
-    id: string; // uuid - can be the SKU for simplicity if unique fetches are needed
+export interface ProductFetchPayload {
     sku: string;
     locationId: string;
-    capturedAt: number;
-    synced?: boolean;
 }
 
 interface SMU_DB extends DBSchema {
-    'availability-captures': {
+    [STORES.AVAILABILITY]: {
         key: string;
-        value: AvailabilityCapture;
-        indexes: { 'synced': number, 'capturedAt': number };
+        value: {
+          id: string,
+          ts: number,
+          payload: AvailabilityCapturePayload,
+          synced: boolean,
+        };
+        indexes: { 'synced': number, 'ts': number };
     };
-    'product-fetches': {
+    [STORES.PRODUCTS]: {
         key: string;
-        value: ProductFetch;
-        indexes: { 'synced': number, 'capturedAt': number };
+        value: {
+          id: string,
+          ts: number,
+          payload: ProductFetchPayload
+          synced: boolean,
+        };
+        indexes: { 'synced': number, 'ts': number };
     }
 }
 
+let db: Promise<IDBPDatabase<SMU_DB>> | null = null;
 
-export async function db() {
-  return openDB<SMU_DB>(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion, newVersion, transaction) {
-      if (oldVersion < 1) {
-        if (!db.objectStoreNames.contains('availability-captures')) {
-            const availabilityStore = db.createObjectStore('availability-captures', { keyPath: 'id' });
-            availabilityStore.createIndex('synced', 'synced');
-            availabilityStore.createIndex('capturedAt', 'capturedAt');
+function getDb() {
+  if (typeof window === 'undefined') {
+    // Return a dummy object for server-side rendering
+    return {
+      put: async () => {},
+      getAllFromIndex: async () => [],
+      get: async () => undefined,
+      delete: async () => {},
+      clear: async () => {},
+    } as any;
+  }
+  if (!db) {
+    db = openDB<SMU_DB>(DB_NAME, DB_VERSION, {
+      upgrade(db, oldVersion, newVersion, transaction) {
+        if (oldVersion < 2) {
+            // Handle migration from 'captures' to 'availability-captures'
+            // Use an untyped handle to check for the legacy store.
+            const storeNames = Array.from(db.objectStoreNames);
+            if (storeNames.includes('captures')) {
+                db.deleteObjectStore('captures');
+            }
+             if (!storeNames.includes(STORES.AVAILABILITY)) {
+                const s = db.createObjectStore(STORES.AVAILABILITY, { keyPath: 'id' });
+                s.createIndex('synced', 'synced');
+                s.createIndex('ts', 'ts');
+             }
+
+            if (!storeNames.includes(STORES.PRODUCTS)) {
+              const s = db.createObjectStore(STORES.PRODUCTS, { keyPath: 'id'});
+              s.createIndex('synced', 'synced');
+              s.createIndex('ts', 'ts');
+            }
         }
       }
-      if (oldVersion < 2) {
-          // Handle migration from 'captures' to 'availability-captures'
-          if (db.objectStoreNames.contains('captures')) {
-              db.deleteObjectStore('captures');
-          }
-           if (!db.objectStoreNames.contains('availability-captures')) {
-              const availabilityStore = db.createObjectStore('availability-captures', { keyPath: 'id' });
-              availabilityStore.createIndex('synced', 'synced');
-              availabilityStore.createIndex('capturedAt', 'capturedAt');
-           }
-
-          if (!db.objectStoreNames.contains('product-fetches')) {
-            const productStore = db.createObjectStore('product-fetches', { keyPath: 'id'});
-            productStore.createIndex('synced', 'synced');
-            productStore.createIndex('capturedAt', 'capturedAt');
-          }
-      }
-    }
-  });
+    });
+  }
+  return db;
 }
 
-// Availability Captures
-export async function addAvailabilityCapture(c: AvailabilityCapture) {
-  return (await db()).put('availability-captures', c);
+
+export async function putRecord<T extends StoreName>(storeName: T, record: SMU_DB[T]['value']) {
+  return (await getDb()).put(storeName, record);
 }
 
-export async function listUnsyncedAvailability() {
-  return (await db()).getAllFromIndex('availability-captures', 'synced', 0);
+export async function getAllRecords<T extends StoreName>(storeName: T, indexName: keyof SMU_DB[T]['indexes'], query: IDBValidKey | IDBKeyRange) {
+    return (await getDb()).getAllFromIndex(storeName, indexName as string, query);
 }
 
-export async function markAvailabilitySynced(ids: string[]) {
-  const d = await db();
-  const tx = d.transaction('availability-captures', 'readwrite');
+export async function deleteRecord<T extends StoreName>(storeName: T, key: string) {
+    return (await getDb()).delete(storeName, key);
+}
+
+export async function clearStore(storeName: StoreName) {
+    return (await getDb()).clear(storeName);
+}
+
+export async function markSynced<T extends StoreName>(storeName: T, ids: string[]) {
+  const d = await getDb();
+  const tx = d.transaction(storeName, 'readwrite');
   for (const id of ids) {
     const rec = await tx.store.get(id);
-    if (rec) { rec.synced = true; await tx.store.put(rec); }
+    if (rec) { 
+        rec.synced = true; 
+        await tx.store.put(rec); 
+    }
   }
   await tx.done;
-}
-
-// Product Fetches
-export async function addProductFetch(p: ProductFetch) {
-    return (await db()).put('product-fetches', p);
-}
-
-export async function getProductFetch(id: string) {
-    return (await db()).get('product-fetches', id);
-}
-
-export async function listUnsyncedProducts() {
-    return (await db()).getAllFromIndex('product-fetches', 'synced', 0);
-}
-
-export async function markProductsSynced(ids: string[]) {
-    const d = await db();
-    const tx = d.transaction('product-fetches', 'readwrite');
-    for (const id of ids) {
-        const rec = await tx.store.get(id);
-        if (rec) {
-            rec.synced = true;
-            await tx.store.put(rec);
-        }
-    }
-    await tx.done;
 }
 
 
 export async function clearOld(days = 14) {
   const cutoff = Date.now() - days * 86400000;
-  const d = await db();
+  const d = await getDb();
   
-  const tx1 = d.transaction('availability-captures', 'readwrite');
-  let cursor1 = await tx1.store.openCursor();
-  while (cursor1) {
-    if (cursor1.value.capturedAt < cutoff) await cursor1.delete();
-    cursor1 = await cursor1.continue();
+  for (const storeName of Object.values(STORES)) {
+      const tx = d.transaction(storeName, 'readwrite');
+      let cursor = await tx.store.index('ts').openCursor(IDBKeyRange.upperBound(cutoff));
+      while (cursor) {
+        await cursor.delete();
+        cursor = await cursor.continue();
+      }
+      await tx.done;
   }
-  await tx1.done;
-
-  const tx2 = d.transaction('product-fetches', 'readwrite');
-  let cursor2 = await tx2.store.openCursor();
-  while(cursor2) {
-      if (cursor2.value.capturedAt < cutoff) await cursor2.delete();
-      cursor2 = await cursor2.continue();
-  }
-  await tx2.done;
 }
