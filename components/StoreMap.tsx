@@ -57,6 +57,15 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
 
   return (
     <>
+      <style jsx global>{`
+        @keyframes flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        .flashing-indicator {
+          animation: flash 1.5s infinite ease-in-out;
+        }
+      `}</style>
       <div className="canvas-wrap p-4 bg-muted/20">
         <div className="board" style={{ maxWidth: `${layout.W}px` }}>
           <svg viewBox={`0 0 ${layout.W} ${layout.H}`} aria-labelledby="title desc" role="img">
@@ -67,9 +76,6 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
               <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                 <path d="M 40 0 L 0 0 0 40" fill="none" stroke="hsl(var(--border))" strokeWidth="1"/>
               </pattern>
-               <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-                  <polygon points="0 0, 10 3.5, 0 7" fill="hsl(var(--primary))" />
-                </marker>
             </defs>
 
             <rect x="0" y="0" width={layout.W} height={layout.H} fill="url(#grid)" opacity="0.2" />
@@ -117,14 +123,6 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
 
             {itemPosition && (
                 <>
-                 <path
-                    d={`M 380,${itemPosition.y} C 450,${itemPosition.y} ${itemPosition.x-50},${itemPosition.y} ${itemPosition.x - 20},${itemPosition.y}`}
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="4"
-                    fill="none"
-                    strokeDasharray="8, 8"
-                    markerEnd="url(#arrowhead)"
-                  />
                  <circle
                     cx={itemPosition.x}
                     cy={itemPosition.y}
@@ -132,6 +130,7 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
                     fill="hsl(var(--primary))"
                     stroke="hsl(var(--primary-foreground))"
                     strokeWidth="3"
+                    className="flashing-indicator"
                 />
                 </>
             )}
