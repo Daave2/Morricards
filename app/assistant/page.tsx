@@ -305,6 +305,19 @@ export default function AssistantPage() {
                                   )}
                                 </InsightSection>
 
+                                <InsightSection
+                                  title="Key Selling Points"
+                                  content={insights.sellingPoints ?? []}
+                                />
+                                <InsightSection
+                                  title="Ideal Customer"
+                                  content={insights.customerProfile ?? ''}
+                                />
+                                <InsightSection
+                                  title="Placement Notes"
+                                  content={insights.placementNotes ?? ''}
+                                />
+
                                 {insights.crossSell && insights.crossSell.length > 0 && (
                                     <InsightSection
                                     title="You might also like..."

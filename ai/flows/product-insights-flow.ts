@@ -22,6 +22,9 @@ const ProductInsightsOutputSchema = z.object({
   crossSell: z.array(z.string()).describe('Two logical product categories or specific items that would be good to cross-sell with this item.'),
   customerFriendlyLocation: z.string().describe("A customer-friendly description of where to find the product in the store based on its location data. For example, 'You can find this on Aisle 14, on your right-hand side.'"),
   recipeIdeas: z.array(z.string()).optional().describe("If the item is a food product, suggest one or two simple recipe ideas or serving suggestions. For non-food items, this can be omitted."),
+  sellingPoints: z.array(z.string()).optional().describe('A list of 3-5 bullet points highlighting the key selling points of the product for a store colleague.'),
+  customerProfile: z.string().optional().describe('A brief sentence describing the ideal customer for this product.'),
+  placementNotes: z.string().optional().describe('A short note for a store colleague on ideal merchandising or placement for this product.'),
 });
 export type ProductInsightsOutput = z.infer<typeof ProductInsightsOutputSchema>;
 
@@ -40,6 +43,9 @@ Analyze the following product JSON data and generate a helpful summary.
 - Suggest two other product categories they might be interested in.
 - Convert the structured location data into a friendly, easy-to-understand direction for a customer. For example, if the location is "Aisle 14, Right bay 2, shelf 3", you could say "You'll find this on Aisle 14, on your right about halfway down."
 - If the item is a food product, provide one or two simple and appealing recipe ideas or serving suggestions.
+- Provide a list of key selling points for a store colleague.
+- Provide a brief profile of the ideal customer for this product.
+- Provide a short note on ideal merchandising or placement.
 
 Product Data:
 \`\`\`json
