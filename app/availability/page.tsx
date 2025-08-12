@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, Bolt, Bot, Map } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Link from 'next/link';
@@ -115,7 +115,8 @@ const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
             {isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
             {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
             {lastSync && !isFetching && (
-              <> {/* This will be removed */}
+              <>
+                <CloudCog className="h-4 w-4" />
                 <span>Synced: {timeAgo}</span>
               </>
             )}
@@ -658,18 +659,6 @@ export default function AvailabilityPage() {
                           >
                             <Copy className="mr-2 h-4 w-4" />
                             Copy Raw Data
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="default"
-                            size="sm"
-                            className="w-full"
-                            asChild
-                          >
-                            <Link href={`/map?sku=${productForModal.sku}&locationId=${form.getValues('locationId')}`}>
-                              <Map className="mr-2 h-4 w-4" />
-                              View on Map
-                            </Link>
                           </Button>
                     </div>
                   </div>
