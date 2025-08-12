@@ -30,9 +30,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -48,9 +48,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -66,9 +66,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -84,9 +84,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -102,9 +102,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -120,9 +120,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -138,9 +138,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -156,9 +156,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -174,9 +174,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -192,9 +192,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -210,9 +210,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -228,9 +228,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -246,9 +246,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -264,9 +264,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -282,9 +282,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 35,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -318,9 +318,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -336,9 +336,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -354,9 +354,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -372,9 +372,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -390,9 +390,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -408,9 +408,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 9,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -426,9 +426,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -444,9 +444,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -462,9 +462,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -480,9 +480,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -498,9 +498,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -516,9 +516,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -534,9 +534,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -552,9 +552,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -570,9 +570,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 10,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -588,9 +588,9 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
-      "facing": "y+",
+      "baysPerSide": 9,
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -607,8 +607,8 @@ export const storeLayout = {
       "aisleWidth": 40,
       "bayWidth": 20,
       "baysPerSide": 24,
-      "facing": "y+",
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -624,7 +624,7 @@ export const storeLayout = {
       ],
       "aisleWidth": 40,
       "bayWidth": 20,
-      "baysPerSide": 24,
+      "baysPerSide": 11,
       "bayOrder": "p1-to-p2",
       "facing": "y+",
       "locked": false
@@ -706,11 +706,11 @@ export const storeLayout = {
       "label": "Wall",
       "p1": [
         1660,
-        80
+        60
       ],
       "p2": [
         40,
-        80
+        60
       ],
       "aisleWidth": 50,
       "bayWidth": 20,
@@ -724,13 +724,13 @@ export const storeLayout = {
       "label": "Street",
       "p1": [
         1560,
-        140
+        120
       ],
       "p2": [
-        1580,
-        20
+        160,
+        120
       ],
-      "aisleWidth": 50,
+      "aisleWidth": 30,
       "bayWidth": 23,
       "baysPerSide": 9,
       "bayOrder": "p1-to-p2",
