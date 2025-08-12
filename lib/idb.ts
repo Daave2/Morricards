@@ -1,18 +1,27 @@
 
-import { openDB, type DBSchema, type IDBPDatabase, type IDBPCursor } from 'idb';
+import {
+  openDB,
+  type DBSchema,
+  type IDBPDatabase,
+  type StoreNames,
+  type IndexNames,
+  type IndexKey,
+} from 'idb';
 
 const DB_NAME = 'smu';
-const DB_VERSION = 2; 
+const DB_VERSION = 2;
 
 export const STORES = {
   AVAILABILITY: 'availability-captures',
   PRODUCTS: 'product-fetches',
 } as const;
 
-type StoreName = typeof STORES[keyof typeof STORES];
-type IndexName<T extends StoreName> = Extract<keyof SMU_DB[T]['indexes'], string>;
-
-export type AvailabilityReason = 'No Stock' | 'Low Stock' | 'Early Sellout' | 'Too Much Stock' | 'Other';
+export type AvailabilityReason =
+  | 'No Stock'
+  | 'Low Stock'
+  | 'Early Sellout'
+  | 'Too Much Stock'
+  | 'Other';
 
 export interface AvailabilityCapturePayload {
   sku: string;
@@ -24,163 +33,208 @@ export interface AvailabilityCapturePayload {
 export interface AvailabilityCapture {
   id: string;
   ts: number;
-  payload: AvailabilityCapturePayload
-  synced: boolean,
-};
+  payload: AvailabilityCapturePayload;
+  // numeric flag so it’s an IDBValidKey
+  synced: 0 | 1;
+}
 
 export interface ProductFetchPayload {
-    sku: string;
-    locationId: string;
+  sku: string;
+  locationId: string;
 }
 
 export interface ProductFetch {
   id: string;
   ts: number;
-  payload: ProductFetchPayload
-  synced: boolean,
-};
-
-interface SMU_DB extends DBSchema {
-    [STORES.AVAILABILITY]: {
-        key: string;
-        value: AvailabilityCapture;
-        indexes: { 'synced': number, 'ts': number };
-    };
-    [STORES.PRODUCTS]: {
-        key: string;
-        value: ProductFetch;
-        indexes: { 'synced': number, 'ts': number };
-    }
+  payload: ProductFetchPayload;
+  // numeric flag so it’s an IDBValidKey
+  synced: 0 | 1;
 }
 
-let db: IDBPDatabase<SMU_DB> | null = null;
+/**
+ * IMPORTANT: Use literal store names as keys.
+ * DBSchema requires each key to be the exact object store name string.
+ */
+interface SMU_DB extends DBSchema {
+  'availability-captures': {
+    key: string;
+    value: AvailabilityCapture;
+    indexes: { synced: number; ts: number };
+  };
+  'product-fetches': {
+    key: string;
+    value: ProductFetch;
+    indexes: { synced: number; ts: number };
+  };
+}
 
-function getDb(): IDBPDatabase<SMU_DB> {
+// Types derived from idb helpers (always correct for your schema)
+type StoreName = StoreNames<SMU_DB>;
+type IndexName<S extends StoreName> = IndexNames<SMU_DB, S>;
+
+// Hold the promise so we only open once
+let dbPromise: Promise<IDBPDatabase<SMU_DB>> | null = null;
+
+async function getDb(): Promise<IDBPDatabase<SMU_DB>> {
+  // SSR-safe mock
   if (typeof window === 'undefined') {
-    // Return a mock DB object for server-side rendering
-    return {
-      put: async () => {},
-      getAllFromIndex: async () => [],
+    const mock = {
+      put: async () => undefined,
+      getAllFromIndex: async () => [] as any[],
       get: async () => undefined,
-      delete: async () => {},
-      clear: async () => {},
-      transaction: () => ({
-        store: {
-          get: async () => undefined,
-          put: async () => {},
-          openCursor: async () => null,
-        },
-        done: Promise.resolve(),
-      }),
-    } as any as IDBPDatabase<SMU_DB>;
+      delete: async () => undefined,
+      clear: async () => undefined,
+      transaction: () =>
+        ({
+          store: {
+            get: async () => undefined,
+            put: async () => undefined,
+            index: (_: string) =>
+              ({
+                openCursor: async () => null,
+              } as any),
+          },
+          done: Promise.resolve(),
+        } as any),
+    } as unknown as IDBPDatabase<SMU_DB>;
+    return mock;
   }
-  if (!db) {
-    db = openDB<SMU_DB>(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion, newVersion, transaction) {
-        // Escape hatch: use the raw IDB types ONLY for legacy ops.
-        const rawDb = (db as unknown) as IDBDatabase;
 
-        if (oldVersion < 2) {
-            if (rawDb.objectStoreNames.contains('captures')) {
-                rawDb.deleteObjectStore('captures');
-            }
+  if (!dbPromise) {
+    dbPromise = openDB<SMU_DB>(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        const names: string[] = Array.from(
+          ((db as any).objectStoreNames ?? []) as DOMStringList | string[]
+        ) as string[];
 
-            if (!rawDb.objectStoreNames.contains(STORES.AVAILABILITY)) {
-                const s = db.createObjectStore(STORES.AVAILABILITY, { keyPath: 'id' });
-                s.createIndex('synced', 'synced');
-                s.createIndex('ts', 'ts');
-            }
+        const contains = (n: string) =>
+          typeof (db as any).objectStoreNames?.contains === 'function'
+            ? (db as any).objectStoreNames.contains(n)
+            : names.includes(n);
 
-            if (!rawDb.objectStoreNames.contains(STORES.PRODUCTS)) {
-              const s = db.createObjectStore(STORES.PRODUCTS, { keyPath: 'id'});
-              s.createIndex('synced', 'synced');
-              s.createIndex('ts', 'ts');
-            }
+        // Remove legacy store if present
+        if (contains('captures')) {
+          (db as any).deleteObjectStore?.('captures');
         }
-      }
+
+        if (!contains(STORES.AVAILABILITY)) {
+          const s = db.createObjectStore(STORES.AVAILABILITY, { keyPath: 'id' });
+          s.createIndex('synced', 'synced');
+          s.createIndex('ts', 'ts');
+        }
+
+        if (!contains(STORES.PRODUCTS)) {
+          const s = db.createObjectStore(STORES.PRODUCTS, { keyPath: 'id' });
+          s.createIndex('synced', 'synced');
+          s.createIndex('ts', 'ts');
+        }
+      },
     });
   }
-  return db;
+
+  return dbPromise;
 }
 
-
-async function putRecord<T extends StoreName>(storeName: T, record: SMU_DB[T]['value']) {
+async function putRecord<S extends StoreName>(
+  storeName: S,
+  record: SMU_DB[S]['value']
+) {
   return (await getDb()).put(storeName, record);
 }
 
-async function getAllRecords<T extends StoreName>(storeName: T, indexName: IndexName<T>, query: IDBValidKey | IDBKeyRange) {
-    return (await getDb()).getAllFromIndex(storeName, indexName, query);
+/**
+ * getAllRecords with types bound to the specific index's key type.
+ * IndexKey<DB, Store, Index> is exported by `idb` and exactly matches what
+ * IDBPDatabase.getAllFromIndex expects, so no more assignment errors.
+ */
+async function getAllRecords<S extends StoreName, I extends IndexName<S>>(
+  storeName: S,
+  indexName: I,
+  query: IndexKey<SMU_DB, S, I> | IDBKeyRange
+) {
+  return (await getDb()).getAllFromIndex(storeName, indexName, query);
 }
 
-async function deleteRecord<T extends StoreName>(storeName: T, key: string) {
-    return (await getDb()).delete(storeName, key);
+async function deleteRecord<S extends StoreName>(storeName: S, key: string) {
+  return (await getDb()).delete(storeName, key);
 }
 
 export async function clearStore(storeName: StoreName) {
-    return (await getDb()).clear(storeName);
+  return (await getDb()).clear(storeName);
 }
 
-async function markSynced<T extends StoreName>(storeName: T, ids: string[]) {
+async function markSynced<S extends StoreName>(storeName: S, ids: string[]) {
   const d = await getDb();
   const tx = d.transaction(storeName, 'readwrite');
   for (const id of ids) {
     const rec = await tx.store.get(id);
-    if (rec) { 
-        (rec as any).synced = true; 
-        await tx.store.put(rec); 
+    if (rec) {
+      (rec as any).synced = 1 as const;
+      await tx.store.put(rec);
     }
   }
   await tx.done;
 }
 
 export async function clearOld(days = 14) {
-  const cutoff = Date.now() - days * 86400000;
+  const cutoff = Date.now() - days * 86_400_000;
   const d = await getDb();
-  
+
   for (const storeName of Object.values(STORES)) {
-      const tx = d.transaction(storeName, 'readwrite');
-      let cursor = await tx.store.index('ts').openCursor(IDBKeyRange.upperBound(cutoff));
-      while (cursor) {
-        await cursor.delete();
-        cursor = await cursor.continue();
-      }
-      await tx.done;
+    const tx = d.transaction(storeName, 'readwrite');
+    const idx = tx.store.index('ts');
+    let cursor = await idx.openCursor(IDBKeyRange.upperBound(cutoff));
+    while (cursor) {
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
+    await tx.done;
   }
 }
 
-// Functions moved from offlineQueue.ts to break circular dependency
+// ---- Public helpers ---------------------------------------------------------
+
 export async function addAvailabilityCapture(payload: AvailabilityCapturePayload) {
   const full: AvailabilityCapture = {
     id: crypto.randomUUID(),
     ts: Date.now(),
     payload,
-    synced: false,
+    synced: 0,
   };
   await putRecord(STORES.AVAILABILITY, full);
 }
 
 export async function addProductFetch(payload: ProductFetchPayload) {
-    const full: ProductFetch = {
-      id: payload.sku, // Use SKU as ID to prevent duplicate queueing
-      ts: Date.now(),
-      payload,
-      synced: false,
-    };
-    await putRecord(STORES.PRODUCTS, full);
+  const full: ProductFetch = {
+    // Use SKU as ID to prevent duplicate queueing
+    id: payload.sku,
+    ts: Date.now(),
+    payload,
+    synced: 0,
+  };
+  await putRecord(STORES.PRODUCTS, full);
 }
 
 export async function listUnsyncedAvailability(): Promise<AvailabilityCapture[]> {
-    return getAllRecords(STORES.AVAILABILITY, 'synced', 0);
+  return getAllRecords(
+    STORES.AVAILABILITY,
+    'synced',
+    0 // matches index key type (number)
+  );
 }
 
 export async function listUnsyncedProducts(): Promise<ProductFetch[]> {
-    return getAllRecords(STORES.PRODUCTS, 'synced', 0);
+  return getAllRecords(
+    STORES.PRODUCTS,
+    'synced',
+    0 // matches index key type (number)
+  );
 }
 
 export async function markAvailabilitySynced(ids: string[]) {
-    await markSynced(STORES.AVAILABILITY, ids);
+  await markSynced(STORES.AVAILABILITY, ids);
 }
 
 export async function markProductsSynced(ids: string[]) {
-    await markSynced(STORES.PRODUCTS, ids);
+  await markSynced(STORES.PRODUCTS, ids);
 }
