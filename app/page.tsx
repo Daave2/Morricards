@@ -184,7 +184,7 @@ function PickingList() {
       setProducts(prevProducts => {
         const syncedSkus = new Set(syncedItems.map(item => item.sku));
         const otherProducts = prevProducts.filter(p => !syncedSkus.has(p.sku));
-        return [...otherProducts, ...syncedItems.map(p => ({ ...p, picked: false }))];
+        return [...otherProducts, ...syncedItems.map(p => ({ ...p, picked: false }))]
       });
     }
   }, [syncedItems]);
@@ -608,12 +608,47 @@ function PickingList() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         <TooltipProvider>
           <header className="text-center mb-12">
-             <h1 className="text-4xl font-bold tracking-tight text-primary">
-                Picking List
+            <div className="flex justify-center items-center gap-4 relative">
+               <ShoppingBasket className="w-12 h-12 text-primary" />
+              <h1 className="text-5xl font-bold tracking-tight text-primary">
+                Store mobile <span className="text-foreground">ULTRA</span>
               </h1>
-             <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Scan EANs or enter SKUs to build your picking list.
+               <div className="absolute right-0 top-0">
+                <StatusIndicator isFetching={isFetching} />
+              </div>
+            </div>
+             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
             </p>
+            <div className="mt-2 space-x-2">
+                <Button variant="link" asChild>
+                    <Link href="/availability">
+                        <LinkIcon className="mr-2 h-4 w-4" />
+                        Go to Availability Checker
+                    </Link>
+                </Button>
+                 <Button variant="link" asChild>
+                    <Link href="/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                    </Link>
+                </Button>
+                 <Button variant="link" asChild>
+                    <Link href="/assistant">
+                        <Bot className="mr-2 h-4 w-4" />
+                        AI Product Assistant
+                    </Link>
+                </Button>
+            </div>
+             {!isOnline && (
+              <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
+                  <WifiOff className="h-4 w-4" />
+                  <AlertTitle>You are offline</AlertTitle>
+                  <AlertDescription>
+                      The app is running in offline mode. Some functionality may be limited, but you can still view your list. Any new data will be fetched when you reconnect.
+                  </AlertDescription>
+              </Alert>
+            )}
           </header>
           
           <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
@@ -817,7 +852,7 @@ function PickingList() {
           ) : sortedAndFilteredProducts.length > 0 || loadingSkuCount > 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {sortedAndFilteredProducts.map((product) => (
-                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker locationId={form.getValues('locationId')} />
+                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker />
               ))}
               {isLoading && skeletons}
             </div>
