@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, CloudSync, Bolt, Bot, Map } from 'lucide-react';
-import ProductCard from '@/components/product-card';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, Bolt, Bot, Map } from 'lucide-react';import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -90,7 +90,6 @@ const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
             {isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
             {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
             {lastSync && !isFetching && (
-              <>
                 <CloudSync className="h-4 w-4" />
                 <span>Synced: {timeAgo}</span>
               </>
