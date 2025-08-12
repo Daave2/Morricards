@@ -10,6 +10,7 @@ export const STORES = {
 } as const;
 
 type StoreName = typeof STORES[keyof typeof STORES];
+type IndexName<T extends StoreName> = Extract<keyof SMU_DB[T]['indexes'], string>;
 
 export type AvailabilityReason = 'No Stock' | 'Low Stock' | 'Early Sellout' | 'Too Much Stock' | 'Other';
 
@@ -78,20 +79,19 @@ function getDb() {
       upgrade(db, oldVersion, newVersion, transaction) {
         // Escape hatch: use the raw IDB types ONLY for legacy ops.
         const rawDb = (db as unknown) as IDBDatabase;
-        const storeNames: string[] = Array.from(rawDb.objectStoreNames);
 
         if (oldVersion < 2) {
-            if (storeNames.includes('captures')) {
+            if (rawDb.objectStoreNames.contains('captures')) {
                 rawDb.deleteObjectStore('captures');
             }
 
-            if (!storeNames.includes(STORES.AVAILABILITY)) {
+            if (!rawDb.objectStoreNames.contains(STORES.AVAILABILITY)) {
                 const s = db.createObjectStore(STORES.AVAILABILITY, { keyPath: 'id' });
                 s.createIndex('synced', 'synced');
                 s.createIndex('ts', 'ts');
             }
 
-            if (!storeNames.includes(STORES.PRODUCTS)) {
+            if (!rawDb.objectStoreNames.contains(STORES.PRODUCTS)) {
               const s = db.createObjectStore(STORES.PRODUCTS, { keyPath: 'id'});
               s.createIndex('synced', 'synced');
               s.createIndex('ts', 'ts');
@@ -106,6 +106,10 @@ function getDb() {
 
 async function putRecord<T extends StoreName>(storeName: T, record: SMU_DB[T]['value']) {
   return (await getDb()).put(storeName, record);
+}
+
+async function getAllRecords<T extends StoreName>(storeName: T, indexName: IndexName<T>, query: IDBValidKey | IDBKeyRange) {
+    return (await getDb()).getAllFromIndex(storeName, indexName, query);
 }
 
 async function deleteRecord<T extends StoreName>(storeName: T, key: string) {
@@ -166,11 +170,11 @@ export async function addProductFetch(payload: ProductFetchPayload) {
 }
 
 export async function listUnsyncedAvailability(): Promise<AvailabilityCapture[]> {
-    return (await getDb()).getAllFromIndex(STORES.AVAILABILITY, 'synced', 0);
+    return getAllRecords(STORES.AVAILABILITY, 'synced', 0);
 }
 
 export async function listUnsyncedProducts(): Promise<ProductFetch[]> {
-    return (await getDb()).getAllFromIndex(STORES.PRODUCTS, 'synced', 0);
+    return getAllRecords(STORES.PRODUCTS, 'synced', 0);
 }
 
 export async function markAvailabilitySynced(ids: string[]) {

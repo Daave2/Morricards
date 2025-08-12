@@ -13,6 +13,9 @@
     "genkit:dev": "genkit start -- tsx ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch ai/dev.ts"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@genkit-ai/firebase": "^1.16.0",
     "@genkit-ai/googleai": "^1.16.0",
