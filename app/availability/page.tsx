@@ -115,8 +115,7 @@ const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
             {isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
             {isOnline ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-destructive" />}
             {lastSync && !isFetching && (
-              <>
-                <CloudSync className="h-4 w-4" />
+              <> {/* This will be removed */}
                 <span>Synced: {timeAgo}</span>
               </>
             )}
