@@ -76,11 +76,11 @@ function getDb() {
   if (!db) {
     db = openDB<SMU_DB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
-        if (oldVersion < 2) {
-            // Escape hatch: use the native IDB types ONLY for legacy ops.
-            const rawDb = (db as unknown) as IDBDatabase;
-            const storeNames: string[] = Array.from(rawDb.objectStoreNames);
+        // Escape hatch: use the raw IDB types ONLY for legacy ops.
+        const rawDb = (db as unknown) as IDBDatabase;
+        const storeNames: string[] = Array.from(rawDb.objectStoreNames);
 
+        if (oldVersion < 2) {
             // Safe to refer to 'captures' here because we're on the raw DB object.
             if (storeNames.includes('captures')) {
                 rawDb.deleteObjectStore('captures');
@@ -111,7 +111,7 @@ async function putRecord<T extends StoreName>(storeName: T, record: SMU_DB[T]['v
 }
 
 async function getAllRecords<T extends StoreName>(storeName: T, indexName: keyof SMU_DB[T]['indexes'], query: IDBValidKey | IDBKeyRange) {
-    return (await getDb()).getAllFromIndex(storeName, indexName as string, query);
+    return (await getDb()).getAllFromIndex(storeName, indexName, query);
 }
 
 async function deleteRecord<T extends StoreName>(storeName: T, key: string) {
