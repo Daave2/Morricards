@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { getProductData } from '@/app/actions';
@@ -16,11 +16,15 @@ import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import Image from 'next/image';
 
 const FormSchema = z.object({
   sku: z.string().min(1, { message: 'SKU or EAN is required.' }),
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
+
+type Product = FetchMorrisonsDataOutput[0];
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
   if (!location) return null;
@@ -48,6 +52,7 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
 export default function MapPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -60,6 +65,7 @@ export default function MapPage() {
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
     setProductLocation(null);
+    setProduct(null);
 
     const { data, error } = await getProductData({
       locationId: values.locationId,
@@ -78,6 +84,7 @@ export default function MapPage() {
 
       if (parsedLoc) {
         setProductLocation(parsedLoc);
+        setProduct(foundProduct);
         toast({ title: 'Location Found!', description: `Showing location for ${foundProduct.name}` });
       } else {
          toast({ variant: 'destructive', title: 'Location Data Missing', description: `Could not parse location string: "${foundProduct.location.standard}"` });
@@ -105,68 +112,102 @@ export default function MapPage() {
           </Button>
         </header>
 
-        <Card className="max-w-4xl mx-auto mb-8 shadow-md">
-          <CardHeader>
-              <CardTitle>Find a Product</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col sm:flex-row items-end gap-4">
-                <FormField
-                  control={form.control}
-                  name="sku"
-                  render={({ field }) => (
-                    <FormItem className="w-full sm:w-auto sm:flex-grow">
-                      <FormLabel>SKU or EAN</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter product number..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="locationId"
-                  render={({ field }) => (
-                    <FormItem className="w-full sm:w-1/4">
-                      <FormLabel>Store ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 218" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  className="w-full sm:w-auto flex-shrink-0"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="mr-2 h-4 w-4" />
-                  )}
-                  Find
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-1 space-y-8">
+            <Card className="shadow-md">
+              <CardHeader>
+                  <CardTitle>Find a Product</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="sku"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SKU or EAN</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter product number..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="locationId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Store ID</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 218" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="mr-2 h-4 w-4" />
+                      )}
+                      Find Product
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
 
-        <div className="border rounded-lg bg-card shadow-lg overflow-x-auto">
-            <StoreMap productLocation={productLocation} />
+            {product && productLocation && (
+              <Card className="shadow-lg animate-in fade-in-50">
+                <CardHeader className="flex flex-row items-start gap-4">
+                  <Image
+                    src={product.imageUrl || 'https://placehold.co/100x100.png'}
+                    alt={product.name}
+                    width={80}
+                    height={80}
+                    className="rounded-lg border object-cover"
+                  />
+                  <div>
+                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                    <CardDescription>SKU: {product.sku}</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Alert>
+                    <Map className="h-4 w-4" />
+                    <AlertTitle>Location</AlertTitle>
+                    <AlertDescription className="font-semibold text-foreground">
+                      {product.location.standard}
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            )}
+
+            {!productLocation && !isLoading && (
+                <Alert className="lg:col-span-1">
+                    <Map className="h-4 w-4" />
+                    <AlertTitle>Ready to Search</AlertTitle>
+                    <AlertDescription>
+                        Enter a product SKU or EAN above to see its precise location on the map.
+                    </AlertDescription>
+                </Alert>
+            )}
+
+          </div>
+
+          <div className="lg:col-span-2 border rounded-lg bg-card shadow-lg overflow-x-auto">
+              <StoreMap productLocation={productLocation} />
+          </div>
         </div>
-         {!productLocation && !isLoading && (
-            <Alert className="mt-8 max-w-4xl mx-auto">
-                <Map className="h-4 w-4" />
-                <AlertTitle>Ready to Search</AlertTitle>
-                <AlertDescription>
-                    Enter a product SKU or EAN above to see its precise location on the map.
-                </AlertDescription>
-            </Alert>
-        )}
+
       </main>
     </div>
   );

@@ -44,8 +44,9 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
             y = y1;
             x = Math.min(x1, x2) + distanceAlongAisle;
         }
-
-        const offset = aisleData.aisleWidth / 2;
+        
+        // This offset is a guess, might need tweaking. It's 1/4 of the aisle width.
+        const offset = aisleData.aisleWidth / 4; 
         if(isVertical) {
             x += (productLocation.side === 'Left' ? -offset : offset);
         } else {
@@ -65,7 +66,7 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
 
             <defs>
               <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--grid)" strokeWidth="1"/>
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="hsl(var(--border))" strokeWidth="1"/>
               </pattern>
             </defs>
 
@@ -76,8 +77,8 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
                 const [x2, y2] = aisle.p2;
                 const isVertical = Math.abs(x1 - x2) < Math.abs(y1 - y2);
                 
-                const x = Math.min(x1, x2);
-                const y = Math.min(y1, y2);
+                const x = Math.min(x1, x2) - (isVertical ? aisle.aisleWidth / 2 : 0);
+                const y = Math.min(y1, y2) - (isVertical ? 0 : aisle.aisleWidth / 2);
                 const width = isVertical ? aisle.aisleWidth : Math.abs(x1-x2);
                 const height = isVertical ? Math.abs(y1-y2) : aisle.aisleWidth;
 
@@ -117,8 +118,8 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
                     cx={itemPosition.x}
                     cy={itemPosition.y}
                     r="15"
-                    fill="hsla(var(--primary), 0.5)"
-                    stroke="hsl(var(--primary))"
+                    fill="hsl(var(--primary))"
+                    stroke="hsl(var(--primary-foreground))"
                     strokeWidth="3"
                 />
             )}
