@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -18,6 +18,7 @@ import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 
 const FormSchema = z.object({
   sku: z.string().min(1, { message: 'SKU or EAN is required.' }),
@@ -56,6 +57,7 @@ export default function MapPage() {
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
+  const searchParams = useSearchParams();
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -92,6 +94,18 @@ export default function MapPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const sku = searchParams.get('sku');
+    const locationId = searchParams.get('locationId');
+
+    if (sku && locationId) {
+      form.setValue('sku', sku);
+      form.setValue('locationId', locationId);
+      onSubmit({ sku, locationId });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-background">
