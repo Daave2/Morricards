@@ -8,7 +8,7 @@ interface StoreMapProps {
   highlightedAisle?: string | null;
 }
 
-const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
+const StoreMap = ({ highlightedAisle = null }: StoreMapProps) => {
     const svgRef = useRef<SVGSVGElement>(null);
 
     const applySearch = (query: string | null) => {
@@ -35,7 +35,7 @@ const StoreMap = ({ highlightedAisle }: StoreMapProps) => {
     };
     
     useEffect(() => {
-        applySearch(highlightedAisle);
+        applySearch(highlightedAisle ?? null);
     }, [highlightedAisle]);
 
   return (
