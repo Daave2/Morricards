@@ -307,7 +307,7 @@ export const storeLayout = {
     },
     {
       "id": "18",
-      "label": "Aisle 18",
+      "label": "Wine",
       "p1": [
         1500,
         500
@@ -325,9 +325,9 @@ export const storeLayout = {
     },
     {
       "id": "19",
-      "label": "Aisle 19",
+      "label": "Spirits",
       "p1": [
-        1424.5,
+        1420,
         500
       ],
       "p2": [
@@ -343,7 +343,7 @@ export const storeLayout = {
     },
     {
       "id": "20",
-      "label": "Aisle 20",
+      "label": "Beer",
       "p1": [
         1329,
         500
@@ -361,7 +361,7 @@ export const storeLayout = {
     },
     {
       "id": "21",
-      "label": "Aisle 21",
+      "label": "Crisps",
       "p1": [
         1239,
         500
@@ -379,7 +379,7 @@ export const storeLayout = {
     },
     {
       "id": "22",
-      "label": "Aisle 22",
+      "label": "Biscuits",
       "p1": [
         1160,
         500
@@ -397,7 +397,7 @@ export const storeLayout = {
     },
     {
       "id": "23",
-      "label": "Aisle 23",
+      "label": "Sweets",
       "p1": [
         1080,
         500
@@ -415,7 +415,7 @@ export const storeLayout = {
     },
     {
       "id": "24",
-      "label": "Aisle 24",
+      "label": "International",
       "p1": [
         995,
         500
@@ -433,7 +433,7 @@ export const storeLayout = {
     },
     {
       "id": "25",
-      "label": "Aisle 25",
+      "label": "Canned food",
       "p1": [
         915,
         500
@@ -451,7 +451,7 @@ export const storeLayout = {
     },
     {
       "id": "26",
-      "label": "Aisle 26",
+      "label": "Canned food",
       "p1": [
         814,
         500
@@ -469,7 +469,7 @@ export const storeLayout = {
     },
     {
       "id": "27",
-      "label": "Aisle 27",
+      "label": "Homebake",
       "p1": [
         740,
         500
@@ -487,7 +487,7 @@ export const storeLayout = {
     },
     {
       "id": "28",
-      "label": "Aisle 28",
+      "label": "Desserts/Tea",
       "p1": [
         660,
         500
@@ -505,7 +505,7 @@ export const storeLayout = {
     },
     {
       "id": "29",
-      "label": "Aisle 29",
+      "label": "Cereal",
       "p1": [
         560,
         500
@@ -523,7 +523,7 @@ export const storeLayout = {
     },
     {
       "id": "30",
-      "label": "Aisle 30",
+      "label": "Bread",
       "p1": [
         486,
         500
@@ -541,7 +541,7 @@ export const storeLayout = {
     },
     {
       "id": "31",
-      "label": "Aisle 31",
+      "label": "Free from",
       "p1": [
         385.5,
         500
@@ -559,7 +559,7 @@ export const storeLayout = {
     },
     {
       "id": "32",
-      "label": "Aisle 32",
+      "label": "Dairy",
       "p1": [
         280,
         500
@@ -577,7 +577,7 @@ export const storeLayout = {
     },
     {
       "id": "33",
-      "label": "Aisle 33",
+      "label": "Cheese/pies",
       "p1": [
         160,
         500
@@ -595,7 +595,7 @@ export const storeLayout = {
     },
     {
       "id": "34",
-      "label": "Aisle 34",
+      "label": "Meat/butter",
       "p1": [
         74.5,
         520
@@ -607,8 +607,8 @@ export const storeLayout = {
       "aisleWidth": 40,
       "bayWidth": 20,
       "baysPerSide": 24,
-      "facing": "y+",
       "bayOrder": "p1-to-p2",
+      "facing": "y+",
       "locked": false
     },
     {
@@ -631,7 +631,7 @@ export const storeLayout = {
     },
     {
       "id": "96",
-      "label": "Middle",
+      "label": "Middle Promos",
       "p1": [
         1560,
         540
@@ -649,7 +649,7 @@ export const storeLayout = {
     },
     {
       "id": "97",
-      "label": "Back",
+      "label": "Back Promos",
       "p1": [
         1580,
         180
@@ -703,7 +703,7 @@ export const storeLayout = {
     },
     {
       "id": "91",
-      "label": "Wall",
+      "label": "Back Wall",
       "p1": [
         1660,
         60
@@ -721,7 +721,7 @@ export const storeLayout = {
     },
     {
       "id": "84",
-      "label": "Street",
+      "label": "Market Street",
       "p1": [
         1560,
         120
@@ -743,4 +743,4 @@ export const storeLayout = {
     "W": 1832,
     "H": 1092
   }
-};
+}
