@@ -118,9 +118,10 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
             {itemPosition && (
                 <>
                  <path
-                    d={`M 0,${itemPosition.y} L ${itemPosition.x - 20},${itemPosition.y}`}
+                    d={`M 380,${itemPosition.y} C 450,${itemPosition.y} ${itemPosition.x-50},${itemPosition.y} ${itemPosition.x - 20},${itemPosition.y}`}
                     stroke="hsl(var(--primary))"
                     strokeWidth="4"
+                    fill="none"
                     strokeDasharray="8, 8"
                     markerEnd="url(#arrowhead)"
                   />

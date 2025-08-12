@@ -112,9 +112,9 @@ export default function MapPage() {
           </Button>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          <div className="lg:col-span-1 space-y-8">
-            <Card className="shadow-md">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          <div className="w-full lg:w-[350px] flex-shrink-0 space-y-8">
+            <Card className="shadow-md sticky top-4">
               <CardHeader>
                   <CardTitle>Find a Product</CardTitle>
               </CardHeader>
@@ -164,8 +164,23 @@ export default function MapPage() {
               </CardContent>
             </Card>
 
+            {isLoading && (
+                 <Card className="shadow-lg animate-pulse">
+                    <CardHeader className="flex flex-row items-start gap-4">
+                        <div className="w-[80px] h-[80px] bg-muted rounded-lg"/>
+                        <div className="space-y-2">
+                            <div className="h-5 w-48 bg-muted rounded-md"/>
+                             <div className="h-4 w-32 bg-muted rounded-md"/>
+                        </div>
+                    </CardHeader>
+                     <CardContent>
+                         <div className="h-10 w-full bg-muted rounded-md"/>
+                    </CardContent>
+                </Card>
+            )}
+
             {product && productLocation && (
-              <Card className="shadow-lg animate-in fade-in-50">
+              <Card className="shadow-lg animate-in fade-in-50 sticky top-4">
                 <CardHeader className="flex flex-row items-start gap-4">
                   <Image
                     src={product.imageUrl || 'https://placehold.co/100x100.png'}
@@ -192,7 +207,7 @@ export default function MapPage() {
             )}
 
             {!productLocation && !isLoading && (
-                <Alert className="lg:col-span-1">
+                <Alert className="lg:col-span-1 sticky top-4">
                     <Map className="h-4 w-4" />
                     <AlertTitle>Ready to Search</AlertTitle>
                     <AlertDescription>
@@ -203,7 +218,7 @@ export default function MapPage() {
 
           </div>
 
-          <div className="lg:col-span-2 border rounded-lg bg-card shadow-lg overflow-x-auto">
+          <div className="flex-grow border rounded-lg bg-card shadow-lg overflow-x-auto">
               <StoreMap productLocation={productLocation} />
           </div>
         </div>
