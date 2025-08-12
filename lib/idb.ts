@@ -184,3 +184,4 @@ export async function markAvailabilitySynced(ids: string[]) {
 export async function markProductsSynced(ids: string[]) {
     await markSynced(STORES.PRODUCTS, ids);
 }
+
