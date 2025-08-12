@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History, WifiOff } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History, WifiOff, Map } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -17,6 +17,7 @@ import ImageModal from './image-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Skeleton } from './ui/skeleton';
 import SkuQrCode from './SkuQrCode';
+import Link from 'next/link';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'], isOffline?: boolean };
 
@@ -25,6 +26,7 @@ interface ProductCardProps {
   layout: 'grid' | 'list';
   onPick?: (sku: string) => void;
   isPicker?: boolean;
+  locationId?: string;
 }
 
 const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
@@ -39,7 +41,7 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     );
 }
 
-export default function ProductCard({ product, layout, onPick, isPicker = false }: ProductCardProps) {
+export default function ProductCard({ product, layout, onPick, isPicker = false, locationId }: ProductCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   const isPicked = product.picked;
@@ -243,6 +245,16 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
                         <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
                         <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
                         <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
+                         {locationId && (
+                           <div className='md:col-span-2'>
+                             <Button variant="outline" size="sm" className="w-full" asChild>
+                               <Link href={`/map?sku=${product.sku}&locationId=${locationId}`}>
+                                 <Map className="mr-2 h-4 w-4" />
+                                 View on Map
+                               </Link>
+                             </Button>
+                           </div>
+                          )}
                       </div>
                       
                       <div className="flex justify-center py-2">
@@ -389,5 +401,3 @@ export default function ProductCard({ product, layout, onPick, isPicker = false 
     </Collapsible>
   );
 }
-
-    
