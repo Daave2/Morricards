@@ -45,8 +45,7 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
             x = Math.min(x1, x2) + distanceAlongAisle;
         }
         
-        // This offset is a guess, might need tweaking. It's 1/4 of the aisle width.
-        const offset = aisleData.aisleWidth / 4; 
+        const offset = aisleData.aisleWidth / 4;
         if(isVertical) {
             x += (productLocation.side === 'Left' ? -offset : offset);
         } else {
@@ -68,6 +67,9 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
               <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                 <path d="M 40 0 L 0 0 0 40" fill="none" stroke="hsl(var(--border))" strokeWidth="1"/>
               </pattern>
+               <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="hsl(var(--primary))" />
+                </marker>
             </defs>
 
             <rect x="0" y="0" width={layout.W} height={layout.H} fill="url(#grid)" opacity="0.2" />
@@ -114,6 +116,14 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
             })}
 
             {itemPosition && (
+                <>
+                 <path
+                    d={`M 0,${itemPosition.y} L ${itemPosition.x - 20},${itemPosition.y}`}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="4"
+                    strokeDasharray="8, 8"
+                    markerEnd="url(#arrowhead)"
+                  />
                  <circle
                     cx={itemPosition.x}
                     cy={itemPosition.y}
@@ -122,6 +132,7 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
                     stroke="hsl(var(--primary-foreground))"
                     strokeWidth="3"
                 />
+                </>
             )}
           </svg>
         </div>
