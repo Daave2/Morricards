@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat } from 'lucide-react';
+import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat, Map } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
@@ -252,6 +252,12 @@ export default function AssistantPage() {
                         </div>
                      )}
                 </div>
+                 <Button variant="outline" size="sm" asChild>
+                  <Link href={`/map?sku=${product.sku}&locationId=${form.getValues('locationId')}`}>
+                    <Map className="mr-2 h-4 w-4" />
+                    Map
+                  </Link>
+                </Button>
               </div>
             </CardHeader>
             <CardContent className='space-y-6'>

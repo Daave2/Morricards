@@ -858,7 +858,7 @@ function PickingList() {
           ) : sortedAndFilteredProducts.length > 0 || loadingSkuCount > 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {sortedAndFilteredProducts.map((product) => (
-                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker />
+                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker locationId={form.getValues('locationId')} />
               ))}
               {isLoading && skeletons}
             </div>
