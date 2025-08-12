@@ -1,13 +1,22 @@
 /** @type {import('next').NextConfig} */
-import nextPwa from 'next-pwa';
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 's3-eu-west-1.amazonaws.com',
+        port: '',
+        pathname: '/mprod.xxwmm.retail.brandbank.zzzzzzzzzz/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
+};
 
-const withPWA = nextPwa({
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: process.env.NODE_ENV === 'development',
-});
-
-const nextConfig = {};
-
-export default withPWA(nextConfig);
+export default nextConfig;
