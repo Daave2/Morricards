@@ -82,21 +82,12 @@ export default function SettingsPage() {
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-12">
-            <div className="inline-flex items-center gap-4">
-               <Settings className="w-12 h-12 text-primary" />
-              <h1 className="text-5xl font-bold tracking-tight text-primary">
+            <h1 className="text-4xl font-bold tracking-tight text-primary">
                 Settings
               </h1>
-            </div>
-             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+             <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
               Manage application settings. These are saved in your browser&apos;s local storage.
             </p>
-             <Button variant="link" asChild className="mt-2">
-                <Link href="/">
-                    <Home className="mr-2 h-4 w-4" />
-                    Back to Picking List
-                </Link>
-            </Button>
           </header>
 
           <Card className="max-w-2xl mx-auto mb-8">

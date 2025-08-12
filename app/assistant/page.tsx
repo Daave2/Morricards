@@ -179,19 +179,10 @@ export default function AssistantPage() {
 
       <main className="container mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-12">
-          <div className="flex justify-center items-center gap-4">
-            <Bot className="w-12 h-12 text-primary" />
-            <h1 className="text-5xl font-bold tracking-tight text-primary">AI Product Assistant</h1>
-          </div>
-          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+            <h1 className="text-4xl font-bold tracking-tight text-primary">AI Product Assistant</h1>
+          <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
             Scan any product to get instant, intelligent insights and selling points.
           </p>
-           <Button variant="link" asChild className="mt-2">
-                <Link href="/">
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Back to Picking List
-                </Link>
-            </Button>
         </header>
 
         <Card className="max-w-2xl mx-auto mb-8 shadow-md">

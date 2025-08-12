@@ -608,53 +608,12 @@ function PickingList() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         <TooltipProvider>
           <header className="text-center mb-12">
-            <div className="flex justify-center items-center gap-4 relative">
-               <ShoppingBasket className="w-12 h-12 text-primary" />
-              <h1 className="text-5xl font-bold tracking-tight text-primary">
-                Store mobile <span className="text-foreground">ULTRA</span>
+             <h1 className="text-4xl font-bold tracking-tight text-primary">
+                Picking List
               </h1>
-               <div className="absolute right-0 top-0">
-                <StatusIndicator isFetching={isFetching} />
-              </div>
-            </div>
-             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
+             <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Scan EANs or enter SKUs to build your picking list.
             </p>
-            <div className="mt-2 space-x-2">
-                <Button variant="link" asChild>
-                    <Link href="/availability">
-                        <LinkIcon className="mr-2 h-4 w-4" />
-                        Go to Availability Checker
-                    </Link>
-                </Button>
-                 <Button variant="link" asChild>
-                    <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                    </Link>
-                </Button>
-                 <Button variant="link" asChild>
-                    <Link href="/assistant">
-                        <Bot className="mr-2 h-4 w-4" />
-                        AI Product Assistant
-                    </Link>
-                </Button>
-                 <Button variant="link" asChild>
-                    <Link href="/map">
-                        <Map className="mr-2 h-4 w-4" />
-                        Store Map
-                    </Link>
-                </Button>
-            </div>
-             {!isOnline && (
-              <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
-                  <WifiOff className="h-4 w-4" />
-                  <AlertTitle>You are offline</AlertTitle>
-                  <AlertDescription>
-                      The app is running in offline mode. Some functionality may be limited, but you can still view your list. Any new data will be fetched when you reconnect.
-                  </AlertDescription>
-              </Alert>
-            )}
           </header>
           
           <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
