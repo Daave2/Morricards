@@ -56,7 +56,7 @@ const ZXingScanner = forwardRef<{ start: () => void; stop: () => void; }, Props>
     try {
       if (!readerRef.current) {
         const options: IBrowserCodeReaderOptions = {
-          scanDelay: scanDelayMs,
+          delayBetweenScanAttempts: scanDelayMs,
         };
         readerRef.current = new BrowserMultiFormatReader(hints, options);
       }
