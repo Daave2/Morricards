@@ -98,7 +98,7 @@ function getDb(): IDBPDatabase<SMU_DB> {
             }
         }
       }
-    }) as unknown as IDBPDatabase<SMU_DB>;
+    });
   }
   return db;
 }
@@ -184,4 +184,3 @@ export async function markAvailabilitySynced(ids: string[]) {
 export async function markProductsSynced(ids: string[]) {
     await markSynced(STORES.PRODUCTS, ids);
 }
-
