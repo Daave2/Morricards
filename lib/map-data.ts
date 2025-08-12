@@ -20,6 +20,7 @@ export const storeLayout = {
     {
       "id": "1",
       "label": "Water",
+      "type": "bev",
       "p1": [
         1500,
         880
@@ -38,6 +39,7 @@ export const storeLayout = {
     {
       "id": "2",
       "label": "Pop",
+      "type": "bev",
       "p1": [
         1419,
         880
@@ -56,6 +58,7 @@ export const storeLayout = {
     {
       "id": "3",
       "label": "Cookshop",
+      "type": "household",
       "p1": [
         1329,
         880
@@ -74,6 +77,7 @@ export const storeLayout = {
     {
       "id": "4",
       "label": "Home",
+      "type": "household",
       "p1": [
         1239,
         880
@@ -92,6 +96,7 @@ export const storeLayout = {
     {
       "id": "5",
       "label": "Leasure",
+      "type": "household",
       "p1": [
         1160,
         880
@@ -110,6 +115,7 @@ export const storeLayout = {
     {
       "id": "7",
       "label": "Nutmeg",
+      "type": "household",
       "p1": [
         980,
         880
@@ -128,6 +134,7 @@ export const storeLayout = {
     {
       "id": "8",
       "label": "Nutmeg",
+      "type": "household",
       "p1": [
         880,
         880
@@ -146,6 +153,7 @@ export const storeLayout = {
     {
       "id": "9",
       "label": "Baby",
+      "type": "household",
       "p1": [
         780,
         880
@@ -164,6 +172,7 @@ export const storeLayout = {
     {
       "id": "10",
       "label": "H&B",
+      "type": "household",
       "p1": [
         713,
         880
@@ -182,6 +191,7 @@ export const storeLayout = {
     {
       "id": "11",
       "label": "H&B",
+      "type": "household",
       "p1": [
         640,
         880
@@ -200,6 +210,7 @@ export const storeLayout = {
     {
       "id": "12",
       "label": "Dog",
+      "type": "household",
       "p1": [
         540,
         880
@@ -218,6 +229,7 @@ export const storeLayout = {
     {
       "id": "13",
       "label": "Cat",
+      "type": "household",
       "p1": [
         460,
         880
@@ -236,6 +248,7 @@ export const storeLayout = {
     {
       "id": "14",
       "label": "Cleaning",
+      "type": "household",
       "p1": [
         385.5,
         880
@@ -254,6 +267,7 @@ export const storeLayout = {
     {
       "id": "15",
       "label": "Paper",
+      "type": "household",
       "p1": [
         280,
         880
@@ -271,7 +285,8 @@ export const storeLayout = {
     },
     {
       "id": "16",
-      "label": "Aisle 16",
+      "label": "Frozen",
+      "type": "chilled",
       "p1": [
         160,
         880
@@ -289,7 +304,8 @@ export const storeLayout = {
     },
     {
       "id": "17",
-      "label": "Aisle 17",
+      "label": "Frozen",
+      "type": "chilled",
       "p1": [
         74.5,
         920
@@ -308,6 +324,7 @@ export const storeLayout = {
     {
       "id": "18",
       "label": "Wine",
+      "type": "alcohol",
       "p1": [
         1500,
         500
@@ -326,6 +343,7 @@ export const storeLayout = {
     {
       "id": "19",
       "label": "Spirits",
+      "type": "alcohol",
       "p1": [
         1420,
         500
@@ -344,6 +362,7 @@ export const storeLayout = {
     {
       "id": "20",
       "label": "Beer",
+      "type": "alcohol",
       "p1": [
         1329,
         500
@@ -362,6 +381,7 @@ export const storeLayout = {
     {
       "id": "21",
       "label": "Crisps",
+      "type": "grocery",
       "p1": [
         1239,
         500
@@ -380,6 +400,7 @@ export const storeLayout = {
     {
       "id": "22",
       "label": "Biscuits",
+      "type": "grocery",
       "p1": [
         1160,
         500
@@ -398,6 +419,7 @@ export const storeLayout = {
     {
       "id": "23",
       "label": "Sweets",
+      "type": "grocery",
       "p1": [
         1080,
         500
@@ -416,6 +438,7 @@ export const storeLayout = {
     {
       "id": "24",
       "label": "International",
+      "type": "grocery",
       "p1": [
         995,
         500
@@ -434,6 +457,7 @@ export const storeLayout = {
     {
       "id": "25",
       "label": "Canned food",
+      "type": "grocery",
       "p1": [
         915,
         500
@@ -452,6 +476,7 @@ export const storeLayout = {
     {
       "id": "26",
       "label": "Canned food",
+      "type": "grocery",
       "p1": [
         814,
         500
@@ -470,6 +495,7 @@ export const storeLayout = {
     {
       "id": "27",
       "label": "Homebake",
+      "type": "grocery",
       "p1": [
         740,
         500
@@ -488,6 +514,7 @@ export const storeLayout = {
     {
       "id": "28",
       "label": "Desserts/Tea",
+      "type": "grocery",
       "p1": [
         660,
         500
@@ -506,6 +533,7 @@ export const storeLayout = {
     {
       "id": "29",
       "label": "Cereal",
+      "type": "grocery",
       "p1": [
         560,
         500
@@ -524,6 +552,7 @@ export const storeLayout = {
     {
       "id": "30",
       "label": "Bread",
+      "type": "grocery",
       "p1": [
         486,
         500
@@ -542,6 +571,7 @@ export const storeLayout = {
     {
       "id": "31",
       "label": "Free from",
+      "type": "grocery",
       "p1": [
         385.5,
         500
@@ -560,6 +590,7 @@ export const storeLayout = {
     {
       "id": "32",
       "label": "Dairy",
+      "type": "chilled",
       "p1": [
         280,
         500
@@ -578,6 +609,7 @@ export const storeLayout = {
     {
       "id": "33",
       "label": "Cheese/pies",
+      "type": "chilled",
       "p1": [
         160,
         500
@@ -596,6 +628,7 @@ export const storeLayout = {
     {
       "id": "34",
       "label": "Meat/butter",
+      "type": "chilled",
       "p1": [
         74.5,
         520
@@ -614,6 +647,7 @@ export const storeLayout = {
     {
       "id": "70",
       "label": "Seasonal",
+      "type": "household",
       "p1": [
         1080,
         880
@@ -632,6 +666,7 @@ export const storeLayout = {
     {
       "id": "96",
       "label": "Middle Promos",
+      "type": "front",
       "p1": [
         1560,
         540
@@ -650,6 +685,7 @@ export const storeLayout = {
     {
       "id": "97",
       "label": "Back Promos",
+      "type": "front",
       "p1": [
         1580,
         180
@@ -668,6 +704,7 @@ export const storeLayout = {
     {
       "id": "95",
       "label": "Checkouts",
+      "type": "front",
       "p1": [
         1540,
         920
@@ -686,6 +723,7 @@ export const storeLayout = {
     {
       "id": "94",
       "label": "Produce",
+      "type": "chilled",
       "p1": [
         1700,
         940
@@ -704,6 +742,7 @@ export const storeLayout = {
     {
       "id": "91",
       "label": "Back Wall",
+      "type": "chilled",
       "p1": [
         1660,
         60
@@ -722,6 +761,7 @@ export const storeLayout = {
     {
       "id": "84",
       "label": "Market Street",
+      "type": "chilled",
       "p1": [
         1560,
         120
@@ -744,3 +784,5 @@ export const storeLayout = {
     "H": 1092
   }
 }
+
+    

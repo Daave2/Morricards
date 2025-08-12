@@ -45,7 +45,7 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
             x = (x1 < x2) ? x1 + distanceAlongAisle : x1 - distanceAlongAisle;
         }
         
-        const offset = aisleData.aisleWidth / 2;
+        const offset = aisleData.aisleWidth / 4; // Reduced offset
         if(isVertical) {
             x += (productLocation.side === 'Left' ? -offset : offset);
         } else {
@@ -65,6 +65,26 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
         .flashing-indicator {
           animation: flash 1.5s infinite ease-in-out;
         }
+        .zone rect { 
+            stroke: hsl(var(--border) / 0.5); 
+            stroke-width: 1; 
+            rx: 4; 
+            transition: all 0.2s ease-in-out; 
+        }
+        .zone text { 
+            font-weight: 600;
+            font-size: 14px;
+            fill: hsl(var(--muted-foreground)); 
+            letter-spacing: .2px; 
+        }
+
+        .zone[data-type="chilled"] rect { fill: hsl(var(--primary) / 0.1); }
+        .zone[data-type="grocery"] rect { fill: hsl(var(--accent) / 0.2); }
+        .zone[data-type="household"] rect { fill: hsl(var(--chart-4) / 0.2); }
+        .zone[data-type="alcohol"] rect { fill: hsl(var(--secondary) / 0.8); }
+        .zone[data-type="bev"] rect { fill: hsl(var(--chart-2) / 0.2); }
+        .zone[data-type="front"] rect { fill: hsl(var(--accent) / 0.3); }
+
       `}</style>
       <div className="canvas-wrap p-4 bg-muted/20">
         <div className="board" style={{ maxWidth: `${layout.W}px` }}>
@@ -94,25 +114,18 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
                 const textY = y + height/2;
 
                 return (
-                    <g key={aisle.id} className="zone" data-name={aisle.label}>
+                    <g key={aisle.id} className="zone" data-name={aisle.label} data-type={aisle.type}>
                         <rect 
                             x={x} 
                             y={y} 
                             width={width} 
                             height={height}
-                            fill="hsl(var(--secondary))"
-                            stroke="hsl(var(--border))"
-                            strokeWidth="1"
-                            rx="4"
                          />
                         <text
                             x={textX}
                             y={textY}
-                            fontSize="16"
-                            textAnchor="middle"
                             dominantBaseline="central"
-                            fill="hsl(var(--secondary-foreground))"
-                            className="font-semibold"
+                            textAnchor="middle"
                             transform={isVertical ? `rotate(-90, ${textX}, ${textY})` : ''}
                         >
                             {aisle.label}
@@ -142,3 +155,5 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
 };
 
 export default StoreMap;
+
+    
