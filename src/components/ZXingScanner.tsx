@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
-import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
+import { BrowserMultiFormatReader, IScannerControls, type IBrowserCodeReaderOptions } from '@zxing/browser';
 import { Result, DecodeHintType } from '@zxing/library';
 import { Button } from './ui/button';
 import { Camera, Loader2, ScanSearch } from 'lucide-react';
@@ -54,7 +55,10 @@ const ZXingScanner = forwardRef<{ start: () => void; stop: () => void; }, Props>
 
     try {
       if (!readerRef.current) {
-        readerRef.current = new BrowserMultiFormatReader(hints, scanDelayMs);
+        const options: IBrowserCodeReaderOptions = {
+          delayBetweenScanAttempts: scanDelayMs,
+        };
+        readerRef.current = new BrowserMultiFormatReader(hints, options);
       }
       
       const constraints: MediaStreamConstraints = {
