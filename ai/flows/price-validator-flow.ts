@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow for validating price tickets against system data.
@@ -18,8 +19,10 @@ const priceTicketPrompt = ai.definePrompt({
   prompt: `You are an expert at reading UK supermarket price tickets. Analyze the following image of a Morrisons price ticket.
 
 Extract the following information:
-- The full product name.
-- The main price, including any multi-buy offer (e.g., "2 for £5.00").
+- The full product name (e.g., "Winalot Puppy Meaty Chunks In Gravy").
+- The secondary product description (e.g., "12X100G").
+- The main price, including the currency symbol (e.g., "£4.70").
+- The unit price, if available (e.g., "£3.92 per kg").
 - The EAN (13 digits) or internal SKU (7-10 digits). The SKU is usually a shorter number near the QR code/barcode.
 
 Image: {{media url=imageDataUri}}`,

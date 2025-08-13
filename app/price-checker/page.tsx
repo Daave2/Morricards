@@ -16,7 +16,7 @@ import { Loader2, ScanLine, X, AlertTriangle, CheckCircle2, Bot, Camera, Copy, T
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { validatePriceTicket } from '@/ai/flows/price-validator-flow';
-import type { PriceTicketValidationOutput } from '@/ai/flows/price-validator-types';
+import type { PriceTicketValidationOutput, OcrData } from '@/ai/flows/price-validator-types';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -50,35 +50,63 @@ const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
 
 const normalize = (p: string | null | undefined) => p?.replace(/[£\s]/g, '').toLowerCase();
 
-const PriceTicketMockup = ({ title, name, price, sku, isMismatch = {}, showQr = false }: { title: string, name?: string | null, price?: string | null, sku?: string | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => (
-    <div className="border-2 border-dashed rounded-lg p-3 space-y-2 flex-1 min-w-[200px] bg-background/60">
-        <p className="text-xs font-bold text-muted-foreground text-center">{title}</p>
-        <Separator className="border-dashed" />
-        <div className={cn("p-1 rounded", isMismatch.name && "bg-destructive/20 ring-2 ring-destructive")}>
-            <p className="font-bold text-center text-sm break-words">{name || 'N/A'}</p>
-        </div>
-        <div className={cn("p-2 rounded bg-yellow-300/50 text-center", isMismatch.price && "bg-destructive/20 ring-2 ring-destructive")}>
-            <p className="text-2xl font-extrabold text-black">{price || 'N/A'}</p>
-        </div>
-        <div className={cn("p-1 rounded text-center", isMismatch.sku && "bg-destructive/20 ring-2 ring-destructive")}>
-            <p className="font-mono text-xs">{sku || 'N/A'}</p>
-        </div>
-         {showQr && sku && (
-            <div className="flex justify-center pt-2">
-                <SkuQrCode sku={sku} />
+const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { title: string, data?: OcrData | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => {
+    const { productName, price, eanOrSku, productSubName, unitPrice } = data || {};
+
+    // Split price into pounds and pence
+    const priceParts = price?.replace('£', '').split('.') || ['N/A'];
+
+    return (
+        <div className="border-2 border-dashed rounded-lg p-4 space-y-3 flex-1 min-w-[300px] bg-background/60 font-sans">
+            <p className="text-sm font-bold text-muted-foreground text-center mb-2">{title}</p>
+            <div className={cn("p-1 rounded text-center", isMismatch.name && "bg-destructive/20 ring-2 ring-destructive")}>
+                <p className="font-semibold text-lg leading-tight">{productName || 'N/A'}</p>
+                {productSubName && <p className="text-sm text-muted-foreground">{productSubName}</p>}
             </div>
-        )}
-    </div>
-);
+            
+            <Separator className="my-2" />
+
+            <div className="flex items-end justify-between gap-4">
+                <div className="flex-shrink-0 space-y-2">
+                    {unitPrice && <p className="text-sm font-semibold">{unitPrice} per kg</p>}
+                    {showQr && eanOrSku ? (
+                         <div className="flex justify-center">
+                            <SkuQrCode sku={eanOrSku} size={64} />
+                        </div>
+                    ) : (
+                         <div className="w-16 h-16 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
+                    )}
+                    <p className="font-mono text-xs text-center">{eanOrSku || 'N/A'}</p>
+                </div>
+                <div className={cn("p-1 rounded flex-1 text-right", isMismatch.price && "bg-destructive/20 ring-2 ring-destructive")}>
+                     <p className="text-5xl font-extrabold text-black leading-none">
+                        <span className="text-3xl align-top -mr-1">£</span>
+                        {priceParts[0]}
+                        <span className="text-4xl align-top">.{priceParts[1] || '00'}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 
 const PriceTicketDisplay = ({ result }: { result: ValidationResult }) => {
     const { ocrData, product } = result;
     const systemPrice = product?.price.promotional || (product?.price.regular ? `£${product.price.regular.toFixed(2)}` : null);
     
+    // Simple comparison for highlighting, more complex logic can be added
     const nameMismatch = normalize(ocrData?.productName) !== normalize(product?.name);
     const priceMismatch = normalize(ocrData?.price) !== normalize(systemPrice);
     const skuMismatch = ocrData?.eanOrSku !== product?.sku;
+
+    const systemMockupData: OcrData = {
+        productName: product?.name,
+        price: systemPrice,
+        eanOrSku: product?.sku,
+        productSubName: product?.productDetails?.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; '),
+        unitPrice: `£${(product?.price.regular / (product?.weight || 1)).toFixed(2)}`, // Example logic
+    }
 
     if (result.isCorrect) {
         return (
@@ -110,16 +138,12 @@ const PriceTicketDisplay = ({ result }: { result: ValidationResult }) => {
              <div className="flex flex-col sm:flex-row gap-4 justify-center">
                  <PriceTicketMockup
                     title="As Seen on Ticket"
-                    name={ocrData?.productName}
-                    price={ocrData?.price}
-                    sku={ocrData?.eanOrSku}
+                    data={ocrData}
                     isMismatch={{ name: nameMismatch, price: priceMismatch, sku: skuMismatch }}
                  />
                  <PriceTicketMockup
                     title="As Per System"
-                    name={product?.name}
-                    price={systemPrice}
-                    sku={product?.sku}
+                    data={systemMockupData}
                     showQr={true}
                  />
              </div>
@@ -288,13 +312,13 @@ export default function PriceCheckerPage() {
                 if (result.isCorrect || !result.ocrData?.price || !result.product?.price) return false;
                 const ticketPrice = parsePrice(result.ocrData.price);
                 const systemPrice = parsePrice(result.product.price.promotional || `£${result.product.price.regular}`);
-                return ticketPrice !== null && systemPrice !== null && systemPrice > ticketPrice;
+                return ticketPrice !== null && systemPrice !== null && systemPrice < ticketPrice;
             }
             case 'discrepancy': {
-                if (result.isCorrect || !result.ocrData?.price || !result.product?.price) return false;
+                 if (result.isCorrect || !result.ocrData?.price || !result.product?.price) return false;
                 const ticketPrice = parsePrice(result.ocrData.price);
                 const systemPrice = parsePrice(result.product.price.promotional || `£${result.product.price.regular}`);
-                return ticketPrice !== null && systemPrice !== null && systemPrice < ticketPrice;
+                return ticketPrice !== null && systemPrice !== null && systemPrice > ticketPrice;
             }
             case 'other':
                 return !result.isCorrect && !result.mismatchReason?.toLowerCase().includes('price');

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Shared types and schemas for the price validator flow.
  */
@@ -5,10 +6,14 @@
 import { z } from 'genkit';
 
 export const OcrDataSchema = z.object({
-  productName: z.string().nullable().describe("The name of the product as seen on the ticket."),
+  productName: z.string().nullable().describe("The main name of the product as seen on the ticket."),
+  productSubName: z.string().nullable().describe("The secondary description of the product, often indicating size or quantity (e.g., '12X100G')."),
   price: z.string().nullable().describe("The main price on the ticket, formatted with a currency symbol e.g., £4.70 or 2 for £5.00."),
+  unitPrice: z.string().nullable().describe("The price per unit, if visible (e.g., '£3.92 per kg')."),
   eanOrSku: z.string().nullable().describe("The EAN (13 digits) or SKU (7-10 digits) found on the ticket. Should be one of the numbers near the QR code."),
 });
+export type OcrData = z.infer<typeof OcrDataSchema>;
+
 
 export const PriceTicketValidationInputSchema = z.object({
   imageDataUri: z.string().describe("An image of a price ticket, as a data URI."),
