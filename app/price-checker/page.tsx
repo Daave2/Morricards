@@ -104,7 +104,7 @@ const PriceTicketDisplay = ({ result }: { result: ValidationResult }) => {
         productName: product?.name,
         price: systemPrice,
         eanOrSku: product?.sku,
-        productSubName: product?.productDetails?.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; '),
+        productSubName: product?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; '),
         unitPrice: `£${(product?.price.regular / (product?.weight || 1)).toFixed(2)}`, // Example logic
     }
 
