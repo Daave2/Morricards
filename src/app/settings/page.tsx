@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Trash2, Moon, Sun, DatabaseZap, Copy, ExternalLink } from 'lucide-react';
+import { Settings, Trash2, Moon, Sun, DatabaseZap, Copy } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -34,16 +34,28 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import Link from 'next/link';
+import { Textarea } from '@/components/ui/textarea';
 
 const FormSchema = z.object({
   bearerToken: z.string(),
   debugMode: z.boolean(),
 });
 
+const getBookmarkletCode = () => {
+    if (typeof window === 'undefined') return '';
+    const url = `${window.location.origin}/cap.min.js`;
+    return `javascript:(function(){var u='${url}',s=document.createElement('script');s.src=u+'?v='+Date.now();document.head.appendChild(s);}());void 0`;
+};
+
 export default function SettingsPage() {
   const { settings, setSettings, clearAllData } = useApiSettings();
   const { setTheme } = useTheme()
+  const [bookmarkletCode, setBookmarkletCode] = useState('');
+
+  useEffect(() => {
+    setBookmarkletCode(getBookmarkletCode());
+  }, []);
+
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -75,6 +87,14 @@ export default function SettingsPage() {
      toast({
       title: 'Application Data Cleared',
       description: 'All lists and offline data have been removed.',
+    });
+  }
+
+  const handleCopyBookmarklet = () => {
+    navigator.clipboard.writeText(bookmarkletCode).then(() => {
+        toast({ title: 'Bookmarklet Copied', description: 'The bookmarklet code has been copied to your clipboard.' });
+    }).catch(() => {
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy the bookmarklet code.' });
     });
   }
 
@@ -183,30 +203,64 @@ export default function SettingsPage() {
 
            <Card className="max-w-2xl mx-auto mb-8">
              <CardHeader>
-                <CardTitle>Update Bearer Token</CardTitle>
+                <CardTitle>Update Bearer Token via Bookmarklet (Recommended)</CardTitle>
                 <CardDescription>
-                    Use our token capturer tool to easily get a new token from the Morrisons mobile site.
+                    Use this bookmarklet on your mobile or desktop browser to easily capture a new token.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
                 <p>
-                    1. Log into the <a href="https://storemobile.apps.mymorri.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Morrisons Mobile Site</a> on your device.
+                    1. Copy the bookmarklet code below.
+                </p>
+                 <div className="relative">
+                    <Textarea value={bookmarkletCode} readOnly className="h-32 font-mono text-xs" />
+                    <Button size="icon" variant="ghost" className="absolute top-2 right-2 h-7 w-7" onClick={handleCopyBookmarklet}>
+                        <Copy className="h-4 w-4" />
+                    </Button>
+                 </div>
+                <p>
+                    2. Create a new bookmark in your browser. Name it something like "Capture Token" and paste the copied code into the URL/Address field.
                 </p>
                 <p>
-                    2. Open the token capturer page and follow the instructions there to get your token.
+                    3. Log into the <a href="https://storemobile.apps.mymorri.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Morrisons Mobile Site</a>.
                 </p>
                 <p>
-                    3. Paste the captured token into the "Default Bearer Token" field above and click "Save Settings".
+                    4. Once logged in, run the bookmarklet you created. A panel will appear at the bottom of the screen.
                 </p>
-                 <Button asChild className='mt-4 w-full'>
-                    <Link href="/token-capturer.html" target="_blank">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open Token Capturer
-                    </Link>
-                </Button>
+                 <p>
+                    5. Click "Copy" in the panel, then paste the token into the "Default Bearer Token" field above and click "Save Settings".
+                </p>
             </CardContent>
           </Card>
           
+          <Card className="max-w-2xl mx-auto mb-8">
+             <CardHeader>
+                <CardTitle>Update Bearer Token via Script (for Developers)</CardTitle>
+                <CardDescription>
+                    Alternatively, use this Node.js script to get a new token.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+                <p>
+                    1. First, install the necessary dependencies if you haven't already:
+                </p>
+                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto"><code>npm install playwright axios</code></pre>
+                <p>
+                    2. Then, run the capture script from your terminal:
+                </p>
+                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto"><code>node capture-morrisons-token.js https://storemobile.apps.mymorri.com/ --verify "milk" --apikey 0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW</code></pre>
+                <p>
+                    3. A browser window will open. Log in with your credentials. Once you are logged in and the app is functional, return to your terminal.
+                </p>
+                <p>
+                    4. Press Enter in the terminal. The script will save the new token in a file named <code className="font-mono bg-muted p-1 rounded-sm">morrisons-token.json</code>.
+                </p>
+                 <p>
+                    5. Open the generated JSON file, copy the new token, paste it into the "Default Bearer Token" field above, and click "Save Settings".
+                </p>
+            </CardContent>
+          </Card>
+
           <Card className="max-w-2xl mx-auto border-destructive/50">
              <CardHeader>
                 <CardTitle>Data Management</CardTitle>
