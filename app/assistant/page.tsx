@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat, Map } from 'lucide-react';
+import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat, Map, Expand } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -299,9 +300,21 @@ export default function AssistantPage() {
                                   content={insights.customerFriendlyLocation}
                                 >
                                   {productLocation && (
-                                    <div className="mt-4 border rounded-lg bg-card overflow-x-auto">
-                                      <StoreMap productLocation={productLocation} />
-                                    </div>
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <div className="mt-4 border rounded-lg bg-card overflow-hidden cursor-pointer group relative">
+                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                                            <Expand className="h-8 w-8 text-white" />
+                                          </div>
+                                          <div className="overflow-x-auto">
+                                            <StoreMap productLocation={productLocation} />
+                                          </div>
+                                        </div>
+                                      </DialogTrigger>
+                                      <DialogContent className="max-w-4xl p-2">
+                                        <StoreMap productLocation={productLocation} />
+                                      </DialogContent>
+                                    </Dialog>
                                   )}
                                 </InsightSection>
 
@@ -362,3 +375,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
