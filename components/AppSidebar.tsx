@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -12,7 +11,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket } from 'lucide-react';
+import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanSearch } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -64,6 +63,14 @@ export default function AppSidebar() {
               <Link href="/assistant" onClick={handleLinkClick}>
                 <Bot />
                 AI Product Assistant
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive('/price-checker')}>
+              <Link href="/price-checker" onClick={handleLinkClick}>
+                <ScanSearch />
+                Price Checker
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
