@@ -15,7 +15,8 @@ import ZXingScanner from '@/components/ZXingScanner';
 import { Loader2, ScanLine, X, AlertTriangle, CheckCircle2, Bot, Camera, Copy, Trash2 } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { validatePriceTicket, PriceTicketValidationOutput } from '@/ai/flows/price-validator-flow';
+import { validatePriceTicket } from '@/ai/flows/price-validator-flow';
+import type { PriceTicketValidationOutput } from '@/ai/flows/price-validator-types';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import {
