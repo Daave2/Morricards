@@ -111,7 +111,10 @@ export default function AssistantPage() {
     defaultValues: { locationId: '218' },
   });
 
-  const handleScanSuccess = async (sku: string) => {
+  const handleScanSuccess = async (text: string) => {
+    const sku = text.split(',')[0].trim();
+    if (!sku) return;
+
     setIsScanMode(false);
     setIsFetchingProduct(true);
     setProduct(null);
@@ -375,5 +378,3 @@ export default function AssistantPage() {
     </div>
   );
 }
-
-    
