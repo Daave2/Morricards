@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Settings, Trash2, Moon, Sun, DatabaseZap, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
+import { Settings, Trash2, Moon, Sun, DatabaseZap, Copy } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -34,16 +33,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Textarea } from '@/components/ui/textarea';
 
 const FormSchema = z.object({
   bearerToken: z.string(),
   debugMode: z.boolean(),
 });
 
+const getBookmarkletCode = () => {
+    const endpoint = 'https://studio--morricards.us-central1.hosted.app/api/bearer';
+    return `javascript:(()=>{const ENDPOINT='${endpoint}';if(window.__tokCap){return alert('Token capturer already active.');}window.__tokCap=!0;const box=document.createElement('div');box.style.cssText='position:fixed;z-index:2147483647;left:12px;right:12px;bottom:12px;background:#0b0b0c;color:#fff;padding:12px;border-radius:10px;font:14px system-ui,Arial;box-shadow:0 6px 24px rgba(0,0,0,.5)';box.innerHTML='<div style="margin-bottom:8px;font-weight:600">Bearer Capturer</div><textarea id="__tok" style="width:100%;height:110px;border-radius:8px;padding:8px;border:1px solid #333;background:#111;color:#eee"></textarea><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button id="__tokSend" style="flex:1;min-width:120px;padding:10px;border-radius:8px;border:0;background:#2f7bff;color:#fff;font-weight:600">Send</button><button id="__tokCopy" style="flex:1;min-width:120px;padding:10px;border-radius:8px;border:1px solid #333;background:#1c1c1f;color:#fff">Copy</button><button id="__tokClose" style="padding:10px 12px;border-radius:8px;border:1px solid #333;background:#1c1c1f;color:#fff">Close</button><span id="__tokMsg" style="margin-left:auto;align-self:center;opacity:.8"></span></div>';document.body.appendChild(box);const t=box.querySelector('#__tok'),m=box.querySelector('#__tokMsg');function found(token){t.value=token;m.textContent='Captured.';}function patch(){const cap=(k,v)=>{if((k||'').toLowerCase()==='authorization'){const m=/bearer\\s+([^\\s]+)/i.exec(v||'');if(m&&m[1])found(m[1]);}};const of=window.fetch;window.fetch=async function(...args){try{const req=new Request(...args);for(const [k,v] of req.headers.entries()){cap(k,v);}return await of(req);}catch(e){return of(...args);}};const ox=XMLHttpRequest.prototype.setRequestHeader;XMLHttpRequest.prototype.setRequestHeader=function(k,v){try{cap(k,v);}catch(e){}return ox.apply(this,arguments);};}patch();box.querySelector('#__tokCopy').onclick=()=>{navigator.clipboard.writeText(t.value).then(()=>m.textContent='Copied.').catch(()=>m.textContent='Copy failed.');};box.querySelector('#__tokSend').onclick=()=>{const token=t.value.trim();if(!token){m.textContent='No token.';return;}m.textContent='Sending…';fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})}).then(r=>m.textContent=r.ok?'Sent.':'Failed: '+r.status).catch(()=>m.textContent='Error');};box.querySelector('#__tokClose').onclick=()=>{box.remove();window.__tokCap=!1;};})();`;
+};
+
 export default function SettingsPage() {
   const { settings, setSettings, clearAllData } = useApiSettings();
   const { setTheme } = useTheme()
+  const [bookmarkletCode, setBookmarkletCode] = useState('');
+
+  useEffect(() => {
+    setBookmarkletCode(getBookmarkletCode());
+  }, []);
 
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -76,6 +86,14 @@ export default function SettingsPage() {
      toast({
       title: 'Application Data Cleared',
       description: 'All lists and offline data have been removed.',
+    });
+  }
+
+  const handleCopyBookmarklet = () => {
+    navigator.clipboard.writeText(bookmarkletCode).then(() => {
+        toast({ title: 'Bookmarklet Copied', description: 'The bookmarklet code has been copied to your clipboard.' });
+    }).catch(() => {
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy the bookmarklet code.' });
     });
   }
 
@@ -181,34 +199,63 @@ export default function SettingsPage() {
               </Form>
             </CardContent>
           </Card>
-          
-          <Card className="max-w-2xl mx-auto mb-8">
+
+           <Card className="max-w-2xl mx-auto mb-8">
              <CardHeader>
-                <CardTitle>Update Bearer Token</CardTitle>
+                <CardTitle>Update Bearer Token via Bookmarklet (Recommended)</CardTitle>
                 <CardDescription>
-                    The bearer token expires after a while. You can use the provided script to get a new one.
+                    Use this bookmarklet on your mobile or desktop browser to easily capture a new token.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
                 <p>
-                    This project includes a script to help you capture a new token by logging into the Morrisons website in a browser.
+                    1. Copy the bookmarklet code below.
+                </p>
+                 <div className="relative">
+                    <Textarea value={bookmarkletCode} readOnly className="h-32 font-mono text-xs" />
+                    <Button size="icon" variant="ghost" className="absolute top-2 right-2 h-7 w-7" onClick={handleCopyBookmarklet}>
+                        <Copy className="h-4 w-4" />
+                    </Button>
+                 </div>
+                <p>
+                    2. Create a new bookmark in your browser. Name it something like "Capture Token" and paste the copied code into the URL/Address field.
                 </p>
                 <p>
-                    1. First, install the necessary dependencies:
+                    3. Log into the <a href="https://storemobile.apps.mymorri.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Morrisons Mobile Site</a>.
+                </p>
+                <p>
+                    4. Once logged in, run the bookmarklet you created. A panel will appear at the bottom of the screen.
+                </p>
+                 <p>
+                    5. Click "Copy" in the panel, then paste the token into the "Default Bearer Token" field above and click "Save Settings".
+                </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="max-w-2xl mx-auto mb-8">
+             <CardHeader>
+                <CardTitle>Update Bearer Token via Script (for Developers)</CardTitle>
+                <CardDescription>
+                    Alternatively, use this Node.js script to get a new token.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+                <p>
+                    1. First, install the necessary dependencies if you haven't already:
                 </p>
                 <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto"><code>npm install playwright axios</code></pre>
                 <p>
                     2. Then, run the capture script from your terminal:
                 </p>
-                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto"><code>node capture-morrisons-token.js https://storemobile.apps.mymorri.com/</code></pre>
+                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto"><code>node capture-morrisons-token.js https://storemobile.apps.mymorri.com/ --verify "milk" --apikey 0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW</code></pre>
                 <p>
-                    3. A browser window will open. Log in with your credentials.
+                    3. A browser window will open. Log in with your credentials. Once you are logged in and the app is functional, return to your terminal.
                 </p>
                 <p>
-                    4. Once logged in, go back to your terminal and press Enter. The script will save the new token in a file named <code className="font-mono bg-muted p-1 rounded-sm">morrisons-token.json</code>.
+                    4. Press Enter in the terminal. The script will save the new token in a file named <code className="font-mono bg-muted p-1 rounded-sm">morrisons-token.json</code>.
                 </p>
                  <p>
-                    5. Copy the new token from that file and paste it into the &quot;Default Bearer Token&quot; field above and save.
+                    5. Open the generated JSON file, copy the new token, paste it into the "Default Bearer Token" field above, and click "Save Settings".
                 </p>
             </CardContent>
           </Card>
