@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import SkuQrCode from '@/components/SkuQrCode';
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
@@ -47,7 +48,7 @@ const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
 
 const normalize = (p: string | null | undefined) => p?.replace(/[£\s]/g, '').toLowerCase();
 
-const PriceTicketMockup = ({ title, name, price, sku, isMismatch = {} }: { title: string, name?: string | null, price?: string | null, sku?: string | null, isMismatch?: Record<string, boolean> }) => (
+const PriceTicketMockup = ({ title, name, price, sku, isMismatch = {}, showQr = false }: { title: string, name?: string | null, price?: string | null, sku?: string | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => (
     <div className="border-2 border-dashed rounded-lg p-3 space-y-2 flex-1 min-w-[200px] bg-background/60">
         <p className="text-xs font-bold text-muted-foreground text-center">{title}</p>
         <Separator className="border-dashed" />
@@ -60,6 +61,11 @@ const PriceTicketMockup = ({ title, name, price, sku, isMismatch = {} }: { title
         <div className={cn("p-1 rounded text-center", isMismatch.sku && "bg-destructive/20 ring-2 ring-destructive")}>
             <p className="font-mono text-xs">{sku || 'N/A'}</p>
         </div>
+         {showQr && sku && (
+            <div className="flex justify-center pt-2">
+                <SkuQrCode sku={sku} />
+            </div>
+        )}
     </div>
 );
 
@@ -112,6 +118,7 @@ const PriceTicketDisplay = ({ result }: { result: ValidationResult }) => {
                     name={product?.name}
                     price={systemPrice}
                     sku={product?.sku}
+                    showQr={true}
                  />
              </div>
         </div>
@@ -392,4 +399,3 @@ export default function PriceCheckerPage() {
     </div>
   );
 }
-
