@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Loader2, ScanLine, X, AlertTriangle, CheckCircle2, Bot, Camera, Copy, Trash2 } from 'lucide-react';
+import { Loader2, ScanLine, X, AlertTriangle, CheckCircle2, Bot, Camera, Copy, Trash2, Filter } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { validatePriceTicket } from '@/ai/flows/price-validator-flow';
@@ -43,6 +43,8 @@ type ValidationResult = PriceTicketValidationOutput & {
   imageDataUri: string;
   timestamp: string;
 };
+
+type FilterType = 'all' | 'correct' | 'illegal' | 'discrepancy' | 'other';
 
 const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
 
@@ -129,6 +131,8 @@ export default function PriceCheckerPage() {
   const [isCameraMode, setIsCameraMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [validationLog, setValidationLog] = useState<ValidationResult[]>([]);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
 
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
@@ -265,6 +269,42 @@ export default function PriceCheckerPage() {
     });
   };
 
+  const filteredLog = useMemo(() => {
+    if (activeFilter === 'all') {
+      return validationLog;
+    }
+    
+    const parsePrice = (priceString: string | null | undefined): number | null => {
+        if (!priceString) return null;
+        const num = parseFloat(priceString.replace(/[£\s,]/g, ''));
+        return isNaN(num) ? null : num;
+    }
+
+    return validationLog.filter(result => {
+        switch (activeFilter) {
+            case 'correct':
+                return result.isCorrect;
+            case 'illegal': {
+                if (result.isCorrect || !result.ocrData?.price || !result.product?.price) return false;
+                const ticketPrice = parsePrice(result.ocrData.price);
+                const systemPrice = parsePrice(result.product.price.promotional || `£${result.product.price.regular}`);
+                return ticketPrice !== null && systemPrice !== null && systemPrice > ticketPrice;
+            }
+            case 'discrepancy': {
+                if (result.isCorrect || !result.ocrData?.price || !result.product?.price) return false;
+                const ticketPrice = parsePrice(result.ocrData.price);
+                const systemPrice = parsePrice(result.product.price.promotional || `£${result.product.price.regular}`);
+                return ticketPrice !== null && systemPrice !== null && systemPrice < ticketPrice;
+            }
+            case 'other':
+                return !result.isCorrect && !result.mismatchReason?.toLowerCase().includes('price');
+            default:
+                return true;
+        }
+    });
+}, [validationLog, activeFilter]);
+
+
   return (
     <div className="min-h-screen bg-background">
       {isCameraMode && (
@@ -337,8 +377,17 @@ export default function PriceCheckerPage() {
 
         {validationLog.length > 0 && (
           <Card className="max-w-4xl mx-auto shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Validation Log</CardTitle>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className='flex-grow'>
+                    <CardTitle>Validation Log ({filteredLog.length} / {validationLog.length})</CardTitle>
+                    <div className='flex flex-wrap gap-2 mt-4'>
+                        <Button size="sm" variant={activeFilter === 'all' ? 'default' : 'outline'} onClick={() => setActiveFilter('all')}>All</Button>
+                        <Button size="sm" variant={activeFilter === 'correct' ? 'default' : 'outline'} onClick={() => setActiveFilter('correct')}>Correct</Button>
+                        <Button size="sm" variant={activeFilter === 'illegal' ? 'default' : 'outline'} onClick={() => setActiveFilter('illegal')}>Illegal</Button>
+                        <Button size="sm" variant={activeFilter === 'discrepancy' ? 'default' : 'outline'} onClick={() => setActiveFilter('discrepancy')}>Discrepancy</Button>
+                        <Button size="sm" variant={activeFilter === 'other' ? 'default' : 'outline'} onClick={() => setActiveFilter('other')}>Other Issues</Button>
+                    </div>
+                </div>
               <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" size="sm">
@@ -361,7 +410,7 @@ export default function PriceCheckerPage() {
               </AlertDialog>
             </CardHeader>
             <CardContent className="space-y-4">
-              {validationLog.map(result => (
+              {filteredLog.map(result => (
                 <Card key={result.id} className={result.isCorrect ? 'bg-green-50/50' : 'bg-red-50/50 border-destructive'}>
                   <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start">
                     <Image src={result.imageDataUri} alt="Price ticket" width={150} height={100} className="rounded-md border-2 object-cover flex-shrink-0" />
@@ -383,6 +432,12 @@ export default function PriceCheckerPage() {
                   </CardContent>
                 </Card>
               ))}
+                {filteredLog.length === 0 && (
+                    <div className="text-center p-8 text-muted-foreground">
+                        <Filter className="h-8 w-8 mx-auto mb-2" />
+                        <p>No results match this filter.</p>
+                    </div>
+                )}
             </CardContent>
           </Card>
         )}
