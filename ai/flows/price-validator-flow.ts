@@ -20,7 +20,7 @@ const priceTicketPrompt = ai.definePrompt({
 Extract the following information:
 - The full product name.
 - The main price, including any multi-buy offer (e.g., "2 for £5.00").
-- The EAN (13 digits) or internal SKU (7-10 digits). The SKU is usually a shorter number near the barcode/QR code.
+- The EAN (13 digits) or internal SKU (7-10 digits). The SKU is usually a shorter number near the QR code/barcode.
 
 Image: {{media url=imageDataUri}}`,
 });
@@ -69,16 +69,26 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
   }
 
   // 3. Compare prices
-  const ticketPrice = ocrData.price;
-  const systemPrice = productData.price.regular ? `£${productData.price.regular.toFixed(2)}` : null;
-  const systemPromo = productData.price.promotional;
+  const ticketPriceString = ocrData.price;
+  const systemPriceString = productData.price.regular ? `£${productData.price.regular.toFixed(2)}` : null;
+  const systemPromoString = productData.price.promotional;
   
-  // Normalize prices for comparison (remove currency symbols, whitespace)
-  const normalize = (p: string | null | undefined) => p?.replace(/[£\s]/g, '').toLowerCase();
+  // Advanced normalization to handle numbers and multi-buy offers
+  const normalizePrice = (price: string | null | undefined): string | number | null => {
+      if (!price) return null;
+      const cleaned = price.replace(/[£\s]/g, '').toLowerCase();
+      // If it looks like "2for5.00", keep as string
+      if (/^\d+for\d+(\.\d+)?$/.test(cleaned)) {
+        return cleaned;
+      }
+      // Otherwise, treat as a number
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? cleaned : num;
+  };
 
-  const normalizedTicketPrice = normalize(ticketPrice);
-  const normalizedSystemPrice = normalize(systemPrice);
-  const normalizedSystemPromo = normalize(systemPromo);
+  const normalizedTicketPrice = normalizePrice(ticketPriceString);
+  const normalizedSystemPrice = normalizePrice(systemPriceString);
+  const normalizedSystemPromo = normalizePrice(systemPromoString);
 
   if (normalizedSystemPromo) {
     // If there's a promotion, the ticket should match the promotional price
@@ -87,7 +97,7 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
     } else {
       return {
         isCorrect: false,
-        mismatchReason: `Ticket price "${ticketPrice}" does not match promo price "${systemPromo}".`,
+        mismatchReason: `Ticket price "${ticketPriceString}" does not match promo price "${systemPromoString}".`,
         ocrData,
         product: productData,
       };
@@ -99,7 +109,7 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
     } else {
       return {
         isCorrect: false,
-        mismatchReason: `Ticket price "${ticketPrice}" does not match system price "${systemPrice}".`,
+        mismatchReason: `Ticket price "${ticketPriceString}" does not match system price "${systemPriceString}".`,
         ocrData,
         product: productData,
       };
