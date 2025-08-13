@@ -181,6 +181,34 @@ export default function SettingsPage() {
               </Form>
             </CardContent>
           </Card>
+          
+          <Card className="max-w-2xl mx-auto mb-8">
+             <CardHeader>
+                <CardTitle>Update Bearer Token</CardTitle>
+                <CardDescription>
+                    The bearer token expires after a while. You can use this script to get a new one.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+                <p>
+                    1. First, install the necessary dependencies if you haven't already:
+                </p>
+                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto"><code>npm install playwright axios</code></pre>
+                <p>
+                    2. Then, run the capture script from your terminal:
+                </p>
+                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto"><code>node capture-morrisons-token.js https://storemobile.apps.mymorri.com/ --verify "milk" --apikey 0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW</code></pre>
+                <p>
+                    3. A browser window will open. Log in with your credentials. Once you are logged in and the app is functional, return to your terminal.
+                </p>
+                <p>
+                    4. Press Enter in the terminal. The script will save the new token in a file named <code className="font-mono bg-muted p-1 rounded-sm">morrisons-token.json</code>.
+                </p>
+                 <p>
+                    5. Open the generated JSON file, copy the new token, paste it into the "Default Bearer Token" field above, and click "Save Settings".
+                </p>
+            </CardContent>
+          </Card>
 
           <Card className="max-w-2xl mx-auto border-destructive/50">
              <CardHeader>
