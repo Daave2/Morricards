@@ -11,7 +11,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanSearch } from 'lucide-react';
+import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanSearch, ScanLine } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -69,7 +69,7 @@ export default function AppSidebar() {
            <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive('/price-checker')}>
               <Link href="/price-checker" onClick={handleLinkClick}>
-                <ScanSearch />
+                <ScanLine />
                 Price Checker
               </Link>
             </SidebarMenuButton>

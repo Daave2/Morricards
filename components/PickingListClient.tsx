@@ -483,11 +483,6 @@ export default function PickingListClient() {
     setIsScanMode(prev => !prev);
   }
 
-  const getScanButtonLabel = () => {
-    if (products.length > 0) return 'Pick by Scan';
-    return 'Scan to Add';
-  }
-
   const handleResetList = () => {
     setProducts([]);
     setFilterQuery('');
@@ -554,7 +549,7 @@ export default function PickingListClient() {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <InstallPrompt />
       {isScanMode && (
          <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
@@ -608,8 +603,8 @@ export default function PickingListClient() {
         <TooltipProvider>
           <header className="text-center mb-12">
             <div className="flex justify-center items-center gap-4 relative">
-               <ShoppingBasket className="w-12 h-12 text-primary" />
-              <h1 className="text-5xl font-bold tracking-tight text-primary">
+              <ShoppingBasket className="w-12 h-12 text-primary" />
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-primary">
                 Store mobile <span className="text-foreground">ULTRA</span>
               </h1>
                <div className="absolute right-0 top-0">
@@ -619,7 +614,7 @@ export default function PickingListClient() {
              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
             </p>
-            <div className="mt-2 space-x-2">
+            <div className="mt-4 space-x-4">
                 <Button variant="link" asChild>
                     <Link href="/availability">
                         <LinkIcon className="mr-2 h-4 w-4" />
@@ -662,31 +657,26 @@ export default function PickingListClient() {
                     name="skus"
                     render={({ field }) => (
                       <FormItem>
-                         <div className="flex justify-between items-center">
+                         <div className="flex justify-between items-center mb-2">
                           <FormLabel>Product SKUs / EANs</FormLabel>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
+                        </div>
+                        <FormControl>
+                          <div className="relative">
+                            <Textarea
+                              placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
+                              className="min-h-[120px] resize-y pr-28"
+                              {...field}
+                            />
+                            <Button
                                 type="button"
                                 variant='outline'
-                                size="sm"
+                                className="absolute top-3 right-3"
                                 onClick={handleScanButtonClick}
                               >
                                 <ScanLine className="mr-2 h-4 w-4" />
-                                {getScanButtonLabel()}
+                                Scan to Add
                               </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Use your device's camera to scan barcodes.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                            className="min-h-[120px] resize-y"
-                            {...field}
-                          />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -752,7 +742,7 @@ export default function PickingListClient() {
                                   onClick={handleScanButtonClick}
                                 >
                                   <ScanLine className="mr-2 h-4 w-4" />
-                                  {getScanButtonLabel()}
+                                  Pick by Scan
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
