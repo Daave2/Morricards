@@ -5,18 +5,16 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 's3-eu-west-1.amazonaws.com',
-        port: '',
         pathname: '/mprod.xxwmm.retail.brandbank.zzzzzzzzzz/images/brandbank/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https' ,
         hostname: 'placehold.co',
-        port: '',
         pathname: '/**',
       }
     ],
   },
-  webpack: (config, { isServer }) => {
+   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals.push('handlebars');
     }
