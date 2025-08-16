@@ -1,4 +1,3 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -6,16 +5,20 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 's3-eu-west-1.amazonaws.com',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
       },
     ],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        handlebars: 'commonjs handlebars',
+      });
+    }
+    return config;
   },
 };
 
