@@ -313,7 +313,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
           </CardContent>
 
           <CollapsibleContent>
-              <div className={cn("px-6 pb-4 overflow-hidden max-h-96", layout === 'list' && 'px-4')}>
+              <div className={cn("px-6 pb-4 overflow-y-auto max-h-96", layout === 'list' && 'px-4')}>
                   <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
@@ -484,3 +484,5 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
     </Collapsible>
   );
 }
+
+    
