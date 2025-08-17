@@ -68,6 +68,8 @@ export interface components {
           subclassName?: string;
       };
       productLife?: {
+          productLifeAtTimeOfManufacture?: string;
+          minimumAcceptableProductLifedays?: string;
           minimumCPCAcceptanceLife?: number;
           minimumCFCAcceptanceLife?: number;
       };
