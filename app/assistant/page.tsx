@@ -123,13 +123,21 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
         });
     };
     
-    const deliveryInfoContent = deliveryInfo ? (
-      <span>
-        {deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{formatDate(deliveryInfo.expectedDate)} - {deliveryInfo.totalUnits} units</strong>
-      </span>
-    ) : (
-        <span>Next delivery: <strong>None</strong></span>
-    );
+    let deliveryInfoContent;
+    if (deliveryInfo) {
+      const friendlyDate = formatDate(deliveryInfo.expectedDate);
+      if (deliveryInfo.orderPosition === 'next') {
+        deliveryInfoContent = (
+          <span><strong>Next delivery due</strong> on <strong>{friendlyDate}</strong> with <strong>{deliveryInfo.totalUnits} units</strong> expected.</span>
+        );
+      } else {
+        deliveryInfoContent = (
+          <span><strong>Last delivery was</strong> on <strong>{friendlyDate}</strong>.</span>
+        );
+      }
+    } else {
+        deliveryInfoContent = (<span>There are <strong>no upcoming deliveries</strong> scheduled for this item.</span>);
+    }
   
   const hasAllOrders = allOrders && allOrders.length > 0;
 
@@ -137,9 +145,9 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md hover:bg-muted -mx-3">
-                    <Truck className="h-5 w-5 text-primary" />
-                    {deliveryInfoContent}
+                <div className="flex items-start gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md hover:bg-muted -mx-3">
+                    <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex-grow">{deliveryInfoContent}</div>
                 </div>
             </DialogTrigger>
             <DeliveryDetailsModal orders={allOrders} productName={productName} />
@@ -148,9 +156,9 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
   }
 
   return (
-    <div className="flex items-center gap-3 text-sm p-3 -mx-3">
-        <Truck className="h-5 w-5 text-primary" />
-        {deliveryInfoContent}
+    <div className="flex items-start gap-3 text-sm p-3 -mx-3">
+        <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+        <div className="flex-grow">{deliveryInfoContent}</div>
     </div>
   )
 }
@@ -484,5 +492,3 @@ export default function AssistantPage() {
     </div>
   );
 }
-
-    
