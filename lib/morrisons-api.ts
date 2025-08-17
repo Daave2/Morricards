@@ -231,37 +231,31 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
       try {
-        // 1) PI first (browser-safe) to anchor product & price.
-        const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
-        const piProduct = (pi as any)?.product as Product | undefined;
-
-        // 2) Optional richer Product via proxy
+        // 1) Get the full rich product object first.
         let product: Product | null = null;
         try {
           product = await getProductViaProxy(scannedSku, debugMode);
         } catch (e) {
           if (debugMode) console.warn(`Product via proxy failed for ${scannedSku}:`, e);
         }
-
-        // internal SKU we’ll use for stock/PI alignment
-        const internalSku =
-          product?.itemNumber?.toString() ||
-          piProduct?.itemNumber?.toString() ||
-          scannedSku;
-
-        // 3) Stock — now tries WITH bearer first (if provided), then without
-        const stockPayload = await getStock(locationId, internalSku, bearerToken, debugMode);
-        const stockPosition = stockPayload?.stockPosition?.[0];
-
-        // 4) Align PI to internalSku if needed
-        const piAligned = internalSku === scannedSku ? pi : await getPI(locationId, internalSku, bearerToken, debugMode);
-        const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(piAligned);
-
-        // 5) Stock history and Order info
-        const stockHistory = await getStockHistory(locationId, internalSku, bearerToken, debugMode);
-        const orderInfo = await getOrderInfo(locationId, internalSku, bearerToken, debugMode);
         
-        const chosenProduct = product ?? piProduct ?? ({} as Product);
+        // The internal SKU we'll use for other API calls.
+        const internalSku = product?.itemNumber?.toString() || scannedSku;
+
+        // 2) Get PI, Stock, History, and Order Info in parallel.
+        const [pi, stockPayload, stockHistory, orderInfo] = await Promise.all([
+            getPI(locationId, internalSku, bearerToken, debugMode),
+            getStock(locationId, internalSku, bearerToken, debugMode),
+            getStockHistory(locationId, internalSku, bearerToken, debugMode),
+            getOrderInfo(locationId, internalSku, bearerToken, debugMode)
+        ]);
+
+        const stockPosition = stockPayload?.stockPosition?.[0];
+        const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
+        
+        const chosenProduct = product ?? (pi as any)?.product ?? ({} as Product);
+        
+        // 3) Process delivery info
         let deliveryInfo: DeliveryInfo | null = null;
         const allOrders = orderInfo?.orders;
         const relevantOrder = allOrders?.find(o => o.orderPosition === 'next') || allOrders?.find(o => o.orderPosition === 'last');
@@ -288,12 +282,11 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           }
         }
 
+        // 4) Process prices and promos
+        const prices = (pi?.prices ?? []) as any[];
+        const promos = (pi?.promotions ?? []) as any[];
 
-        // 6) Prices/promos & product preference
-        const prices = (piAligned?.prices ?? []) as any[];
-        const promos = (piAligned?.promotions ?? []) as any[];
-
-
+        // 5) Assemble the final, complete object
         return {
           sku: internalSku,
           scannedSku,
@@ -313,7 +306,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           weight: chosenProduct.dimensions?.weight,
           status: chosenProduct.status,
           stockSkuUsed: undefined,
-          imageUrl: (chosenProduct as any).imageUrl?.[0]?.url,
+          imageUrl: chosenProduct.imageUrl?.[0]?.url,
           walkSequence: walk,
           productDetails: chosenProduct,
           lastStockChange: stockHistory || undefined,
@@ -330,12 +323,3 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is NonNullable<typeof r> => !!r);
 }
-
-
-
-
-
-
-
-
-    
