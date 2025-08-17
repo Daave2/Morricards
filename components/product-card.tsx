@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History, WifiOff, Map, Truck } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -59,8 +59,6 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
   const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
   const bws = product.productDetails.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
-
-  const lastStockChangeEvent = product.lastStockChange;
 
   if (product.isOffline) {
     return (
@@ -221,11 +219,10 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-3 text-sm text-blue-600 cursor-default">
                             <Truck className="h-5 w-5" />
-                            <span>Next delivery</span>
+                            <span>Next delivery: <strong>{product.nextDelivery.quantity} {product.nextDelivery.quantityType}(s)</strong></span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{product.nextDelivery.quantity} {product.nextDelivery.quantityType}(s)</p>
                         <p>Expected on: {product.nextDelivery.expectedDate}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -265,13 +262,6 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                         <div>
                           <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                             {lastStockChangeEvent?.lastCountDateTime && (
-                                <DataRow
-                                    icon={<History />}
-                                    label="Last Stock Event"
-                                    value={`${lastStockChangeEvent.inventoryAction} of ${lastStockChangeEvent.qty} by ${lastStockChangeEvent.createdBy} at ${lastStockChangeEvent.lastCountDateTime}`}
-                                />
-                              )}
                              <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
                              <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
                              <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
