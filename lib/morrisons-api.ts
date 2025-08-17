@@ -35,10 +35,11 @@ type StockHistory = {
   createdBy?: string;
 };
 
-type NextDelivery = {
+type DeliveryInfo = {
     expectedDate: string;
     quantity: number;
     quantityType: string;
+    orderPosition: 'next' | 'last';
 }
 
 export type FetchMorrisonsDataOutput = {
@@ -57,7 +58,7 @@ export type FetchMorrisonsDataOutput = {
   walkSequence?: string;
   productDetails: Product;
   lastStockChange?: StockHistory;
-  nextDelivery?: NextDelivery | null; // Can be null if no delivery
+  deliveryInfo?: DeliveryInfo | null;
 }[];
 
 // ─────────────────────────── core fetch helper ────────────────────────────
@@ -257,17 +258,19 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const stockHistory = await getStockHistory(locationId, internalSku, bearerToken, debugMode);
         const orderInfo = await getOrderInfo(locationId, internalSku, bearerToken, debugMode);
         
-        let nextDelivery: NextDelivery | null = null; // Default to null
-        const nextOrder = orderInfo?.orders?.find(o => o.orderPosition === 'next');
-        if (nextOrder && nextOrder.delivery?.dateDeliveryExpected && nextOrder.lines?.status?.[0]?.ordered) {
-            const ordered = nextOrder.lines.status[0].ordered;
-            nextDelivery = {
-                expectedDate: nextOrder.delivery.dateDeliveryExpected,
+        let deliveryInfo: DeliveryInfo | null = null;
+        // Prioritize "next" delivery, but fall back to "last"
+        const relevantOrder = orderInfo?.orders?.find(o => o.orderPosition === 'next') || orderInfo?.orders?.find(o => o.orderPosition === 'last');
+        
+        if (relevantOrder && relevantOrder.delivery?.dateDeliveryExpected && relevantOrder.lines?.status?.[0]?.ordered) {
+            const ordered = relevantOrder.lines.status[0].ordered;
+            deliveryInfo = {
+                expectedDate: relevantOrder.delivery.dateDeliveryExpected,
                 quantity: ordered.quantity ?? 0,
-                quantityType: nextOrder.lines.quantityType ?? 'N/A'
+                quantityType: relevantOrder.lines.quantityType ?? 'N/A',
+                orderPosition: relevantOrder.orderPosition as 'next' | 'last'
             }
         }
-
 
         // 6) Prices/promos & product preference
         const prices = (piAligned?.prices ?? []) as any[];
@@ -298,7 +301,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           walkSequence: walk,
           productDetails: chosenProduct,
           lastStockChange: stockHistory || undefined,
-          nextDelivery: nextDelivery,
+          deliveryInfo: deliveryInfo,
         };
       } catch (err) {
         console.error(`Failed to process SKU ${scannedSku}:`, err);
