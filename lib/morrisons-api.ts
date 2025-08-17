@@ -253,18 +253,24 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             getOrderInfo(locationId, internalSku, bearerToken, debugMode),
             getProductViaProxy(internalSku, debugMode)
         ]);
+        
+        if (debugMode) {
+          console.log(`[DEBUG] SKU: ${internalSku} - Scanned: ${scannedSku}`);
+          console.log('[DEBUG] PI Response:', pi);
+          console.log('[DEBUG] Product Proxy Response:', productDetailsFromProxy);
+        }
 
         if (!pi) {
             throw new Error(`Price Integrity check failed for SKU ${internalSku}. Cannot proceed.`);
         }
 
+        // *** NEW MERGE LOGIC ***
+        // Start with the rich data from the product proxy if it exists, otherwise use the limited data from PI.
+        const finalProductDetails: Product = productDetailsFromProxy || (pi as any)?.product || {};
+
+
         const stockPosition = stockPayload?.stockPosition?.[0];
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
-        
-        const finalProductDetails: Product = {
-            ...(pi as any)?.product,
-            ...productDetailsFromProxy,
-        };
         
         let deliveryInfo: DeliveryInfo | null = null;
         const allOrders = orderInfo?.orders;

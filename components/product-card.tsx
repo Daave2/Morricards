@@ -387,7 +387,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                                 </AccordionContent>
                               </AccordionItem>
                           )}
-                           { (product.productDetails.ingredients?.length || product.productDetails.allergenInfo?.length) && 
+                           { (product.productDetails.ingredients && product.productDetails.ingredients.length > 0) && 
                             <AccordionItem value="ingredients">
                                 <AccordionTrigger className='py-2 font-semibold'>Ingredients & Allergens</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-2">
