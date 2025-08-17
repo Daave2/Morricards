@@ -13,8 +13,8 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat, Map, Expand } from 'lucide-react';
-import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2 } from 'lucide-react';
+import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -52,6 +52,107 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
   }
   
   return null;
+}
+
+const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
+    if (value === undefined || value === null || value === '') return null;
+    return (
+        <div className="flex items-start gap-3">
+            <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
+            <div className='flex-grow min-w-0'>
+                <span className="font-bold">{label}:</span> <span className={'break-words'}>{value}</span>
+            </div>
+        </div>
+    );
+}
+
+const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], productName: string }) => {
+  return (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Delivery History for {productName}</DialogTitle>
+      </DialogHeader>
+      <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+        {orders.length > 0 ? orders.map(order => (
+          <Card key={order.orderId}>
+            <CardHeader>
+              <CardTitle className="text-lg flex justify-between items-center">
+                <span>Order: {order.orderPosition === 'next' ? 'Next' : 'Last'}</span>
+                <Badge variant={order.statusCurrent === 'receipted' ? 'default' : 'secondary'}>{order.statusCurrent}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Created: {new Date(order.createdAt).toLocaleDateString()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+                <DataRow icon={<CalendarClock/>} label="Expected Delivery" value={order.delivery?.dateDeliveryExpected ? new Date(order.delivery.dateDeliveryExpected).toLocaleDateString() : 'N/A'} />
+                {order.lines?.status?.map((s, i) => (
+                    <div key={i} className="pl-4 border-l-2 ml-2 space-y-2">
+                        {s.ordered && (
+                            <div>
+                                <p className="font-semibold">Ordered</p>
+                                <DataRow icon={<Package/>} label="Quantity" value={`${s.ordered.quantity} ${s.ordered.quantityType}(s)`} />
+                                <DataRow icon={<CalendarClock/>} label="Date" value={s.ordered.date ? new Date(s.ordered.date).toLocaleDateString() : 'N/A'} />
+                            </div>
+                        )}
+                        {s.receipted && (
+                            <div>
+                                <p className="font-semibold">Receipted</p>
+                                <DataRow icon={<CheckCircle2/>} label="Quantity" value={`${s.receipted.quantity} ${s.receipted.quantityType}(s)`} />
+                                <DataRow icon={<CalendarClock/>} label="Date" value={s.receipted.date ? new Date(s.receipted.date).toLocaleString() : 'N/A'} />
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </CardContent>
+          </Card>
+        )) : <p>No delivery history found.</p>}
+      </div>
+    </DialogContent>
+  )
+}
+
+const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInfo?: DeliveryInfo | null, allOrders?: Order[] | null, productName: string }) => {
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
+        return adjustedDate.toLocaleDateString('en-GB', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short', 
+        });
+    };
+    
+    const deliveryInfoContent = deliveryInfo ? (
+      <span>
+        {deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{formatDate(deliveryInfo.expectedDate)} - {deliveryInfo.totalUnits} units</strong>
+      </span>
+    ) : (
+        <span>Next delivery: <strong>None</strong></span>
+    );
+  
+  const hasAllOrders = allOrders && allOrders.length > 0;
+
+  if (hasAllOrders) {
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md hover:bg-muted -mx-3">
+                    <Truck className="h-5 w-5 text-primary" />
+                    {deliveryInfoContent}
+                </div>
+            </DialogTrigger>
+            <DeliveryDetailsModal orders={allOrders} productName={productName} />
+        </Dialog>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3 text-sm p-3 -mx-3">
+        <Truck className="h-5 w-5 text-primary" />
+        {deliveryInfoContent}
+    </div>
+  )
 }
 
 
@@ -275,6 +376,9 @@ export default function AssistantPage() {
                             <Badge className="text-lg" variant="secondary">{insights.price}</Badge>
                             </div>
                         )}
+                         <div className="mt-2">
+                            <DeliveryInfoRow deliveryInfo={product.deliveryInfo} allOrders={product.allOrders} productName={product.name} />
+                        </div>
                     </div>
                 </div>
                 </CardHeader>
