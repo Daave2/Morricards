@@ -160,12 +160,12 @@ async function getProductViaProxy(
     const res = await fetch(url);
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
-        console.error(`Product proxy fetch failed for SKU ${sku} (${res.status}):`, errorData);
+        if(debug) console.error(`Product proxy fetch failed for SKU ${sku} (${res.status}):`, errorData);
         return null; // Return null on failure so Promise.all doesn't break
     }
     return await res.json();
   } catch (error) {
-    console.error(`Error in getProductViaProxy for SKU ${sku}:`, error);
+    if(debug) console.error(`Error in getProductViaProxy for SKU ${sku}:`, error);
     return null;
   }
 }
@@ -251,7 +251,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const internalSku = (initialPi as any)?.product?.itemNumber?.toString() || scannedSku;
 
         // 1) Get PI, Stock, History, Order Info, and the new rich Product data in parallel.
-        const [pi, stockPayload, stockHistory, orderInfo, product] = await Promise.all([
+        const [pi, stockPayload, stockHistory, orderInfo, productDetails] = await Promise.all([
             initialPi ? Promise.resolve(initialPi) : getPI(locationId, internalSku, bearerToken, debugMode),
             getStock(locationId, internalSku, bearerToken, debugMode),
             getStockHistory(locationId, internalSku, bearerToken, debugMode),
@@ -266,11 +266,14 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const stockPosition = stockPayload?.stockPosition?.[0];
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
         
-        // Merge data, giving priority to the richer `product` object from the proxy.
-        const chosenProduct = {
-          ...(pi as any)?.product, // Fallback data from PI call
-          ...product, // Overwrite with richer data from product proxy
-        } as Product;
+        // 2) Merge data, giving priority to the richer `product` object from the proxy.
+        // Start with the full product details, then merge in anything supplemental from PI.
+        const finalProductDetails: Product = {
+            ...productDetails, // Richest data from the new endpoint is the base
+            ...(pi as any)?.product, // PI data acts as a fallback for any missing fields
+            // Ensure fields from `productDetails` overwrite fields from `pi.product`
+            ...productDetails, 
+        };
         
         // 3) Process delivery info
         let deliveryInfo: DeliveryInfo | null = null;
@@ -285,7 +288,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               const packSize = 
                   ordered.packSize ?? 
                   relevantOrder.lines?.packSize ?? 
-                  chosenProduct.packs?.[0]?.packQuantity ??
+                  finalProductDetails.packs?.[0]?.packQuantity ??
                   1;
 
               const quantity = ordered.quantity || 0;
@@ -308,24 +311,24 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           sku: internalSku,
           scannedSku,
           name:
-            chosenProduct.customerFriendlyDescription ||
-            chosenProduct.tillDescription ||
-            chosenProduct.itemDescription ||
+            finalProductDetails.customerFriendlyDescription ||
+            finalProductDetails.tillDescription ||
+            finalProductDetails.itemDescription ||
             'Unknown Product',
           price: {
             regular: prices?.[0]?.regularPrice,
             promotional: promos?.[0]?.marketingAttributes?.offerValue,
           },
           stockQuantity: stockPosition?.qty ?? 0,
-          stockUnit: stockPosition?.unitofMeasure || chosenProduct.standardUnitOfMeasure,
+          stockUnit: stockPosition?.unitofMeasure || finalProductDetails.standardUnitOfMeasure,
           location: { standard: stdLoc, secondary: secondaryLoc, promotional: promoLoc },
-          temperature: chosenProduct.temperatureRegime,
-          weight: chosenProduct.dimensions?.weight,
-          status: chosenProduct.status,
+          temperature: finalProductDetails.temperatureRegime,
+          weight: finalProductDetails.dimensions?.weight,
+          status: finalProductDetails.status,
           stockSkuUsed: undefined,
-          imageUrl: chosenProduct.imageUrl?.[0]?.url,
+          imageUrl: finalProductDetails.imageUrl?.[0]?.url,
           walkSequence: walk,
-          productDetails: chosenProduct,
+          productDetails: finalProductDetails,
           lastStockChange: stockHistory || undefined,
           deliveryInfo: deliveryInfo,
           allOrders: allOrders ?? null,
