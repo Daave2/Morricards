@@ -90,22 +90,25 @@ const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], produc
 }
 
 const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInfo?: DeliveryInfo | null, allOrders?: Order[] | null, productName: string }) => {
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        // Add timezone offset to treat date as local
+        const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
+        return adjustedDate.toLocaleDateString('en-GB', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short', 
+            year: '2-digit' 
+        });
+    };
+    
     const deliveryInfoContent = deliveryInfo ? (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="cursor-default">
-            {deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{deliveryInfo.quantity} {deliveryInfo.quantityType}(s)</strong>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Expected on: {new Date(deliveryInfo.expectedDate).toLocaleDateString()}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  ) : (
-    <span>Next delivery: <strong>None</strong></span>
-  );
+      <span>
+        {deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{formatDate(deliveryInfo.expectedDate)} - {deliveryInfo.totalUnits} units</strong>
+      </span>
+    ) : (
+        <span>Next delivery: <strong>None</strong></span>
+    );
   
   const hasAllOrders = allOrders && allOrders.length > 0;
 
@@ -479,4 +482,5 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
     </Collapsible>
   );
 }
+
 

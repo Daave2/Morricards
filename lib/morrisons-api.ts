@@ -38,6 +38,7 @@ type StockHistory = {
 export type DeliveryInfo = {
     expectedDate: string;
     quantity: number;
+    totalUnits: number;
     quantityType: string;
     orderPosition: 'next' | 'last';
 }
@@ -260,17 +261,19 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const orderInfo = await getOrderInfo(locationId, internalSku, bearerToken, debugMode);
         
         let deliveryInfo: DeliveryInfo | null = null;
-        // Prioritize "next" delivery, but fall back to "last"
         const relevantOrder = orderInfo?.orders?.find(o => o.orderPosition === 'next') || orderInfo?.orders?.find(o => o.orderPosition === 'last');
         
         if (relevantOrder) {
           const ordered = relevantOrder.lines?.status?.[0]?.ordered;
-          const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || (ordered?.date ? ordered.date.split('T')[0] : null);
+          const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || ordered?.date?.split('T')[0];
 
           if (ordered && expectedDate) {
+              const packSize = ordered.packSize || relevantOrder.lines?.packSize || 1;
+              const quantity = ordered.quantity || 0;
               deliveryInfo = {
                   expectedDate: expectedDate,
-                  quantity: ordered.quantity ?? 0,
+                  quantity: quantity,
+                  totalUnits: quantity * packSize,
                   quantityType: relevantOrder.lines.quantityType ?? 'N/A',
                   orderPosition: relevantOrder.orderPosition as 'next' | 'last'
               }
@@ -320,4 +323,5 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is NonNullable<typeof r> => !!r);
 }
+
 
