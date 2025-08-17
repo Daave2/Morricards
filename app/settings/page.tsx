@@ -81,9 +81,7 @@ export default function SettingsPage() {
   
   async function handleFetchToken() {
     setIsFetchingToken(true);
-    // IMPORTANT: Replace this URL with the actual raw URL of your hosted bearer token file.
-    // A GitHub Gist is a good option for this. See the guide for details.
-    const tokenUrl = 'https://gist.githubusercontent.com/YOUR_USERNAME/YOUR_GIST_ID/raw/morrisons-token.txt';
+    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/5c7d6426cb1406f0cae7d1f3d90f6bd497533943/gistfile1.txt';
 
     try {
       const response = await fetch(tokenUrl, { cache: 'no-store' });
