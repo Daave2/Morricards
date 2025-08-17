@@ -151,7 +151,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
   const placeholderImage = `https://placehold.co/400x400.png`;
-  const imageUrl = product.imageUrl;
+  const imageUrl = product.imageUrl && product.imageUrl.trim() !== '' ? product.imageUrl : placeholderImage;
   
   const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
   const bws = product.productDetails.beersWinesSpirits;
@@ -185,13 +185,13 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
       <>
         {layout === 'grid' && (
            <div className="p-4 flex justify-center">
-            <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
+            <ImageModal src={imageUrl} alt={product.name}>
               <div className="relative aspect-square w-32 h-32 cursor-pointer group/image border rounded-lg overflow-hidden">
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity">
                     <Expand className="h-6 w-6 text-white" />
                 </div>
                 <Image
-                  src={imageUrl || placeholderImage}
+                  src={imageUrl}
                   alt={product.name}
                   fill
                   className="object-cover"
@@ -216,13 +216,13 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                 </div>
             )}
             {layout === 'list' && (
-              <ImageModal src={imageUrl || placeholderImage} alt={product.name}>
+              <ImageModal src={imageUrl} alt={product.name}>
                 <div className="relative aspect-square w-24 h-24 flex-shrink-0 cursor-pointer group/image">
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
                         <Expand className="h-6 w-6 text-white" />
                     </div>
                   <Image
-                    src={imageUrl || placeholderImage}
+                    src={imageUrl}
                     alt={product.name}
                     fill
                     className="object-cover rounded-md"
@@ -364,7 +364,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                              <AccordionItem value="classification">
                                 <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
                                 <AccordionContent className="pt-2">
-                                   <p>
+                                   <p className="text-xs">
                                       {
                                         [
                                           product.productDetails.commercialHierarchy.divisionName,
