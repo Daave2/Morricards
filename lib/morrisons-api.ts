@@ -157,12 +157,12 @@ async function getProductViaProxy(
   bearerToken?: string,
   debug?: boolean
 ): Promise<{ product: Product | null; error: string | null }> {
-  if (!sku) return { product: null, error: 'No SKU provided.' };
+  if (!sku) return { product: null, error: 'No SKU provided to proxy.' };
   
   const url = `${PRODUCT_PROXY_URL}?sku=${encodeURIComponent(sku)}`;
   
   try {
-    const headers: HeadersInit = bearerToken ? { 'Authorization': bearerToken } : {};
+    const headers: HeadersInit = bearerToken ? { 'Authorization': `Bearer ${bearerToken}` } : {};
     const res = await fetch(url, { headers });
 
     if (!res.ok) {
@@ -252,29 +252,37 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
+      let productDetails: Product | null = null;
+      let proxyError: string | null = null;
+      
       try {
-        // Attempt to fetch all data points in parallel.
+        // First, fetch from PI to get the internal SKU
+        const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
+        const internalSku = (pi as any)?.product?.itemNumber?.toString() || scannedSku;
+
+        // Now fetch everything else in parallel, using the internal SKU where appropriate
         const [
           productProxyResult,
-          pi,
           stockPayload,
           stockHistory,
           orderInfo,
         ] = await Promise.all([
-          getProductViaProxy(scannedSku, bearerToken, debugMode),
-          getPI(locationId, scannedSku, bearerToken, debugMode),
-          getStock(locationId, scannedSku, bearerToken, debugMode),
-          getStockHistory(locationId, scannedSku, bearerToken, debugMode),
-          getOrderInfo(locationId, scannedSku, bearerToken, debugMode),
+          getProductViaProxy(internalSku, bearerToken, debugMode),
+          getStock(locationId, internalSku, bearerToken, debugMode),
+          getStockHistory(locationId, internalSku, bearerToken, debugMode),
+          getOrderInfo(locationId, internalSku, bearerToken, debugMode),
         ]);
 
-        const { product: productDetails, error: proxyError } = productProxyResult;
+        productDetails = productProxyResult.product;
+        proxyError = productProxyResult.error;
 
-        // Determine the definitive SKU, prioritizing the one from the rich product details.
-        const internalSku = productDetails?.itemNumber || (pi as any)?.product?.itemNumber?.toString() || scannedSku;
+        // Fallback if PI was null but we might have gotten proxy data
+        const piProductInfo = (pi as any)?.product;
+        const finalProductDetails = { ...piProductInfo, ...productDetails };
 
-        if (!productDetails && !pi) {
-          throw new Error(`Could not retrieve any product details for SKU ${scannedSku}. Proxy error: ${proxyError}`);
+
+        if (Object.keys(finalProductDetails).length === 0) {
+           throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}.`);
         }
         
         const stockPosition = stockPayload?.stockPosition?.[0];
@@ -309,8 +317,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const prices = (pi?.prices ?? []) as any[];
         const promos = (pi?.promotions ?? []) as any[];
         
-        const name = productDetails?.customerFriendlyDescription || 
-                     (pi as any)?.product?.customerFriendlyDescription || 
+        const name = finalProductDetails?.customerFriendlyDescription || 
                      'Unknown Product';
 
         return {
@@ -322,15 +329,15 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             promotional: promos?.[0]?.marketingAttributes?.offerValue,
           },
           stockQuantity: stockPosition?.qty ?? 0,
-          stockUnit: stockPosition?.unitofMeasure || productDetails?.standardUnitOfMeasure,
+          stockUnit: stockPosition?.unitofMeasure || finalProductDetails?.standardUnitOfMeasure,
           location: { standard: stdLoc, secondary: secondaryLoc, promotional: promoLoc },
-          temperature: productDetails?.temperatureRegime,
-          weight: productDetails?.dimensions?.weight,
-          status: productDetails?.status,
+          temperature: finalProductDetails?.temperatureRegime,
+          weight: finalProductDetails?.dimensions?.weight,
+          status: finalProductDetails?.status,
           stockSkuUsed: undefined,
-          imageUrl: productDetails?.imageUrl?.[0]?.url || (pi as any)?.product?.imageUrl,
+          imageUrl: finalProductDetails?.imageUrl?.[0]?.url || piProductInfo?.imageUrl,
           walkSequence: walk,
-          productDetails: productDetails || {},
+          productDetails: finalProductDetails || {},
           lastStockChange: stockHistory || undefined,
           deliveryInfo: deliveryInfo,
           allOrders: allOrders ?? null,
