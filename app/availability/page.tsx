@@ -98,40 +98,43 @@ const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], produc
         <DialogTitle>Delivery History for {productName}</DialogTitle>
       </DialogHeader>
       <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
-        {orders.length > 0 ? orders.map(order => (
-          <Card key={order.orderId}>
-            <CardHeader>
-              <CardTitle className="text-lg flex justify-between items-center">
-                <span>Order: {order.orderPosition === 'next' ? 'Next' : 'Last'}</span>
-                <Badge variant={order.statusCurrent === 'receipted' ? 'default' : 'secondary'}>{order.statusCurrent}</Badge>
-              </CardTitle>
-              <CardDescription>
-                Created: {new Date(order.createdAt).toLocaleDateString()}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-                <DataRow icon={<CalendarClock/>} label="Expected Delivery" value={order.delivery?.dateDeliveryExpected ? new Date(order.delivery.dateDeliveryExpected).toLocaleDateString() : 'N/A'} />
-                {order.lines?.status?.map((s, i) => (
-                    <div key={i} className="pl-4 border-l-2 ml-2 space-y-2">
-                        {s.ordered && (
-                            <div>
-                                <p className="font-semibold">Ordered</p>
-                                <DataRow icon={<Package/>} label="Quantity" value={`${s.ordered.quantity} ${s.ordered.quantityType}(s)`} />
-                                <DataRow icon={<CalendarClock/>} label="Date" value={s.ordered.date ? new Date(s.ordered.date).toLocaleDateString() : 'N/A'} />
-                            </div>
-                        )}
-                        {s.receipted && (
-                            <div>
-                                <p className="font-semibold">Receipted</p>
-                                <DataRow icon={<CheckCircle2/>} label="Quantity" value={`${s.receipted.quantity} ${s.receipted.quantityType}(s)`} />
-                                <DataRow icon={<CalendarClock/>} label="Date" value={s.receipted.date ? new Date(s.receipted.date).toLocaleString() : 'N/A'} />
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </CardContent>
-          </Card>
-        )) : <p>No delivery history found.</p>}
+        {orders.length > 0 ? orders.map(order => {
+          const expectedDate = order.delivery?.dateDeliveryExpected || order.lines?.status?.[0]?.ordered?.date;
+          return (
+            <Card key={order.orderId}>
+              <CardHeader>
+                <CardTitle className="text-lg flex justify-between items-center">
+                  <span>Order: {order.orderPosition === 'next' ? 'Next' : 'Last'}</span>
+                  <Badge variant={order.statusCurrent === 'receipted' ? 'default' : 'secondary'}>{order.statusCurrent}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Created: {new Date(order.createdAt).toLocaleDateString()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                  <DataRow icon={<CalendarClock/>} label="Expected Delivery" value={expectedDate ? new Date(expectedDate).toLocaleDateString() : 'N/A'} />
+                  {order.lines?.status?.map((s, i) => (
+                      <div key={i} className="pl-4 border-l-2 ml-2 space-y-2">
+                          {s.ordered && (
+                              <div>
+                                  <p className="font-semibold">Ordered</p>
+                                  <DataRow icon={<Package/>} label="Quantity" value={`${s.ordered.quantity} ${s.ordered.quantityType}(s)`} />
+                                  <DataRow icon={<CalendarClock/>} label="Date" value={s.ordered.date ? new Date(s.ordered.date).toLocaleDateString() : 'N/A'} />
+                              </div>
+                          )}
+                          {s.receipted && (
+                              <div>
+                                  <p className="font-semibold">Receipted</p>
+                                  <DataRow icon={<CheckCircle2/>} label="Quantity" value={`${s.receipted.quantity} ${s.receipted.quantityType}(s)`} />
+                                  <DataRow icon={<CalendarClock/>} label="Date" value={s.receipted.date ? new Date(s.receipted.date).toLocaleString() : 'N/A'} />
+                              </div>
+                          )}
+                      </div>
+                  ))}
+              </CardContent>
+            </Card>
+          )
+        }) : <p>No delivery history found.</p>}
       </div>
     </DialogContent>
   )
@@ -645,7 +648,7 @@ export default function AvailabilityPage() {
       navigator.clipboard.writeText(rawJson).then(() => {
         toast({ title: 'Raw Data Copied', description: 'The raw JSON data has been copied to your clipboard.' });
       }).catch(err => {
-        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.'});
       });
     }
   }, [productForModal, toast]);
@@ -1005,5 +1008,7 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
 
     
