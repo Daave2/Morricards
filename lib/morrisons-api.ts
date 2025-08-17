@@ -243,31 +243,42 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
       try {
-        const initialPi = await getPI(locationId, scannedSku, bearerToken, debugMode);
-        const internalSku = (initialPi as any)?.product?.itemNumber?.toString() || scannedSku;
+        // We need an internal SKU to query most things.
+        // Try the proxy first, as it's the richest source.
+        // If that fails, try PI. If both fail, we can't proceed.
+        const productDetailsFromProxy = await getProductViaProxy(scannedSku, debugMode);
+        let internalSku = productDetailsFromProxy?.itemNumber;
+        let pi: PriceIntegrity | null = null;
+        
+        if (!internalSku) {
+          pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
+          internalSku = (pi as any)?.product?.itemNumber?.toString();
+        }
+        
+        if (!internalSku) {
+            console.error(`Could not determine internal SKU for scanned code: ${scannedSku}`);
+            return null; // Can't proceed without an internal SKU
+        }
 
-        const [pi, stockPayload, stockHistory, orderInfo, productDetailsFromProxy] = await Promise.all([
-            initialPi ? Promise.resolve(initialPi) : getPI(locationId, internalSku, bearerToken, debugMode),
+        const [stockPayload, stockHistory, orderInfo] = await Promise.all([
             getStock(locationId, internalSku, bearerToken, debugMode),
             getStockHistory(locationId, internalSku, bearerToken, debugMode),
             getOrderInfo(locationId, internalSku, bearerToken, debugMode),
-            getProductViaProxy(internalSku, debugMode)
+            // PI might have been fetched already, don't refetch
+            pi ? Promise.resolve(pi) : getPI(locationId, internalSku, bearerToken, debugMode).then(res => pi = res)
         ]);
         
         if (debugMode) {
-          console.log(`[DEBUG] SKU: ${internalSku} - Scanned: ${scannedSku}`);
+          console.log(`[DEBUG] SKU: ${internalSku} (Scanned: ${scannedSku})`);
+          console.log('[DEBUG] Proxy Response:', productDetailsFromProxy);
           console.log('[DEBUG] PI Response:', pi);
-          console.log('[DEBUG] Product Proxy Response:', productDetailsFromProxy);
         }
-
-        if (!pi) {
-            throw new Error(`Price Integrity check failed for SKU ${internalSku}. Cannot proceed.`);
-        }
-
-        // *** NEW MERGE LOGIC ***
-        // Start with the rich data from the product proxy if it exists, otherwise use the limited data from PI.
+        
         const finalProductDetails: Product = productDetailsFromProxy || (pi as any)?.product || {};
 
+        if (!finalProductDetails.itemNumber) {
+            throw new Error(`Could not retrieve any product details for SKU ${internalSku}.`);
+        }
 
         const stockPosition = stockPayload?.stockPosition?.[0];
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
