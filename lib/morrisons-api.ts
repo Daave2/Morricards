@@ -1,4 +1,5 @@
 
+
 /**
  * Browser-safe Morrisons API client:
  * - Uses Price Integrity (PI) for product details (browser OK).
@@ -260,6 +261,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const stockHistory = await getStockHistory(locationId, internalSku, bearerToken, debugMode);
         const orderInfo = await getOrderInfo(locationId, internalSku, bearerToken, debugMode);
         
+        const chosenProduct = product ?? piProduct ?? ({} as Product);
         let deliveryInfo: DeliveryInfo | null = null;
         const allOrders = orderInfo?.orders;
         const relevantOrder = allOrders?.find(o => o.orderPosition === 'next') || allOrders?.find(o => o.orderPosition === 'last');
@@ -269,7 +271,8 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || ordered?.date?.split('T')[0];
 
           if (ordered && expectedDate) {
-              const packSize = ordered.packSize || relevantOrder.lines?.packSize || 1;
+              const masterPackSize = chosenProduct.packs?.find(p => p.packNumber)?.packQuantity || 1;
+              const packSize = ordered.packSize ?? relevantOrder.lines?.packSize ?? masterPackSize;
               const quantity = ordered.quantity || 0;
               deliveryInfo = {
                   expectedDate: expectedDate,
@@ -286,7 +289,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const prices = (piAligned?.prices ?? []) as any[];
         const promos = (piAligned?.promotions ?? []) as any[];
 
-        const chosenProduct = product ?? piProduct ?? ({} as Product);
 
         return {
           sku: internalSku,
@@ -324,6 +326,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is NonNullable<typeof r> => !!r);
 }
+
 
 
 
