@@ -10,7 +10,9 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { Product } from '@/morrisons-types';
+import type { components } from '@/morrisons-types';
+
+type Product = components['schemas']['Product'];
 
 const ProductInsightsInputSchema = z.object({
   productData: z.custom<Product>().describe('The raw JSON data of the product from the Morrisons API, including location, price, stock, and detailed product attributes.'),
