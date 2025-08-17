@@ -261,7 +261,8 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const orderInfo = await getOrderInfo(locationId, internalSku, bearerToken, debugMode);
         
         let deliveryInfo: DeliveryInfo | null = null;
-        const relevantOrder = orderInfo?.orders?.find(o => o.orderPosition === 'next') || orderInfo?.orders?.find(o => o.orderPosition === 'last');
+        const allOrders = orderInfo?.orders;
+        const relevantOrder = allOrders?.find(o => o.orderPosition === 'next') || allOrders?.find(o => o.orderPosition === 'last');
         
         if (relevantOrder) {
           const ordered = relevantOrder.lines?.status?.[0]?.ordered;
@@ -311,7 +312,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           productDetails: chosenProduct,
           lastStockChange: stockHistory || undefined,
           deliveryInfo: deliveryInfo,
-          allOrders: orderInfo?.orders ?? null,
+          allOrders: allOrders ?? null,
         };
       } catch (err) {
         console.error(`Failed to process SKU ${scannedSku}:`, err);
@@ -323,5 +324,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is NonNullable<typeof r> => !!r);
 }
+
 
 
