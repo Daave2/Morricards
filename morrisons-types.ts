@@ -246,3 +246,52 @@ export interface operations {
     };
   };
 }
+
+// Manually added type for Stock Order API
+export interface StockOrder {
+    orders?: (Order)[] | null;
+}
+export interface Order {
+    orderId: string;
+    orderType: string;
+    customerOrderId: string;
+    customerId: string;
+    statusCurrent: string;
+    shipToLocationId: number;
+    shipFromLocationId: string;
+    lines: Lines;
+    createdAt: string;
+    orderPosition: string;
+    delivery?: Delivery;
+}
+export interface Lines {
+    itemLineId: number;
+    itemId: string;
+    quantityUnitId: string;
+    quantityType: string;
+    packSize?: number | null;
+    status?: (StatusEntity)[] | null;
+    delivery?: Delivery;
+}
+export interface StatusEntity {
+    ordered: Ordered;
+    receipted?: Receipted;
+}
+export interface Ordered {
+    quantity: number;
+    quantityUnit: string;
+    quantityType: string;
+    packSize?: number | null;
+    date: string;
+}
+export interface Receipted {
+    quantity: number;
+    quantityUnit: string;
+    quantityType: string;
+    packSize: number;
+    date: string;
+}
+export interface Delivery {
+    dateAvailabilityExpected: string;
+    dateDeliveryExpected: string;
+}

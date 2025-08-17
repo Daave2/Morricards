@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History, WifiOff, Map } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, History, WifiOff, Map, Truck } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -215,18 +215,18 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                   <PoundSterling className="h-5 w-5 text-primary" />
                   <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
-               {lastStockChangeEvent && lastStockChangeEvent.lastCountDateTime && (
+               {product.nextDelivery && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-3 text-sm text-blue-600 cursor-default">
-                            <History className="h-5 w-5" />
-                            <span>Last stock event</span>
+                            <Truck className="h-5 w-5" />
+                            <span>Next delivery</span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{lastStockChangeEvent.inventoryAction} of {lastStockChangeEvent.qty} by {lastStockChangeEvent.createdBy}</p>
-                        <p>On: {lastStockChangeEvent.lastCountDateTime}</p>
+                        <p>{product.nextDelivery.quantity} {product.nextDelivery.quantityType}(s)</p>
+                        <p>Expected on: {product.nextDelivery.expectedDate}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -265,11 +265,11 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                         <div>
                           <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                             {product.lastStockChange?.lastCountDateTime && (
+                             {lastStockChangeEvent?.lastCountDateTime && (
                                 <DataRow
                                     icon={<History />}
                                     label="Last Stock Event"
-                                    value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
+                                    value={`${lastStockChangeEvent.inventoryAction} of ${lastStockChangeEvent.qty} by ${lastStockChangeEvent.createdBy} at ${lastStockChangeEvent.lastCountDateTime}`}
                                 />
                               )}
                              <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />

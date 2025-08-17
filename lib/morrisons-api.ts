@@ -7,12 +7,14 @@
  */
 
 import type { components } from '../morrisons-types';
+import type { StockOrder } from '../morrisons-types';
 
 const API_KEY = '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
 
 const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
+const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
 const PRODUCT_PROXY_URL = '/api/morrisons/product?sku=';
 
 export interface FetchMorrisonsDataInput {
@@ -33,6 +35,12 @@ type StockHistory = {
   createdBy?: string;
 };
 
+type NextDelivery = {
+    expectedDate: string;
+    quantity: number;
+    quantityType: string;
+}
+
 export type FetchMorrisonsDataOutput = {
   sku: string;
   scannedSku: string;
@@ -49,6 +57,7 @@ export type FetchMorrisonsDataOutput = {
   walkSequence?: string;
   productDetails: Product;
   lastStockChange?: StockHistory;
+  nextDelivery?: NextDelivery;
 }[];
 
 // ─────────────────────────── core fetch helper ────────────────────────────
@@ -169,6 +178,11 @@ async function getStockHistory(locationId: string, sku: string, bearer?: string,
   return fetchJson<StockHistory>(url, { debug, bearer, preferBearer: !!bearer });
 }
 
+async function getOrderInfo(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+    const url = `${BASE_STOCK_ORDER}?location=${encodeURIComponent(locationId)}&type=StoreStandard&item=${encodeURIComponent(sku)}&orders=[last,next,current]&apikey=${encodeURIComponent(API_KEY)}`;
+    return fetchJson<StockOrder>(url, { debug, bearer, preferBearer: !!bearer });
+}
+
 // ─────────────────────── location formatting helpers ──────────────────────
 function niceLoc(raw: components['schemas']['Location']): string {
   const sideRe = /^([LR])(\d+)$/i;
@@ -239,8 +253,21 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const piAligned = internalSku === scannedSku ? pi : await getPI(locationId, internalSku, bearerToken, debugMode);
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(piAligned);
 
-        // 5) Stock history
+        // 5) Stock history and Order info
         const stockHistory = await getStockHistory(locationId, internalSku, bearerToken, debugMode);
+        const orderInfo = await getOrderInfo(locationId, internalSku, bearerToken, debugMode);
+        
+        let nextDelivery: NextDelivery | undefined;
+        const nextOrder = orderInfo?.orders?.find(o => o.orderPosition === 'next');
+        if (nextOrder && nextOrder.delivery?.dateDeliveryExpected && nextOrder.lines?.status?.[0]?.ordered) {
+            const ordered = nextOrder.lines.status[0].ordered;
+            nextDelivery = {
+                expectedDate: nextOrder.delivery.dateDeliveryExpected,
+                quantity: ordered.quantity ?? 0,
+                quantityType: nextOrder.lines.quantityType ?? 'N/A'
+            }
+        }
+
 
         // 6) Prices/promos & product preference
         const prices = (piAligned?.prices ?? []) as any[];
@@ -254,7 +281,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           name:
             chosenProduct.customerFriendlyDescription ||
             chosenProduct.tillDescription ||
-            chosenProduct.itemDescription ||
+            chosen-product.itemDescription ||
             'Unknown Product',
           price: {
             regular: prices?.[0]?.regularPrice,
@@ -271,6 +298,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           walkSequence: walk,
           productDetails: chosenProduct,
           lastStockChange: stockHistory || undefined,
+          nextDelivery: nextDelivery,
         };
       } catch (err) {
         console.error(`Failed to process SKU ${scannedSku}:`, err);
