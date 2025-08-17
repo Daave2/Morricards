@@ -7,6 +7,7 @@ const BASE_PRODUCT = 'https://api.morrisons.com/product/v1/items';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const sku = searchParams.get('sku');
+  const bearerToken = request.headers.get('Authorization');
 
   if (!sku) {
     return NextResponse.json({ error: 'SKU is required' }, { status: 400 });
@@ -15,11 +16,12 @@ export async function GET(request: Request) {
   const url = `${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
 
   try {
-    const res = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+    const headers = new Headers({ 'Accept': 'application/json' });
+    if (bearerToken) {
+        headers.set('Authorization', bearerToken);
+    }
+      
+    const res = await fetch(url, { headers });
 
     if (!res.ok) {
         const errorBody = await res.text();

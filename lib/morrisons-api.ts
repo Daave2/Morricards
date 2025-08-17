@@ -16,7 +16,7 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
-const PRODUCT_PROXY_URL = '/api/morrisons/product?sku=';
+const PRODUCT_PROXY_URL = '/api/morrisons/product';
 
 export interface FetchMorrisonsDataInput {
   locationId: string;
@@ -152,12 +152,15 @@ async function fetchJson<T>(
 // Product: do NOT hit from browser; use server proxy if you need rich details.
 async function getProductViaProxy(
   sku: string,
+  bearerToken?: string,
   debug?: boolean
 ): Promise<Product | null> {
   if (!sku) return null;
-  const url = `${PRODUCT_PROXY_URL}${encodeURIComponent(sku)}`;
+  const url = `${PRODUCT_PROXY_URL}?sku=${encodeURIComponent(sku)}`;
   try {
-    const res = await fetch(url);
+    const headers: HeadersInit = bearerToken ? { 'Authorization': `Bearer ${bearerToken}` } : {};
+    const res = await fetch(url, { headers });
+
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
         if(debug) console.error(`Product proxy fetch failed for SKU ${sku} (${res.status}):`, errorData);
@@ -242,44 +245,48 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
+      let internalSku = scannedSku;
+
       try {
-        // We need an internal SKU to query most things.
-        // Try the proxy first, as it's the richest source.
-        // If that fails, try PI. If both fail, we can't proceed.
-        const productDetailsFromProxy = await getProductViaProxy(scannedSku, debugMode);
-        let internalSku = productDetailsFromProxy?.itemNumber;
-        let pi: PriceIntegrity | null = null;
-        
-        if (!internalSku) {
-          pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
-          internalSku = (pi as any)?.product?.itemNumber?.toString();
-        }
-        
-        if (!internalSku) {
-            console.error(`Could not determine internal SKU for scanned code: ${scannedSku}`);
-            return null; // Can't proceed without an internal SKU
+        // Attempt to get rich details first. The proxy can often resolve SKUs.
+        const productDetailsFromProxy = await getProductViaProxy(scannedSku, bearerToken, debugMode);
+        if (debugMode && productDetailsFromProxy) {
+            console.log(`[DEBUG] Proxy Response for ${scannedSku}:`, productDetailsFromProxy);
         }
 
-        const [stockPayload, stockHistory, orderInfo] = await Promise.all([
+        // If we got a result from the proxy, use its itemNumber as the definitive internal SKU.
+        if (productDetailsFromProxy?.itemNumber) {
+            internalSku = productDetailsFromProxy.itemNumber;
+        }
+
+        // Now, fetch all other data points in parallel.
+        const [pi, stockPayload, stockHistory, orderInfo] = await Promise.all([
+            getPI(locationId, internalSku, bearerToken, debugMode),
             getStock(locationId, internalSku, bearerToken, debugMode),
             getStockHistory(locationId, internalSku, bearerToken, debugMode),
             getOrderInfo(locationId, internalSku, bearerToken, debugMode),
-            // PI might have been fetched already, don't refetch
-            pi ? Promise.resolve(pi) : getPI(locationId, internalSku, bearerToken, debugMode).then(res => pi = res)
         ]);
-        
+
+        // If the proxy failed but PI gave us an SKU, we can still try a proxy lookup with that.
+        // This handles cases where the scanned code was an EAN.
+        let finalProductDetails: Product | null = productDetailsFromProxy;
+        const piSku = (pi as any)?.product?.itemNumber?.toString();
+        if (!finalProductDetails && piSku) {
+            finalProductDetails = await getProductViaProxy(piSku, bearerToken, debugMode);
+            if (finalProductDetails?.itemNumber) internalSku = finalProductDetails.itemNumber;
+        }
+
         if (debugMode) {
-          console.log(`[DEBUG] SKU: ${internalSku} (Scanned: ${scannedSku})`);
-          console.log('[DEBUG] Proxy Response:', productDetailsFromProxy);
+          console.log(`[DEBUG] Final SKU: ${internalSku} (Scanned: ${scannedSku})`);
+          console.log('[DEBUG] Final Product Details:', finalProductDetails);
           console.log('[DEBUG] PI Response:', pi);
         }
-        
-        const finalProductDetails: Product = productDetailsFromProxy || (pi as any)?.product || {};
 
-        if (!finalProductDetails.itemNumber) {
-            throw new Error(`Could not retrieve any product details for SKU ${internalSku}.`);
+        // We must have at least some basic product info to proceed.
+        if (!finalProductDetails && !pi) {
+            throw new Error(`Could not retrieve any product details for SKU ${scannedSku}.`);
         }
-
+        
         const stockPosition = stockPayload?.stockPosition?.[0];
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
         
@@ -295,7 +302,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               const packSize = 
                   ordered.packSize ?? 
                   relevantOrder.lines?.packSize ?? 
-                  finalProductDetails.packs?.[0]?.packQuantity ??
+                  finalProductDetails?.packs?.[0]?.packQuantity ??
                   1;
 
               const quantity = ordered.quantity || 0;
@@ -311,29 +318,29 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
         const prices = (pi?.prices ?? []) as any[];
         const promos = (pi?.promotions ?? []) as any[];
+        
+        const name = finalProductDetails?.customerFriendlyDescription || 
+                     (pi as any)?.product?.customerFriendlyDescription || 
+                     'Unknown Product';
 
         return {
           sku: internalSku,
           scannedSku,
-          name:
-            finalProductDetails.customerFriendlyDescription ||
-            finalProductDetails.tillDescription ||
-            finalProductDetails.itemDescription ||
-            'Unknown Product',
+          name,
           price: {
             regular: prices?.[0]?.regularPrice,
             promotional: promos?.[0]?.marketingAttributes?.offerValue,
           },
           stockQuantity: stockPosition?.qty ?? 0,
-          stockUnit: stockPosition?.unitofMeasure || finalProductDetails.standardUnitOfMeasure,
+          stockUnit: stockPosition?.unitofMeasure || finalProductDetails?.standardUnitOfMeasure,
           location: { standard: stdLoc, secondary: secondaryLoc, promotional: promoLoc },
-          temperature: finalProductDetails.temperatureRegime,
-          weight: finalProductDetails.dimensions?.weight,
-          status: finalProductDetails.status,
+          temperature: finalProductDetails?.temperatureRegime,
+          weight: finalProductDetails?.dimensions?.weight,
+          status: finalProductDetails?.status,
           stockSkuUsed: undefined,
-          imageUrl: finalProductDetails.imageUrl?.[0]?.url,
+          imageUrl: finalProductDetails?.imageUrl?.[0]?.url,
           walkSequence: walk,
-          productDetails: finalProductDetails,
+          productDetails: finalProductDetails || {},
           lastStockChange: stockHistory || undefined,
           deliveryInfo: deliveryInfo,
           allOrders: allOrders ?? null,
