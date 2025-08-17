@@ -371,9 +371,11 @@ export default function AssistantPage() {
                     <div className='flex-grow'>
                         <CardTitle>{product.name}</CardTitle>
                         <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
-                        {insights?.price && (
+                        {(product.price.promotional || product.price.regular) && (
                             <div className="mt-2">
-                            <Badge className="text-lg" variant="secondary">{insights.price}</Badge>
+                                <Badge className="text-lg" variant={product.price.promotional ? 'destructive' : 'secondary'}>
+                                    {product.price.promotional || `£${product.price.regular?.toFixed(2)}`}
+                                </Badge>
                             </div>
                         )}
                          <div className="mt-2">
@@ -482,3 +484,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
