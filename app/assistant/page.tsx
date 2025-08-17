@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2 } from 'lucide-react';
+import { Bot, ChevronLeft, Loader2, MapPin, ScanLine, Sparkles, User, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import Link from 'next/link';
@@ -167,16 +167,18 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
 }
 
 
-const InsightSection = ({ title, content, icon, children }: { title: string; content?: React.ReactNode, icon?: React.ReactNode; children?: React.ReactNode }) => {
+const InsightSection = ({ title, content, icon, children, variant }: { title: string; content?: React.ReactNode, icon?: React.ReactNode; children?: React.ReactNode, variant?: 'default' | 'destructive' }) => {
   if (!content && !children) return null;
   
   const contentArray = content && (Array.isArray(content) ? content : [content]);
   if (contentArray && (contentArray.length === 0 || (contentArray.length === 1 && !contentArray[0]))) return null;
+  
+  const iconColor = variant === 'destructive' ? 'text-destructive' : 'text-primary';
 
   return (
     <div>
       <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-        {icon || <Sparkles className="h-5 w-5 text-primary" />}
+        {icon ? React.cloneElement(icon as React.ReactElement, { className: `h-5 w-5 ${iconColor}` }) : <Sparkles className="h-5 w-5 text-primary" />}
         {title}
       </h3>
       <div className="text-sm prose prose-sm max-w-none">
@@ -414,9 +416,17 @@ export default function AssistantPage() {
                             </Avatar>
                             <div className='flex-grow space-y-4 text-sm'>
                                 <InsightSection title="About this product" content={insights.customerFacingSummary} />
+                                {insights.allergens && insights.allergens.length > 0 && (
+                                    <InsightSection
+                                      title="Allergens"
+                                      icon={<AlertTriangle />}
+                                      variant="destructive"
+                                      content={insights.allergens}
+                                    />
+                                )}
                                 <InsightSection
                                   title="Where to find it"
-                                  icon={<MapPin className="h-5 w-5 text-primary" />}
+                                  icon={<MapPin />}
                                   content={insights.customerFriendlyLocation}
                                 >
                                   {productLocation && (
@@ -454,14 +464,14 @@ export default function AssistantPage() {
                                 {insights.crossSell && insights.crossSell.length > 0 && (
                                     <InsightSection
                                     title="You might also like..."
-                                    icon={<ShoppingCart className="h-5 w-5 text-primary" />}
+                                    icon={<ShoppingCart />}
                                     content={insights.crossSell}
                                     />
                                 )}
                                 {insights.recipeIdeas && insights.recipeIdeas.length > 0 && (
                                     <InsightSection
                                     title="Recipe Ideas"
-                                    icon={<ChefHat className="h-5 w-5 text-primary" />}
+                                    icon={<ChefHat />}
                                     content={insights.recipeIdeas}
                                     />
                                 )}
