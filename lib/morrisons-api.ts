@@ -18,6 +18,7 @@ const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
 const BASE_PRODUCT = 'https://api.morrisons.com/product/v1/items';
 
+export type { Order };
 
 export interface FetchMorrisonsDataInput {
   locationId: string;
