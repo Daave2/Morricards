@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 import { Skeleton } from './ui/skeleton';
 import SkuQrCode from './SkuQrCode';
 import Link from 'next/link';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, isOffline?: boolean };
@@ -340,103 +341,101 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                         <SkuQrCode sku={product.sku} />
                       </div>
                       
-                      <Separator />
-                        <div>
-                          <h4 className="font-bold mb-3 flex items-center gap-2"><History className="h-5 w-5" /> Last Stock Event</h4>
-                             {product.lastStockChange?.lastCountDateTime ? (
-                                <DataRow
-                                    icon={<div />}
-                                    value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
-                                />
-                            ) : ( <p className="text-xs pl-8">No stock event data</p> )}
-                        </div>
-
-                       <Separator />
-                        <div>
-                          <h4 className="font-bold mb-3 flex items-center gap-2"><Package className="h-5 w-5" /> Stock & Logistics</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                             <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
-                             <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
-                             <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
-                             <DataRow icon={<Flag />} label="Perishable" value={product.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
-                             <DataRow icon={<Flag />} label="Manual Order" value={product.productDetails.manuallyStoreOrderedItem} />
-                          </div>
-                        </div>
-
-
-                      {product.productDetails.commercialHierarchy && (
-                          <>
-                          <Separator />
-                          <div>
-                              <h4 className="font-bold mb-3 flex items-center gap-2"><Building2 className="h-5 w-5" /> Classification</h4>
-                              <p className="text-xs">
-                                {product.productDetails.commercialHierarchy.divisionName} &rarr; {product.productDetails.commercialHierarchy.groupName} &rarr; {product.productDetails.commercialHierarchy.className} &rarr; {product.productDetails.commercialHierarchy.subclassName}
-                              </p>
-                          </div>
-                          </>
-                      )}
-
-                      {product.productDetails.productMarketing && <Separator />}
-                      {product.productDetails.productMarketing && (
-                        <div className='italic text-xs'>
-                           {product.productDetails.productMarketing}
-                        </div>
-                      )}
-
-
-                      { hasBwsDetails && (
-                          <>
-                            <Separator />
-                            <div>
-                              <h4 className="font-bold mb-2 flex items-center gap-2"><GlassWater className="h-5 w-5" /> Beers, Wines & Spirits</h4>
-                              <div className="space-y-2">
+                      <Accordion type="single" collapsible className="w-full text-xs">
+                          <AccordionItem value="stock">
+                             <AccordionTrigger className='py-2 font-semibold'>Stock & Logistics</AccordionTrigger>
+                             <AccordionContent className="space-y-3 pt-2">
+                                {product.lastStockChange?.lastCountDateTime && product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
+                                    <DataRow
+                                        icon={<History />}
+                                        label="Last Stock Event"
+                                        value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
+                                    />
+                                  ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
+                                 <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
+                                 <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
+                                 <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
+                                 <DataRow icon={<Flag />} label="Perishable" value={product.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
+                                 <DataRow icon={<Flag />} label="Manual Order" value={product.productDetails.manuallyStoreOrderedItem} />
+                             </AccordionContent>
+                          </AccordionItem>
+                          {product.productDetails.commercialHierarchy && (
+                             <AccordionItem value="classification">
+                                <AccordionTrigger className='py-2 font-semibold'>Classification</AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                   <p>
+                                      {
+                                        [
+                                          product.productDetails.commercialHierarchy.divisionName,
+                                          product.productDetails.commercialHierarchy.groupName,
+                                          product.productDetails.commercialHierarchy.className,
+                                          product.productDetails.commercialHierarchy.subclassName,
+                                        ].filter(Boolean).join(' → ')
+                                      }
+                                    </p>
+                                </AccordionContent>
+                             </AccordionItem>
+                          )}
+                          { hasBwsDetails && (
+                              <AccordionItem value="bws">
+                                <AccordionTrigger className='py-2 font-semibold'>Beers, Wines & Spirits</AccordionTrigger>
+                                <AccordionContent className="space-y-3 pt-2">
                                   <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={bws.alcoholByVolume ? `${bws.alcoholByVolume}%` : null} />
                                   <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} valueClassName='text-xs italic' />
                                   <DataRow icon={<Info />} label="Volume" value={bws.volumeInLitres ? `${bws.volumeInLitres}L` : null} />
-                              </div>
-                            </div>
-                          </>
-                      )}
-
-
-                      { (product.productDetails.ingredients?.length || product.productDetails.allergenInfo?.length) && <Separator /> }
-                      
-                      {product.productDetails.ingredients && product.productDetails.ingredients.length > 0 && (
-                          <div>
-                              <h4 className="font-bold mb-2 flex items-center gap-2"><Leaf className="h-5 w-5" /> Ingredients</h4>
-                              <p className="text-xs">{product.productDetails.ingredients.join(', ')}</p>
-                          </div>
-                      )}
-                      
-                      {product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0 && (
-                          <div>
-                              <h4 className="font-bold mb-2 flex items-center gap-2"><Shell className="h-5 w-5" /> Allergens</h4>
-                              <div className="flex flex-wrap gap-2">
-                                {product.productDetails.allergenInfo.map(allergen => (
-                                    <Badge key={allergen.name} variant={allergen.value === 'Contains' ? 'destructive' : 'secondary'}>
-                                        {allergen.name}
-                                    </Badge>
-                                ))}
-                              </div>
-                          </div>
-                      )}
-
-                      {product.productDetails.nutritionalInfo && <Separator />}
-
-                      {product.productDetails.nutritionalInfo && (
-                        <div>
-                            <h4 className="font-bold mb-2 flex items-center gap-2"><Beaker className="h-5 w-5" /> Nutrition</h4>
-                            <p className="text-xs text-muted-foreground mb-2">{product.productDetails.nutritionalHeading}</p>
-                            <div className='space-y-1 text-xs'>
-                                {product.productDetails.nutritionalInfo
-                                    .filter(n => !n.name.startsWith('*'))
-                                    .map(nutrient => (
-                                    <div key={nutrient.name} className="flex justify-between border-b pb-1">
-                                        <span>{nutrient.name}</span>
-                                        <span className="text-right">{nutrient.perComp?.split(',')[0]}</span>
+                                </AccordionContent>
+                              </AccordionItem>
+                          )}
+                           { (product.productDetails.ingredients?.length || product.productDetails.allergenInfo?.length) && 
+                            <AccordionItem value="ingredients">
+                                <AccordionTrigger className='py-2 font-semibold'>Ingredients & Allergens</AccordionTrigger>
+                                <AccordionContent className="space-y-4 pt-2">
+                                  {product.productDetails.ingredients && product.productDetails.ingredients.length > 0 && (
+                                      <div>
+                                          <h4 className="font-bold mb-2 flex items-center gap-2"><Leaf className="h-5 w-5" /> Ingredients</h4>
+                                          <p className="text-xs">{product.productDetails.ingredients.join(', ')}</p>
+                                      </div>
+                                  )}
+                                  
+                                  {product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0 && (
+                                      <div>
+                                          <h4 className="font-bold mb-2 flex items-center gap-2"><Shell className="h-5 w-5" /> Allergens</h4>
+                                          <div className="flex flex-wrap gap-2">
+                                            {product.productDetails.allergenInfo.map(allergen => (
+                                                <Badge key={allergen.name} variant={allergen.value === 'Contains' ? 'destructive' : 'secondary'}>
+                                                    {allergen.name}
+                                                </Badge>
+                                            ))}
+                                          </div>
+                                      </div>
+                                  )}
+                                </AccordionContent>
+                            </AccordionItem>
+                           }
+                           {product.productDetails.nutritionalInfo && (
+                            <AccordionItem value="nutrition">
+                                <AccordionTrigger className='py-2 font-semibold'>Nutrition</AccordionTrigger>
+                                <AccordionContent className="space-y-2 pt-2">
+                                    <p className="text-xs text-muted-foreground">{product.productDetails.nutritionalHeading}</p>
+                                    <div className='space-y-1 text-xs'>
+                                        {product.productDetails.nutritionalInfo
+                                            .filter(n => !n.name.startsWith('*'))
+                                            .map(nutrient => (
+                                            <div key={nutrient.name} className="flex justify-between border-b pb-1">
+                                                <span>{nutrient.name}</span>
+                                                <span className="text-right">{nutrient.perComp?.split(',')[0]}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                           )}
+                      </Accordion>
+
+                      {product.productDetails.productMarketing && <Separator className="my-4" />}
+                      {product.productDetails.productMarketing && (
+                        <div className='italic text-xs bg-muted/50 p-3 rounded-md'>
+                           {product.productDetails.productMarketing}
                         </div>
                       )}
 
@@ -484,5 +483,3 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
     </Collapsible>
   );
 }
-
-    
