@@ -33,7 +33,7 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
     return { data: null, error: 'No valid SKUs provided. Please enter some SKUs.' };
   }
   
-  const uniqueSkuList = [...new Set(skuList)];
+  const uniqueSkuList = Array.from(new Set(skuList));
 
   try {
     const data = await fetchMorrisonsData({
