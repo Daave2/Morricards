@@ -272,10 +272,10 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
           if (ordered && expectedDate) {
               const packSize = 
-                ordered.packSize ?? 
-                relevantOrder.lines?.packSize ?? 
-                chosenProduct.packs?.[0]?.packQuantity ??
-                1;
+                  ordered.packSize ?? 
+                  relevantOrder.lines?.packSize ?? 
+                  chosenProduct.packs?.[0]?.packQuantity ??
+                  1;
 
               const quantity = ordered.quantity || 0;
               deliveryInfo = {
@@ -336,3 +336,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
 
 
+
+
+    
