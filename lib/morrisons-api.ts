@@ -156,13 +156,18 @@ async function getProductViaProxy(
 ): Promise<Product | null> {
   const url = `${PRODUCT_PROXY_URL}${encodeURIComponent(sku)}`;
   // This call does not need a bearer token as the server-side route handles auth.
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
-    console.error(`Product proxy fetch failed for SKU ${sku} (${res.status}):`, errorData);
-    return null; // Return null on failure so Promise.all doesn't break
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
+        console.error(`Product proxy fetch failed for SKU ${sku} (${res.status}):`, errorData);
+        return null; // Return null on failure so Promise.all doesn't break
+    }
+    return await res.json();
+  } catch (error) {
+    console.error(`Error in getProductViaProxy for SKU ${sku}:`, error);
+    return null;
   }
-  return await res.json();
 }
 
 // Price Integrity: allow bearer if you have one; fallback without.
@@ -253,6 +258,10 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             getOrderInfo(locationId, internalSku, bearerToken, debugMode),
             getProductViaProxy(internalSku, debugMode)
         ]);
+
+        if (!pi) {
+            throw new Error(`Price Integrity check failed for SKU ${internalSku}. Cannot proceed.`);
+        }
 
         const stockPosition = stockPayload?.stockPosition?.[0];
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
