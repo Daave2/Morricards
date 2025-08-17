@@ -16,16 +16,9 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
-const BASE_PRODUCT = 'https://api.morrisons.com/product/v1/items';
+const BASE_PRODUCT_PROXY = '/api/morrisons/product'; // Use internal proxy
 
 export type { Order };
-
-export interface FetchMorrisonsDataInput {
-  locationId: string;
-  skus: string[];
-  bearerToken?: string;      // If available, send it for Stock/PI/History
-  debugMode?: boolean;
-}
 
 type Product = components['schemas']['Product'];
 type PriceIntegrity = components['schemas']['PriceIntegrity'];
@@ -60,7 +53,7 @@ export type FetchMorrisonsDataOutput = {
   stockSkuUsed?: string;
   imageUrl?: string;
   walkSequence?: string;
-  productDetails: Partial<Product>;
+  productDetails: Product; // Changed to use the official Product type
   lastStockChange?: StockHistory;
   deliveryInfo?: DeliveryInfo | null;
   allOrders?: Order[] | null;
@@ -160,19 +153,29 @@ export async function getProductDirectly(
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
   
-  const url = `${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
+  // This now uses a relative path, which is fine for client-side fetching to an API route.
+  // For server-to-server calls (like in a Server Action), this would need to be an absolute URL
+  // or the logic would need to be called directly.
+  const url = `${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
   
   try {
-    const headers = new Headers({ 'Accept': 'application/json' });
-    if (bearerToken) {
-        headers.set('Authorization', `Bearer ${bearerToken}`);
-    }
-      
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, {
+      headers: { 
+        'Accept': 'application/json',
+        ...(bearerToken && { 'Authorization': `Bearer ${bearerToken}`})
+      }
+    });
 
     if (!res.ok) {
         const errorBody = await res.text().catch(() => '');
-        const errorMessage = `Failed to fetch product data from Morrisons API for SKU ${sku} (${res.status}): ${errorBody}`;
+        let errorMessage;
+        try {
+          // Try to parse the error for a more specific message
+          const errorJson = JSON.parse(errorBody);
+          errorMessage = `Failed to fetch from proxy for SKU ${sku} (${res.status}): ${errorJson.details || errorJson.error}`;
+        } catch {
+          errorMessage = `Failed to fetch from proxy for SKU ${sku} (${res.status}): ${errorBody}`;
+        }
         return { product: null, error: errorMessage };
     }
 
@@ -283,7 +286,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             ]);
 
             const productDetailsFromProxy = productProxyResult.status === 'fulfilled' ? productProxyResult.value.product : null;
-            proxyError = productProxyResult.status === 'fulfilled' ? productProxyResult.value.error : productProxyResult.reason.message;
+            proxyError = productProxyResult.status === 'fulfilled' ? productProxyResult.value.error : (productProxyResult as any).reason?.message;
             if (debugMode && proxyError) console.error(proxyError);
 
 
@@ -291,7 +294,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const finalProductDetails = {
               ...(pi?.product || {}),
               ...(productDetailsFromProxy || {}),
-            };
+            } as Product; // Assert as the correct type
 
             if (Object.keys(finalProductDetails).length === 0) {
               throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
@@ -331,12 +334,12 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const promos = (pi?.promotions ?? []) as any[];
             
             const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
-            const imageUrl = finalProductDetails?.imageUrl?.[0]?.url || (pi as any)?.product?.imageUrl;
+            const imageUrl = finalProductDetails?.imageUrl?.[0]?.url;
 
             return {
               sku: internalSku,
               scannedSku,
-              name,
+              name: name!,
               price: {
                 regular: prices?.[0]?.regularPrice,
                 promotional: promos?.[0]?.marketingAttributes?.offerValue,
@@ -373,5 +376,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
     })
   );
 
-  return rows.filter((r): r is NonNullable<typeof r> => !!r);
+  // This filter is important to satisfy the return type
+  return rows.filter((r): r is Exclude<typeof r, { name: string; proxyError: string }> => 'name' in r && !r.name.startsWith('Error'));
 }
