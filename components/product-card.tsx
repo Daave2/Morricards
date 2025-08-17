@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck, History } from 'lucide-react';
-import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import type { FetchMorrisonsDataOutput, DeliveryInfo } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -50,7 +50,7 @@ const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], produc
         <DialogTitle>Delivery History for {productName}</DialogTitle>
       </DialogHeader>
       <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
-        {orders.map(order => (
+        {orders.length > 0 ? orders.map(order => (
           <Card key={order.orderId}>
             <CardHeader>
               <CardTitle className="text-lg flex justify-between items-center">
@@ -83,9 +83,51 @@ const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], produc
                 ))}
             </CardContent>
           </Card>
-        ))}
+        )) : <p>No delivery history found.</p>}
       </div>
     </DialogContent>
+  )
+}
+
+const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInfo?: DeliveryInfo | null, allOrders?: Order[] | null, productName: string }) => {
+    const deliveryInfoContent = deliveryInfo ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-default">
+            {deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{deliveryInfo.quantity} {deliveryInfo.quantityType}(s)</strong>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Expected on: {new Date(deliveryInfo.expectedDate).toLocaleDateString()}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : (
+    <span>Next delivery: <strong>None</strong></span>
+  );
+  
+  const hasAllOrders = allOrders && allOrders.length > 0;
+
+  if (hasAllOrders) {
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline">
+                    <Truck className="h-5 w-5 text-primary" />
+                    {deliveryInfoContent}
+                </div>
+            </DialogTrigger>
+            <DeliveryDetailsModal orders={allOrders} productName={productName} />
+        </Dialog>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3 text-sm">
+        <Truck className="h-5 w-5 text-primary" />
+        {deliveryInfoContent}
+    </div>
   )
 }
 
@@ -131,24 +173,6 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
         </Card>
     )
   }
-
-  const deliveryInfoContent = product.deliveryInfo ? (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="cursor-default">
-            {product.deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{product.deliveryInfo.quantity} {product.deliveryInfo.quantityType}(s)</strong>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Expected on: {new Date(product.deliveryInfo.expectedDate).toLocaleDateString()}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  ) : (
-    <span>Next delivery: <strong>None</strong></span>
-  );
-
 
   const cardContent = (
       <>
@@ -279,17 +303,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                   <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
               
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline">
-                      <Truck className="h-5 w-5 text-primary" />
-                      {deliveryInfoContent}
-                  </div>
-                </DialogTrigger>
-                {product.allOrders && product.allOrders.length > 0 && (
-                  <DeliveryDetailsModal orders={product.allOrders} productName={product.name} />
-                )}
-              </Dialog>
+              <DeliveryInfoRow deliveryInfo={product.deliveryInfo} allOrders={product.allOrders} productName={product.name} />
 
           </CardContent>
 
@@ -465,3 +479,4 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
     </Collapsible>
   );
 }
+

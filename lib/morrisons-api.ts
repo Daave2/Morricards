@@ -35,7 +35,7 @@ type StockHistory = {
   createdBy?: string;
 };
 
-type DeliveryInfo = {
+export type DeliveryInfo = {
     expectedDate: string;
     quantity: number;
     quantityType: string;
@@ -263,15 +263,20 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         // Prioritize "next" delivery, but fall back to "last"
         const relevantOrder = orderInfo?.orders?.find(o => o.orderPosition === 'next') || orderInfo?.orders?.find(o => o.orderPosition === 'last');
         
-        if (relevantOrder && relevantOrder.delivery?.dateDeliveryExpected && relevantOrder.lines?.status?.[0]?.ordered) {
-            const ordered = relevantOrder.lines.status[0].ordered;
-            deliveryInfo = {
-                expectedDate: relevantOrder.delivery.dateDeliveryExpected,
-                quantity: ordered.quantity ?? 0,
-                quantityType: relevantOrder.lines.quantityType ?? 'N/A',
-                orderPosition: relevantOrder.orderPosition as 'next' | 'last'
-            }
+        if (relevantOrder) {
+          const ordered = relevantOrder.lines?.status?.[0]?.ordered;
+          const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || (ordered?.date ? ordered.date.split('T')[0] : null);
+
+          if (ordered && expectedDate) {
+              deliveryInfo = {
+                  expectedDate: expectedDate,
+                  quantity: ordered.quantity ?? 0,
+                  quantityType: relevantOrder.lines.quantityType ?? 'N/A',
+                  orderPosition: relevantOrder.orderPosition as 'next' | 'last'
+              }
+          }
         }
+
 
         // 6) Prices/promos & product preference
         const prices = (piAligned?.prices ?? []) as any[];
@@ -315,3 +320,4 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is NonNullable<typeof r> => !!r);
 }
+
