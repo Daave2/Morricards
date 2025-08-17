@@ -16,7 +16,8 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
-const PRODUCT_PROXY_PATH = '/api/morrisons/product';
+const BASE_PRODUCT = 'https://api.morrisons.com/product/v1/items';
+
 
 export interface FetchMorrisonsDataInput {
   locationId: string;
@@ -151,39 +152,38 @@ async function fetchJson<T>(
 
 // ─────────────────────────── endpoint wrappers ────────────────────────────
 
-// Product: fetches from our server-side proxy
-async function getProductViaProxy(
+// Reusable logic to fetch from the main Product API
+export async function getProductDirectly(
   sku: string,
   bearerToken?: string,
-  debug?: boolean
 ): Promise<{ product: Product | null; error: string | null }> {
-  if (!sku) return { product: null, error: 'No SKU provided to proxy.' };
+  if (!sku) return { product: null, error: 'No SKU provided.' };
   
-  // Construct absolute URL for server-side fetch compatibility
-  const origin = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000');
-  
-  const url = `${origin}${PRODUCT_PROXY_PATH}?sku=${encodeURIComponent(sku)}`;
+  const url = `${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${encodeURIComponent(API_KEY)}`;
   
   try {
-    const headers: HeadersInit = bearerToken ? { 'Authorization': `Bearer ${bearerToken}` } : {};
+    const headers = new Headers({ 'Accept': 'application/json' });
+    if (bearerToken) {
+        headers.set('Authorization', `Bearer ${bearerToken}`);
+    }
+      
     const res = await fetch(url, { headers });
 
     if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response from proxy.' }));
-        const errorMessage = `Product proxy fetch failed for SKU ${sku} (${res.status}): ${JSON.stringify(errorData)}`;
-        if(debug) console.error(errorMessage);
+        const errorBody = await res.text().catch(() => '');
+        const errorMessage = `Failed to fetch product data from Morrisons API for SKU ${sku} (${res.status}): ${errorBody}`;
         return { product: null, error: errorMessage };
     }
-    const product = await res.json();
-    return { product, error: null };
+
+    const data = await res.json();
+    return { product: data, error: null };
+
   } catch (error) {
-    const errorMessage = `Error in getProductViaProxy for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
-    if(debug) console.error(errorMessage);
+    const errorMessage = `Error in getProductDirectly for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
     return { product: null, error: errorMessage };
   }
 }
+
 
 // Price Integrity: allow bearer if you have one; fallback without.
 async function getPI(locationId: string, sku: string, bearer?: string, debug?: boolean) {
@@ -257,111 +257,118 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
-      let pi: PriceIntegrity | null = null;
-      try {
-        pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
-      } catch (e) {
-        if (debugMode) console.warn(`PI check failed for ${scannedSku}, proceeding...`, e);
-      }
+        let pi: PriceIntegrity | null = null;
+        let proxyError: string | null = null;
       
-      const internalSku = (pi as any)?.product?.itemNumber?.toString() || scannedSku;
-
-      try {
-        const [
-          productProxyResult,
-          stockPayload,
-          stockHistory,
-          orderInfo,
-        ] = await Promise.all([
-          getProductViaProxy(internalSku, bearerToken, debugMode),
-          getStock(locationId, internalSku, bearerToken, debugMode),
-          getStockHistory(locationId, internalSku, bearerToken, debugMode),
-          getOrderInfo(locationId, internalSku, bearerToken, debugMode),
-        ]);
-
-        const { product: productDetailsFromProxy, error: proxyError } = productProxyResult;
-
-        const finalProductDetails = {
-          ...pi?.product,
-          ...productDetailsFromProxy,
-        };
-
-        if (Object.keys(finalProductDetails).length === 0) {
-           throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
+        try {
+            pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
+        } catch (e) {
+            if (debugMode) console.warn(`PI check failed for ${scannedSku}, proceeding...`, e);
         }
         
-        const stockPosition = stockPayload?.stockPosition?.[0];
-        const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
-        
-        let deliveryInfo: DeliveryInfo | null = null;
-        const allOrders = orderInfo?.orders;
-        const relevantOrder = allOrders?.find(o => o.orderPosition === 'next') || allOrders?.find(o => o.orderPosition === 'last');
-        
-        if (relevantOrder) {
-          const ordered = relevantOrder.lines?.status?.[0]?.ordered;
-          const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || ordered?.date?.split('T')[0];
+        const internalSku = (pi as any)?.product?.itemNumber?.toString() || scannedSku;
 
-          if (ordered && expectedDate) {
-              const packSize = 
-                  ordered.packSize ?? 
-                  relevantOrder.lines?.packSize ?? 
-                  finalProductDetails?.packs?.[0]?.packQuantity ??
-                  1;
+        try {
+            const [
+                productProxyResult,
+                stockPayload,
+                stockHistory,
+                orderInfo,
+            ] = await Promise.allSettled([
+                getProductDirectly(internalSku, bearerToken),
+                getStock(locationId, internalSku, bearerToken, debugMode),
+                getStockHistory(locationId, internalSku, bearerToken, debugMode),
+                getOrderInfo(locationId, internalSku, bearerToken, debugMode),
+            ]);
 
-              const quantity = ordered.quantity || 0;
-              deliveryInfo = {
-                  expectedDate: expectedDate,
-                  quantity: quantity,
-                  totalUnits: quantity * packSize,
-                  quantityType: relevantOrder.lines?.quantityType ?? 'N/A',
-                  orderPosition: relevantOrder.orderPosition as 'next' | 'last'
+            const productDetailsFromProxy = productProxyResult.status === 'fulfilled' ? productProxyResult.value.product : null;
+            proxyError = productProxyResult.status === 'fulfilled' ? productProxyResult.value.error : productProxyResult.reason.message;
+            if (debugMode && proxyError) console.error(proxyError);
+
+
+            // Merge data, giving priority to the richer `productDetailsFromProxy` object.
+            const finalProductDetails = {
+              ...(pi?.product || {}),
+              ...(productDetailsFromProxy || {}),
+            };
+
+            if (Object.keys(finalProductDetails).length === 0) {
+              throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
+            }
+
+            const stockPosition = stockPayload.status === 'fulfilled' ? stockPayload.value?.stockPosition?.[0] : undefined;
+            const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
+            
+            const orderInfoResult = orderInfo.status === 'fulfilled' ? orderInfo.value : null;
+            let deliveryInfo: DeliveryInfo | null = null;
+            const allOrders = orderInfoResult?.orders;
+            const relevantOrder = allOrders?.find(o => o.orderPosition === 'next') || allOrders?.find(o => o.orderPosition === 'last');
+            
+            if (relevantOrder) {
+              const ordered = relevantOrder.lines?.status?.[0]?.ordered;
+              const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || ordered?.date?.split('T')[0];
+
+              if (ordered && expectedDate) {
+                  const packSize = 
+                      ordered.packSize ?? 
+                      relevantOrder.lines?.packSize ?? 
+                      finalProductDetails?.packs?.[0]?.packQuantity ??
+                      1;
+
+                  const quantity = ordered.quantity || 0;
+                  deliveryInfo = {
+                      expectedDate: expectedDate,
+                      quantity: quantity,
+                      totalUnits: quantity * packSize,
+                      quantityType: relevantOrder.lines?.quantityType ?? 'N/A',
+                      orderPosition: relevantOrder.orderPosition as 'next' | 'last'
+                  }
               }
-          }
+            }
+
+            const prices = (pi?.prices ?? []) as any[];
+            const promos = (pi?.promotions ?? []) as any[];
+            
+            const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
+            const imageUrl = finalProductDetails?.imageUrl?.[0]?.url || (pi as any)?.product?.imageUrl;
+
+            return {
+              sku: internalSku,
+              scannedSku,
+              name,
+              price: {
+                regular: prices?.[0]?.regularPrice,
+                promotional: promos?.[0]?.marketingAttributes?.offerValue,
+              },
+              stockQuantity: stockPosition?.qty ?? 0,
+              stockUnit: stockPosition?.unitofMeasure || finalProductDetails?.standardUnitOfMeasure,
+              location: { standard: stdLoc, secondary: secondaryLoc, promotional: promoLoc },
+              temperature: finalProductDetails?.temperatureRegime,
+              weight: finalProductDetails?.dimensions?.weight,
+              status: finalProductDetails?.status,
+              stockSkuUsed: undefined,
+              imageUrl,
+              walkSequence: walk,
+              productDetails: finalProductDetails || {},
+              lastStockChange: stockHistory.status === 'fulfilled' ? (stockHistory.value || undefined) : undefined,
+              deliveryInfo: deliveryInfo,
+              allOrders: allOrders ?? null,
+              proxyError
+            };
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            if (debugMode) console.error(`Failed to process SKU ${scannedSku}:`, errorMessage);
+            return {
+              sku: scannedSku,
+              scannedSku,
+              name: `Error fetching ${scannedSku}`,
+              price: {},
+              stockQuantity: 0,
+              location: {},
+              productDetails: {},
+              proxyError: errorMessage,
+            };
         }
-
-        const prices = (pi?.prices ?? []) as any[];
-        const promos = (pi?.promotions ?? []) as any[];
-        
-        const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
-
-        return {
-          sku: internalSku,
-          scannedSku,
-          name,
-          price: {
-            regular: prices?.[0]?.regularPrice,
-            promotional: promos?.[0]?.marketingAttributes?.offerValue,
-          },
-          stockQuantity: stockPosition?.qty ?? 0,
-          stockUnit: stockPosition?.unitofMeasure || finalProductDetails?.standardUnitOfMeasure,
-          location: { standard: stdLoc, secondary: secondaryLoc, promotional: promoLoc },
-          temperature: finalProductDetails?.temperatureRegime,
-          weight: finalProductDetails?.dimensions?.weight,
-          status: finalProductDetails?.status,
-          stockSkuUsed: undefined,
-          imageUrl: (finalProductDetails?.imageUrl?.[0]?.url || pi?.product?.imageUrl) as string | undefined,
-          walkSequence: walk,
-          productDetails: finalProductDetails || {},
-          lastStockChange: stockHistory || undefined,
-          deliveryInfo: deliveryInfo,
-          allOrders: allOrders ?? null,
-          proxyError: proxyError
-        };
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        if (debugMode) console.error(`Failed to process SKU ${scannedSku}:`, errorMessage);
-        // Still return a partial object if PI lookup failed but we need to show *something*
-        return {
-          sku: scannedSku,
-          scannedSku,
-          name: `Error fetching ${scannedSku}`,
-          price: {},
-          stockQuantity: 0,
-          location: {},
-          productDetails: {},
-          proxyError: errorMessage,
-        };
-      }
     })
   );
 
