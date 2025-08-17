@@ -45,6 +45,9 @@ export interface components {
       storage?: string[];
       dimensions?: {
         weight?: number;
+        length?: number;
+        height?: number;
+        width?: number;
       };
       productFlags?: {
         perishableInd?: boolean;
@@ -52,6 +55,11 @@ export interface components {
         inventoryInd?: boolean;
         sellableInd?: boolean;
         merchandiseInd?: boolean;
+        packInd?: boolean;
+        simplePackInd?: boolean;
+        constDimenInd?: boolean;
+        packType?: string | null;
+        catchWeightUom?: string | null;
       };
       packComponents?: ({
           itemNumber?: number;
@@ -80,6 +88,9 @@ export interface components {
       };
       imageUrl?: ({
           url?: string;
+          shotType?: string | null;
+          height?: number | null;
+          width?: number | null;
         })[];
       ingredients?: string[];
       allergenInfo?: {
@@ -89,19 +100,34 @@ export interface components {
       nutritionalInfo?: {
         name: string;
         perComp: string | null;
+        perServing?: string | null;
       }[];
       nutritionalHeading?: string;
       productRestrictions?: {
         operatorAgeCheck?: string;
+        refundable?: string;
+        allowQuantityMultiplier?: string;
+        fuelCardRestrictions?: string;
+        wetStock?: string;
       };
       brand?: string;
-      countryOfOrigin?: string;
-      productMarketing?: string;
+      countryOfOrigin?: string | null;
+      productMarketing?: string | null;
       beersWinesSpirits?: {
-        alcoholByVolume?: string;
-        tastingNotes?: string;
-        volumeInLitres?: string;
-      }
+        alcoholByVolume?: string | null;
+        tastingNotes?: string | null;
+        additionalTastingNote?: string | null;
+        volumeInLitres?: string | null;
+        strengthNumberAndWord?: string | null;
+      };
+      gtins?: {
+          id: string;
+          type: string;
+          additionalProperties?: {
+            isPrimaryBarcode?: boolean;
+          }
+      }[];
+      legacyItemNumbers?: string[];
     };
     StockPayload: {
       stockPosition?: ({
@@ -122,6 +148,10 @@ export interface components {
       storeWalkSequence?: number;
     };
     PriceIntegrity: {
+      product?: {
+          itemNumber?: string;
+          customerFriendlyDescription?: string;
+      },
       space?: {
         standardSpace?: {
           locations?: components["schemas"]["Location"][];
