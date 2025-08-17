@@ -12,7 +12,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ProductInsightsInputSchema = z.object({
-  productData: z.any().describe('The raw JSON data of the product from the Morrisons API, including location details.'),
+  productData: z.any().describe('The raw JSON data of the product from the Morrisons API, including location, price, stock, and detailed product attributes.'),
 });
 export type ProductInsightsInput = z.infer<typeof ProductInsightsInputSchema>;
 
@@ -35,7 +35,7 @@ export async function productInsightsFlow(input: ProductInsightsInput): Promise<
     output: { schema: ProductInsightsOutputSchema },
     prompt: `You are a friendly and knowledgeable Morrisons AI shopping assistant.
 A customer has just scanned an item and you need to give them some helpful information.
-Analyze the following product JSON data and generate a helpful summary.
+Analyze the following product JSON data and generate a helpful summary. The data contains the main product info, and a nested 'productDetails' object with richer information like ingredients, allergens, nutrition, and classification. Make sure you use all of this information.
 
 - Your tone should be helpful and engaging.
 - The summary should highlight what the product is, its key benefits, and maybe a serving suggestion or use case.
@@ -57,3 +57,4 @@ Product Data:
   const { output } = await prompt(input);
   return output!;
 }
+
