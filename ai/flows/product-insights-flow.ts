@@ -12,7 +12,24 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ProductInsightsInputSchema = z.object({
-  productData: z.any().describe('The raw JSON data of the product from the Morrisons API, including location, price, stock, and detailed product attributes.'),
+  productData: z.object({
+    sku: z.string(),
+    name: z.string(),
+    price: z.any().optional(),
+    stockQuantity: z.number(),
+    location: z.any(),
+    productDetails: z.object({
+      ingredients: z.array(z.string()).optional(),
+      allergenInfo: z.array(z.object({ name: z.string(), value: z.string() })).optional(),
+      nutritionalInfo: z.array(z.any()).optional(),
+      commercialHierarchy: z.any().optional(),
+      productLife: z.any().optional(),
+      storage: z.array(z.string()).optional(),
+      countryOfOrigin: z.string().nullable().optional(),
+      brand: z.string().optional(),
+      // Add other fields from the rich data as needed
+    }).optional(),
+  }).describe('The raw JSON data of the product from the Morrisons API, including location, price, stock, and detailed product attributes.'),
 });
 export type ProductInsightsInput = z.infer<typeof ProductInsightsInputSchema>;
 
@@ -35,7 +52,15 @@ export async function productInsightsFlow(input: ProductInsightsInput): Promise<
     output: { schema: ProductInsightsOutputSchema },
     prompt: `You are a friendly and knowledgeable Morrisons AI shopping assistant.
 A customer has just scanned an item and you need to give them some helpful information.
-Analyze the following product JSON data and generate a helpful summary. The data contains the main product info, and a nested 'productDetails' object with richer information like ingredients, allergens, nutrition, and classification. Make sure you use all of this information.
+Analyze the following product JSON data and generate a helpful summary. The data contains the main product info, and a nested 'productDetails' object with richer information.
+
+You must use the information in the 'productDetails' object to make your response as detailed and helpful as possible. Specifically:
+- Examine the 'ingredients' array and mention one or two key ingredients in your summary.
+- Look at the 'allergenInfo' and clearly state any allergens listed (e.g., "Contains Mustard").
+- If 'nutritionalInfo' is available, briefly summarize it.
+- Mention the 'brand' and 'countryOfOrigin' if they exist.
+- Use 'productLife' to give advice on shelf life.
+- Use 'storage' to give storage instructions.
 
 - Your tone should be helpful and engaging.
 - The summary should highlight what the product is, its key benefits, and maybe a serving suggestion or use case.
@@ -57,4 +82,3 @@ Product Data:
   const { output } = await prompt(input);
   return output!;
 }
-
