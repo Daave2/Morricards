@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,6 +6,7 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+/* Design tokens */
 @layer base {
   :root {
     --background: 84 40% 96%; /* pale cream */
@@ -43,6 +43,7 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 142 76% 36%;
   }
+
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
@@ -79,6 +80,7 @@ body {
   }
 }
 
+/* Base element resets using Tailwind tokens */
 @layer base {
   * {
     @apply border-border;
@@ -88,6 +90,7 @@ body {
   }
 }
 
+/* Utilities */
 @layer utilities {
   .picked-animation {
     animation: picked-item-animation 0.5s ease-out forwards;
