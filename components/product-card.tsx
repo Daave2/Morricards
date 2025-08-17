@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -192,7 +191,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                 )}
             </div>
           </CardHeader>
-          <CardContent className={cn('flex-grow', layout === 'list' ? 'p-4 pt-0 grid grid-cols-3 gap-4 items-center' : 'p-6 pt-0 space-y-3')}>
+          <CardContent className={cn('flex-grow', layout === 'list' ? 'p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-start' : 'p-6 pt-0 space-y-3')}>
               <div className="flex items-center gap-3 text-sm">
                   <Boxes className="h-5 w-5 text-primary" />
                   <span>Stock record: <strong>{product.stockQuantity} {product.stockUnit}</strong></span>
