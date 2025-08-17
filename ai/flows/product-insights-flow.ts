@@ -10,28 +10,13 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import type { Product } from '@/morrisons-types';
 
 const ProductInsightsInputSchema = z.object({
-  productData: z.object({
-    sku: z.string(),
-    name: z.string(),
-    price: z.any().optional(),
-    stockQuantity: z.number(),
-    location: z.any(),
-    productDetails: z.object({
-      ingredients: z.array(z.string()).optional(),
-      allergenInfo: z.array(z.object({ name: z.string(), value: z.string() })).optional(),
-      nutritionalInfo: z.array(z.any()).optional(),
-      commercialHierarchy: z.any().optional(),
-      productLife: z.any().optional(),
-      storage: z.array(z.string()).optional(),
-      countryOfOrigin: z.string().nullable().optional(),
-      brand: z.string().optional(),
-      // Add other fields from the rich data as needed
-    }).optional(),
-  }).describe('The raw JSON data of the product from the Morrisons API, including location, price, stock, and detailed product attributes.'),
+  productData: z.custom<Product>().describe('The raw JSON data of the product from the Morrisons API, including location, price, stock, and detailed product attributes.'),
 });
 export type ProductInsightsInput = z.infer<typeof ProductInsightsInputSchema>;
+
 
 const ProductInsightsOutputSchema = z.object({
   customerFacingSummary: z.string().describe('A friendly, helpful summary for a customer. Include key features, benefits, and potential uses. Mention the price if available in the data.'),
@@ -58,7 +43,7 @@ You must use the information in the 'productDetails' object to make your respons
 - **For the customerFacingSummary**: Examine the 'ingredients' array and mention one or two key ingredients. Look at 'allergenInfo' and clearly state any allergens. If 'nutritionalInfo' is available, briefly summarize it. Mention the 'brand' and 'countryOfOrigin'. Use 'productLife' to give advice on shelf life and 'storage' for storage instructions.
 - **For the sellingPoints**: Base your points on concrete data. Use the 'brand', 'countryOfOrigin', specific 'ingredients', or unique 'productFlags' to create compelling points. Do not be generic.
 - **For the customerProfile**: Use the 'commercialHierarchy', 'price', and 'brand' to define the ideal customer. For example, a premium brand in the 'Organic' subclass might appeal to health-conscious shoppers.
-- **For the placementNotes**: Use the `commercialHierarchy` (e.g., `departmentName`, `className`) to suggest placing the item near other products in the same category.
+- **For the placementNotes**: Use the \`commercialHierarchy\` (e.g., \`departmentName\`, \`className\`) to suggest placing the item near other products in the same category.
 - **For the recipeIdeas**: If it's a food item, base the ideas on the listed 'ingredients'.
 - **For the customerFriendlyLocation**: Convert the structured location data into a friendly, easy-to-understand direction for a customer. For example, if the location is "Aisle 14, Right bay 2, shelf 3", you could say "You'll find this on Aisle 14, on your right about halfway down."
 
