@@ -271,14 +271,18 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || ordered?.date?.split('T')[0];
 
           if (ordered && expectedDate) {
-              const masterPackSize = chosenProduct.packs?.find(p => p.packNumber)?.packQuantity || 1;
-              const packSize = ordered.packSize ?? relevantOrder.lines?.packSize ?? masterPackSize;
+              const packSize = 
+                ordered.packSize ?? 
+                relevantOrder.lines?.packSize ?? 
+                chosenProduct.packs?.find(p => p.packNumber)?.packQuantity ??
+                1;
+
               const quantity = ordered.quantity || 0;
               deliveryInfo = {
                   expectedDate: expectedDate,
                   quantity: quantity,
                   totalUnits: quantity * packSize,
-                  quantityType: relevantOrder.lines.quantityType ?? 'N/A',
+                  quantityType: relevantOrder.lines?.quantityType ?? 'N/A',
                   orderPosition: relevantOrder.orderPosition as 'next' | 'last'
               }
           }
@@ -326,6 +330,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is NonNullable<typeof r> => !!r);
 }
+
 
 
 
