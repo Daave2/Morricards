@@ -3,6 +3,7 @@
 
 import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { z } from 'zod';
+import { cookies } from 'next/headers';
 
 const FormSchema = z.object({
   skus: z.union([z.string(), z.array(z.string())]),
@@ -50,3 +51,6 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
   }
 }
 
+export async function clearTokenCookie() {
+  cookies().delete('new-bearer-token');
+}
