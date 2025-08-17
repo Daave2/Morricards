@@ -155,7 +155,14 @@ async function getProductViaProxy(
   debug?: boolean
 ): Promise<Product | null> {
   const url = `${PRODUCT_PROXY_URL}${encodeURIComponent(sku)}`;
-  return fetchJson<Product>(url, { debug, bearer: undefined, preferBearer: false });
+  // This call does not need a bearer token as the server-side route handles auth.
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
+    console.error(`Product proxy fetch failed for SKU ${sku} (${res.status}):`, errorData);
+    return null; // Return null on failure so Promise.all doesn't break
+  }
+  return await res.json();
 }
 
 // Price Integrity: allow bearer if you have one; fallback without.
@@ -231,29 +238,30 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
       try {
-        // 1) Get the full rich product object first.
-        let product: Product | null = null;
-        try {
-          product = await getProductViaProxy(scannedSku, debugMode);
-        } catch (e) {
-          if (debugMode) console.warn(`Product via proxy failed for ${scannedSku}:`, e);
-        }
         
-        // The internal SKU we'll use for other API calls.
-        const internalSku = product?.itemNumber?.toString() || scannedSku;
+        // Use a placeholder SKU for the initial PI call to find the real SKU.
+        // This is a common pattern for when a barcode (EAN/GTIN) is scanned, 
+        // but the internal system uses a different SKU (itemNumber).
+        const initialPi = await getPI(locationId, scannedSku, bearerToken, debugMode);
+        const internalSku = (initialPi as any)?.product?.itemNumber?.toString() || scannedSku;
 
-        // 2) Get PI, Stock, History, and Order Info in parallel.
-        const [pi, stockPayload, stockHistory, orderInfo] = await Promise.all([
-            getPI(locationId, internalSku, bearerToken, debugMode),
+        // 1) Get PI, Stock, History, Order Info, and the new rich Product data in parallel.
+        const [pi, stockPayload, stockHistory, orderInfo, product] = await Promise.all([
+            initialPi ? Promise.resolve(initialPi) : getPI(locationId, internalSku, bearerToken, debugMode),
             getStock(locationId, internalSku, bearerToken, debugMode),
             getStockHistory(locationId, internalSku, bearerToken, debugMode),
-            getOrderInfo(locationId, internalSku, bearerToken, debugMode)
+            getOrderInfo(locationId, internalSku, bearerToken, debugMode),
+            getProductViaProxy(internalSku, debugMode)
         ]);
 
         const stockPosition = stockPayload?.stockPosition?.[0];
         const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
         
-        const chosenProduct = product ?? (pi as any)?.product ?? ({} as Product);
+        // Merge data, giving priority to the richer `product` object from the proxy.
+        const chosenProduct = {
+          ...(pi as any)?.product, // Fallback data from PI call
+          ...product, // Overwrite with richer data from product proxy
+        } as Product;
         
         // 3) Process delivery info
         let deliveryInfo: DeliveryInfo | null = null;
@@ -282,7 +290,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           }
         }
 
-        // 4) Process prices and promos
+        // 4) Process prices and promos from Price Integrity API
         const prices = (pi?.prices ?? []) as any[];
         const promos = (pi?.promotions ?? []) as any[];
 

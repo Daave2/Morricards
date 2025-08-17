@@ -23,6 +23,7 @@ export async function GET(request: Request) {
 
     if (!res.ok) {
         const errorBody = await res.text();
+        console.error(`Morrisons API Error (${res.status}) for SKU ${sku}:`, errorBody);
         return NextResponse.json({ error: `Failed to fetch product data from Morrisons API: ${res.statusText}`, details: errorBody }, { status: res.status });
     }
 
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error(`Internal Server Error for SKU ${sku}:`, errorMessage);
     return NextResponse.json({ error: 'Internal Server Error', details: errorMessage }, { status: 500 });
   }
 }
