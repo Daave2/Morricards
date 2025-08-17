@@ -13,9 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck } from 'lucide-react';
 import Image from 'next/image';
-import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -54,6 +54,7 @@ import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import type { AvailabilityReason } from '@/lib/idb';
+import { CheckCircle2 } from 'lucide-react';
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -89,6 +90,96 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
         </div>
     );
 }
+
+const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], productName: string }) => {
+  return (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Delivery History for {productName}</DialogTitle>
+      </DialogHeader>
+      <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+        {orders.length > 0 ? orders.map(order => (
+          <Card key={order.orderId}>
+            <CardHeader>
+              <CardTitle className="text-lg flex justify-between items-center">
+                <span>Order: {order.orderPosition === 'next' ? 'Next' : 'Last'}</span>
+                <Badge variant={order.statusCurrent === 'receipted' ? 'default' : 'secondary'}>{order.statusCurrent}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Created: {new Date(order.createdAt).toLocaleDateString()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+                <DataRow icon={<CalendarClock/>} label="Expected Delivery" value={order.delivery?.dateDeliveryExpected ? new Date(order.delivery.dateDeliveryExpected).toLocaleDateString() : 'N/A'} />
+                {order.lines?.status?.map((s, i) => (
+                    <div key={i} className="pl-4 border-l-2 ml-2 space-y-2">
+                        {s.ordered && (
+                            <div>
+                                <p className="font-semibold">Ordered</p>
+                                <DataRow icon={<Package/>} label="Quantity" value={`${s.ordered.quantity} ${s.ordered.quantityType}(s)`} />
+                                <DataRow icon={<CalendarClock/>} label="Date" value={s.ordered.date ? new Date(s.ordered.date).toLocaleDateString() : 'N/A'} />
+                            </div>
+                        )}
+                        {s.receipted && (
+                            <div>
+                                <p className="font-semibold">Receipted</p>
+                                <DataRow icon={<CheckCircle2/>} label="Quantity" value={`${s.receipted.quantity} ${s.receipted.quantityType}(s)`} />
+                                <DataRow icon={<CalendarClock/>} label="Date" value={s.receipted.date ? new Date(s.receipted.date).toLocaleString() : 'N/A'} />
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </CardContent>
+          </Card>
+        )) : <p>No delivery history found.</p>}
+      </div>
+    </DialogContent>
+  )
+}
+
+const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInfo?: DeliveryInfo | null, allOrders?: Order[] | null, productName: string }) => {
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
+        return adjustedDate.toLocaleDateString('en-GB', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short', 
+        });
+    };
+    
+    const deliveryInfoContent = deliveryInfo ? (
+      <span>
+        {deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{formatDate(deliveryInfo.expectedDate)} - {deliveryInfo.totalUnits} units</strong>
+      </span>
+    ) : (
+        <span>Next delivery: <strong>None</strong></span>
+    );
+  
+  const hasAllOrders = allOrders && allOrders.length > 0;
+
+  if (hasAllOrders) {
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md hover:bg-muted">
+                    <Truck className="h-5 w-5 text-primary" />
+                    {deliveryInfoContent}
+                </div>
+            </DialogTrigger>
+            <DeliveryDetailsModal orders={allOrders} productName={productName} />
+        </Dialog>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3 text-sm p-3">
+        <Truck className="h-5 w-5 text-primary" />
+        {deliveryInfoContent}
+    </div>
+  )
+}
+
 
 const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
   const { isOnline, lastSync } = useNetworkSync();
@@ -611,6 +702,7 @@ export default function AvailabilityPage() {
                           <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{productForModal.stockQuantity}</span></p>
                           <div>Location: <span className="font-semibold">{productForModal.location.standard || 'N/A'}</span></div>
                           {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
+                           <DeliveryInfoRow deliveryInfo={productForModal.deliveryInfo} allOrders={productForModal.allOrders} productName={productForModal.name} />
                         </div>
                     </div>
                     <div className="px-4 space-y-3 text-xs text-muted-foreground max-h-[60vh] overflow-y-auto">
@@ -913,3 +1005,5 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+
+    
