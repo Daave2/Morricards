@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -442,6 +443,11 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
 
                       <details className="pt-2 text-xs">
                           <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                          {product.proxyError && (
+                            <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
+                                <strong>Proxy Error:</strong> {product.proxyError}
+                            </div>
+                          )}
                           <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
                               {JSON.stringify(product, null, 2)}
                           </pre>
