@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck, History } from 'lucide-react';
-import type { FetchMorrisonsDataOutput, DeliveryInfo } from '@/lib/morrisons-api';
+import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -18,10 +18,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 import { Skeleton } from './ui/skeleton';
 import SkuQrCode from './SkuQrCode';
 import Link from 'next/link';
-import type { Order } from '@/morrisons-types';
 
 
-type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'], isOffline?: boolean };
+type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, isOffline?: boolean };
 
 interface ProductCardProps {
   product: Product;
@@ -485,5 +484,3 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
     </Collapsible>
   );
 }
-
-    
