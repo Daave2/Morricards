@@ -6,7 +6,8 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck, History } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -17,6 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 import { Skeleton } from './ui/skeleton';
 import SkuQrCode from './SkuQrCode';
 import Link from 'next/link';
+import type { Order } from '@/morrisons-types';
+
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean, productDetails: { productRestrictions?: { operatorAgeCheck?: string } } & FetchMorrisonsDataOutput[0]['productDetails'], isOffline?: boolean };
 
@@ -38,6 +41,52 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
             </div>
         </div>
     );
+}
+
+const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], productName: string }) => {
+  return (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Delivery History for {productName}</DialogTitle>
+      </DialogHeader>
+      <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+        {orders.map(order => (
+          <Card key={order.orderId}>
+            <CardHeader>
+              <CardTitle className="text-lg flex justify-between items-center">
+                <span>Order: {order.orderPosition === 'next' ? 'Next' : 'Last'}</span>
+                <Badge variant={order.statusCurrent === 'receipted' ? 'default' : 'secondary'}>{order.statusCurrent}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Created: {new Date(order.createdAt).toLocaleDateString()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+                <DataRow icon={<CalendarClock/>} label="Expected Delivery" value={order.delivery?.dateDeliveryExpected ? new Date(order.delivery.dateDeliveryExpected).toLocaleDateString() : 'N/A'} />
+                {order.lines?.status?.map((s, i) => (
+                    <div key={i} className="pl-4 border-l-2 ml-2 space-y-2">
+                        {s.ordered && (
+                            <div>
+                                <p className="font-semibold">Ordered</p>
+                                <DataRow icon={<Package/>} label="Quantity" value={`${s.ordered.quantity} ${s.ordered.quantityType}(s)`} />
+                                <DataRow icon={<CalendarClock/>} label="Date" value={s.ordered.date ? new Date(s.ordered.date).toLocaleDateString() : 'N/A'} />
+                            </div>
+                        )}
+                        {s.receipted && (
+                            <div>
+                                <p className="font-semibold">Receipted</p>
+                                <DataRow icon={<CheckCircle2/>} label="Quantity" value={`${s.receipted.quantity} ${s.receipted.quantityType}(s)`} />
+                                <DataRow icon={<CalendarClock/>} label="Date" value={s.receipted.date ? new Date(s.receipted.date).toLocaleString() : 'N/A'} />
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </DialogContent>
+  )
 }
 
 export default function ProductCard({ product, layout, onPick, isPicker = false, locationId }: ProductCardProps) {
@@ -82,6 +131,23 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
         </Card>
     )
   }
+
+  const deliveryInfoContent = product.deliveryInfo ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-default">
+            {product.deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{product.deliveryInfo.quantity} {product.deliveryInfo.quantityType}(s)</strong>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Expected on: {new Date(product.deliveryInfo.expectedDate).toLocaleDateString()}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : (
+    <span>Next delivery: <strong>None</strong></span>
+  );
 
 
   const cardContent = (
@@ -212,25 +278,19 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                   <PoundSterling className="h-5 w-5 text-primary" />
                   <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Truck className="h-5 w-5 text-primary" />
-                {product.deliveryInfo ? (
-                  <TooltipProvider>
-                      <Tooltip>
-                          <TooltipTrigger asChild>
-                              <span className="cursor-default">
-                                  {product.deliveryInfo.orderPosition === 'next' ? 'Next delivery' : 'Last delivery'}: <strong>{product.deliveryInfo.quantity} {product.deliveryInfo.quantityType}(s)</strong>
-                              </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                              <p>Expected on: {new Date(product.deliveryInfo.expectedDate).toLocaleDateString()}</p>
-                          </TooltipContent>
-                      </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <span>Next delivery: <strong>None</strong></span>
+              
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline">
+                      <Truck className="h-5 w-5 text-primary" />
+                      {deliveryInfoContent}
+                  </div>
+                </DialogTrigger>
+                {product.allOrders && product.allOrders.length > 0 && (
+                  <DeliveryDetailsModal orders={product.allOrders} productName={product.name} />
                 )}
-              </div>
+              </Dialog>
+
           </CardContent>
 
           <CollapsibleContent>
@@ -260,6 +320,17 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                       <div className="flex justify-center py-2">
                         <SkuQrCode sku={product.sku} />
                       </div>
+                      
+                      <Separator />
+                        <div>
+                          <h4 className="font-bold mb-3 flex items-center gap-2"><History className="h-5 w-5" /> Last Stock Event</h4>
+                             {product.lastStockChange?.lastCountDateTime ? (
+                                <DataRow
+                                    icon={<div />}
+                                    value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
+                                />
+                            ) : ( <p className="text-xs pl-8">No stock event data</p> )}
+                        </div>
 
                        <Separator />
                         <div>
