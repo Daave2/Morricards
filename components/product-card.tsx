@@ -212,7 +212,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                   <PoundSterling className="h-5 w-5 text-primary" />
                   <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
               </div>
-              {product.nextDelivery !== undefined && (
+               {product.nextDelivery !== undefined && (
                 <div className="flex items-center gap-3 text-sm">
                     <Truck className="h-5 w-5 text-primary" />
                     {product.nextDelivery ? (
