@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "pwa:analyze": "node -e \"console.log('PWA enabled:', process.env.NODE_ENV==='production')\"",
     "genkit:dev": "genkit start -- tsx ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch ai/dev.ts"
   },
