@@ -361,16 +361,17 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                           </AccordionItem>
                           {product.productDetails.commercialHierarchy && (
                              <AccordionItem value="classification">
-                                <AccordionTrigger className='py-2 font-semibold'>Classification</AccordionTrigger>
+                                <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
                                 <AccordionContent className="pt-2">
                                    <p>
                                       {
                                         [
                                           product.productDetails.commercialHierarchy.divisionName,
                                           product.productDetails.commercialHierarchy.groupName,
+                                          product.productDetails.commercialHierarchy.departmentName,
                                           product.productDetails.commercialHierarchy.className,
                                           product.productDetails.commercialHierarchy.subclassName,
-                                        ].filter(Boolean).join(' → ')
+                                        ].filter(Boolean).map(s => s?.replace(/^\d+\s/, '')).join(' → ')
                                       }
                                     </p>
                                 </AccordionContent>
@@ -386,7 +387,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                                 </AccordionContent>
                               </AccordionItem>
                           )}
-                           { (product.productDetails.ingredients?.length || (product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0)) && 
+                           { (product.productDetails.ingredients?.length || product.productDetails.allergenInfo?.length) && 
                             <AccordionItem value="ingredients">
                                 <AccordionTrigger className='py-2 font-semibold'>Ingredients & Allergens</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-2">
