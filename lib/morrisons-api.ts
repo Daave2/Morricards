@@ -57,7 +57,7 @@ export type FetchMorrisonsDataOutput = {
   walkSequence?: string;
   productDetails: Product;
   lastStockChange?: StockHistory;
-  nextDelivery?: NextDelivery;
+  nextDelivery?: NextDelivery | null; // Can be null if no delivery
 }[];
 
 // ─────────────────────────── core fetch helper ────────────────────────────
@@ -257,7 +257,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
         const stockHistory = await getStockHistory(locationId, internalSku, bearerToken, debugMode);
         const orderInfo = await getOrderInfo(locationId, internalSku, bearerToken, debugMode);
         
-        let nextDelivery: NextDelivery | undefined;
+        let nextDelivery: NextDelivery | null = null; // Default to null
         const nextOrder = orderInfo?.orders?.find(o => o.orderPosition === 'next');
         if (nextOrder && nextOrder.delivery?.dateDeliveryExpected && nextOrder.lines?.status?.[0]?.ordered) {
             const ordered = nextOrder.lines.status[0].ordered;
@@ -281,7 +281,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
           name:
             chosenProduct.customerFriendlyDescription ||
             chosenProduct.tillDescription ||
-            chosen-product.itemDescription ||
+            chosenProduct.itemDescription ||
             'Unknown Product',
           price: {
             regular: prices?.[0]?.regularPrice,
