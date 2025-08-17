@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Trash2, Moon, Sun, DatabaseZap, Copy } from 'lucide-react';
+import { Settings, Trash2, Moon, Sun, DatabaseZap, Copy, AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -35,6 +35,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useRouter } from 'next/navigation';
 
 const FormSchema = z.object({
   bearerToken: z.string(),
@@ -46,15 +48,30 @@ const getBookmarkletCode = () => {
     return `javascript:(()=>{const ENDPOINT='${endpoint}';if(window.__tokCap){return alert('Token capturer already active.');}window.__tokCap=!0;const box=document.createElement('div');box.style.cssText='position:fixed;z-index:2147483647;left:12px;right:12px;bottom:12px;background:#0b0b0c;color:#fff;padding:12px;border-radius:10px;font:14px system-ui,Arial;box-shadow:0 6px 24px rgba(0,0,0,.5)';box.innerHTML='<div style="margin-bottom:8px;font-weight:600">Bearer Capturer</div><textarea id="__tok" style="width:100%;height:110px;border-radius:8px;padding:8px;border:1px solid #333;background:#111;color:#eee"></textarea><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button id="__tokSend" style="flex:1;min-width:120px;padding:10px;border-radius:8px;border:0;background:#2f7bff;color:#fff;font-weight:600">Send</button><button id="__tokCopy" style="flex:1;min-width:120px;padding:10px;border-radius:8px;border:1px solid #333;background:#1c1c1f;color:#fff">Copy</button><button id="__tokClose" style="padding:10px 12px;border-radius:8px;border:1px solid #333;background:#1c1c1f;color:#fff">Close</button><span id="__tokMsg" style="margin-left:auto;align-self:center;opacity:.8"></span></div>';document.body.appendChild(box);const t=box.querySelector('#__tok'),m=box.querySelector('#__tokMsg');function found(token){t.value=token;m.textContent='Captured.';}function patch(){const cap=(k,v)=>{if((k||'').toLowerCase()==='authorization'){const m=/bearer\\s+([^\\s]+)/i.exec(v||'');if(m&&m[1])found(m[1]);}};const of=window.fetch;window.fetch=async function(...args){try{const req=new Request(...args);for(const [k,v] of req.headers.entries()){cap(k,v);}return await of(req);}catch(e){return of(...args);}};const ox=XMLHttpRequest.prototype.setRequestHeader;XMLHttpRequest.prototype.setRequestHeader=function(k,v){try{cap(k,v);}catch(e){}return ox.apply(this,arguments);};}patch();box.querySelector('#__tokCopy').onclick=()=>{navigator.clipboard.writeText(t.value).then(()=>m.textContent='Copied.').catch(()=>m.textContent='Copy failed.');};box.querySelector('#__tokSend').onclick=()=>{const token=t.value.trim();if(!token){m.textContent='No token.';return;}m.textContent='Sending…';fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})}).then(r=>m.textContent=r.ok?'Sent.':'Failed: '+r.status).catch(()=>m.textContent='Error');};box.querySelector('#__tokClose').onclick=()=>{box.remove();window.__tokCap=!1;};})();`;
 };
 
-export default function SettingsPage() {
+// A server action to clear the cookie
+async function clearTokenCookie() {
+  'use server';
+  const { cookies } = await import('next/headers');
+  cookies().delete('new-bearer-token');
+}
+
+export default function SettingsPage({
+  searchParams,
+}: {
+  searchParams: { 'new-token'?: string };
+}) {
   const { settings, setSettings, clearAllData } = useApiSettings();
-  const { setTheme } = useTheme()
+  const { setTheme } = useTheme();
+  const router = useRouter();
   const [bookmarkletCode, setBookmarkletCode] = useState('');
+  const [newlyReceivedToken, setNewlyReceivedToken] = useState('');
 
   useEffect(() => {
     setBookmarkletCode(getBookmarkletCode());
-  }, []);
-
+    if (searchParams['new-token']) {
+      setNewlyReceivedToken(searchParams['new-token']);
+    }
+  }, [searchParams]);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -83,7 +100,7 @@ export default function SettingsPage() {
 
   function handleClearData() {
     clearAllData();
-     toast({
+    toast({
       title: 'Application Data Cleared',
       description: 'All lists and offline data have been removed.',
     });
@@ -91,11 +108,26 @@ export default function SettingsPage() {
 
   const handleCopyBookmarklet = () => {
     navigator.clipboard.writeText(bookmarkletCode).then(() => {
-        toast({ title: 'Bookmarklet Copied', description: 'The bookmarklet code has been copied to your clipboard.' });
+      toast({ title: 'Bookmarklet Copied', description: 'The bookmarklet code has been copied to your clipboard.' });
     }).catch(() => {
-        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy the bookmarklet code.' });
+      toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy the bookmarklet code.' });
     });
-  }
+  };
+
+  const handleApplyNewToken = () => {
+    if (newlyReceivedToken) {
+      form.setValue('bearerToken', newlyReceivedToken);
+      setSettings({ bearerToken: newlyReceivedToken });
+      toast({
+        title: 'Token Updated',
+        description: 'The new bearer token has been applied and saved.',
+      });
+      setNewlyReceivedToken('');
+      clearTokenCookie().then(() => {
+        router.replace('/settings', { scroll: false });
+      });
+    }
+  };
 
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
@@ -106,9 +138,25 @@ export default function SettingsPage() {
              <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
               Manage application settings. These are saved in your browser&apos;s local storage.
             </p>
-          </header>
+        </header>
 
-          <Card className="max-w-2xl mx-auto mb-8">
+        {newlyReceivedToken && (
+          <Alert className="max-w-2xl mx-auto mb-8 border-yellow-500/50 text-yellow-700 [&>svg]:text-yellow-700">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>New Bearer Token Received</AlertTitle>
+            <AlertDescription>
+              A new token was sent from your bookmarklet. Apply it to your settings below.
+              <pre className="mt-2 p-2 bg-yellow-100/50 rounded-md text-xs break-all text-yellow-800">
+                {newlyReceivedToken}
+              </pre>
+              <Button onClick={handleApplyNewToken} className="mt-4" size="sm" variant="outline">
+                Apply New Token
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card className="max-w-2xl mx-auto mb-8">
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
                 <CardDescription>
@@ -227,7 +275,7 @@ export default function SettingsPage() {
                     4. Once logged in, run the bookmarklet you created. A panel will appear at the bottom of the screen.
                 </p>
                  <p>
-                    5. Click "Copy" in the panel, then paste the token into the "Default Bearer Token" field above and click "Save Settings".
+                    5. Click "Send" in the panel. The next time you load this settings page, you will be prompted to apply the new token.
                 </p>
             </CardContent>
           </Card>

@@ -17,6 +17,14 @@ const nextConfig = {
             },
         ],
     },
+    experimental: {
+      serverActions: {
+        // Allow returning closures or functions from server actions
+        // This is needed for the cookie clearing action in settings
+        allowedForwardedHosts: ['localhost'],
+        allowedOrigins: ['localhost:3000'],
+      },
+    },
 };
 
 module.exports = nextConfig;

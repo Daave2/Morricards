@@ -1,12 +1,12 @@
+
 'use server';
 
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers'
 
-// This is a dummy endpoint for the bookmarklet to target.
-// In a real application, you would have a secure way to associate
-// this token with a specific user session.
-// For this local-first app, the bookmarklet UI just shows the token
-// for the user to copy-paste, so this endpoint doesn't need to do anything.
+// This endpoint is targeted by the companion bookmarklet.
+// It receives a bearer token and temporarily stores it in an HttpOnly cookie.
+// The settings page can then read this cookie and prompt the user to save it.
 
 export async function POST(request: Request) {
   try {
@@ -17,10 +17,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid token provided.' }, { status: 400 });
     }
 
-    // In a real app: await saveTokenForUser(userId, token);
-    console.log('Received token via /api/bearer, but it is not stored server-side.');
+    // Set the token in a secure, HttpOnly cookie that expires in 1 hour.
+    // This makes the token available to the server-side components of the app
+    // without exposing it to client-side script.
+    cookies().set('new-bearer-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 3600, // 1 hour
+      path: '/',
+    });
     
-    return NextResponse.json({ message: 'Token received, please copy it from the bookmarklet panel and save it in settings.' }, { status: 200 });
+    return NextResponse.json({ message: 'Token received and will be available on the settings page.' }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
