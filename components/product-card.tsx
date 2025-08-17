@@ -314,7 +314,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
           </CardContent>
 
           <CollapsibleContent>
-              <div className={cn("px-6 pb-4 overflow-y-auto max-h-96", layout === 'list' && 'px-4')}>
+              <div className={cn("px-6 pb-4 overflow-y-auto max-h-96", layout === 'list' ? 'px-4' : '')}>
                   <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
@@ -386,7 +386,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                                 </AccordionContent>
                               </AccordionItem>
                           )}
-                           { (product.productDetails.ingredients?.length || product.productDetails.allergenInfo?.length) && 
+                           { (product.productDetails.ingredients?.length || (product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0)) && 
                             <AccordionItem value="ingredients">
                                 <AccordionTrigger className='py-2 font-semibold'>Ingredients & Allergens</AccordionTrigger>
                                 <AccordionContent className="space-y-4 pt-2">
@@ -412,14 +412,14 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                                 </AccordionContent>
                             </AccordionItem>
                            }
-                           {product.productDetails.nutritionalInfo && (
+                           {product.productDetails.nutritionalInfo && product.productDetails.nutritionalInfo.length > 0 && (
                             <AccordionItem value="nutrition">
                                 <AccordionTrigger className='py-2 font-semibold'>Nutrition</AccordionTrigger>
                                 <AccordionContent className="space-y-2 pt-2">
                                     <p className="text-xs text-muted-foreground">{product.productDetails.nutritionalHeading}</p>
                                     <div className='space-y-1 text-xs'>
                                         {product.productDetails.nutritionalInfo
-                                            .filter(n => !n.name.startsWith('*'))
+                                            .filter(n => n.name && !n.name.startsWith('*'))
                                             .map(nutrient => (
                                             <div key={nutrient.name} className="flex justify-between border-b pb-1">
                                                 <span>{nutrient.name}</span>
