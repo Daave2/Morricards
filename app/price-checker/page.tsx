@@ -104,9 +104,9 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
     const skuMismatch = ocrData?.eanOrSku !== product?.sku;
 
     const systemMockupData: OcrData = {
-        productName: product?.name,
+        productName: product?.name ?? null,
         price: systemPrice,
-        eanOrSku: product?.sku,
+        eanOrSku: product?.sku ?? null,
         productSubName: product?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; '),
         unitPrice: product?.price.regular && product?.weight ? `£${(product.price.regular / product.weight).toFixed(2)}` : null,
     }
