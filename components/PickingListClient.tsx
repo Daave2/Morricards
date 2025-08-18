@@ -699,8 +699,13 @@ export default function PickingListClient() {
                               onChange={(e) => setFilterQuery(e.target.value)}
                               className="pl-10"
                           />
+                          {filterQuery && (
+                            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setFilterQuery('')}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                          )}
                       </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4 w-full sm:w-auto">
+                      <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
                            <Tooltip>
                             <TooltipTrigger asChild>
                               <Button 
@@ -715,86 +720,89 @@ export default function PickingListClient() {
                               <p>Use your device's camera to scan and pick items from the list.</p>
                             </TooltipContent>
                           </Tooltip>
-                          <Select value={sortConfig} onValueChange={setSortConfig}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <SelectTrigger className="w-full sm:w-[200px]">
-                                      <SelectValue placeholder="Sort by..." />
-                                  </SelectTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Change the sort order of the product list.</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <SelectContent>
-                                  <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
-                                  <SelectItem value="stockQuantity-desc">Stock (High to Low)</SelectItem>
-                                  <SelectItem value="stockQuantity-asc">Stock (Low to High)</SelectItem>
-                                  <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-                                  <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-                                  <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                                  <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                              </SelectContent>
-                          </Select>
-                           <Tooltip>
-                            <TooltipTrigger asChild>
-                               <Button variant="outline" onClick={handleOpenExportModal}>
-                                    <Share2 className="mr-2 h-4 w-4" />
-                                    Export
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Share this list with another device via a link or QR code.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')}>
-                                      <LayoutGrid className="h-5 w-5"/>
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Grid View</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')}>
-                                      <List className="h-5 w-5"/>
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>List View</p>
-                                </TooltipContent>
-                              </Tooltip>
-                          </div>
-                           <AlertDialog>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="icon">
-                                        <Trash2 className="h-5 w-5" />
+                          <div className="flex items-center gap-1">
+                            <Select value={sortConfig} onValueChange={setSortConfig}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <SelectTrigger className="w-full sm:w-[150px]">
+                                        <SelectValue placeholder="Sort by..." />
+                                    </SelectTrigger>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Change the sort order of the product list.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <SelectContent>
+                                    <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
+                                    <SelectItem value="stockQuantity-desc">Stock (High to Low)</SelectItem>
+                                    <SelectItem value="stockQuantity-asc">Stock (Low to High)</SelectItem>
+                                    <SelectItem value="price-desc">Price (High to Low)</SelectItem>
+                                    <SelectItem value="price-asc">Price (Low to High)</SelectItem>
+                                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant={layout === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('grid')} className="h-8 w-8">
+                                        <LayoutGrid className="h-5 w-5"/>
                                     </Button>
-                                  </AlertDialogTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Clear all items from the list.</p>
-                                </TooltipContent>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Grid View</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant={layout === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setLayout('list')} className="h-8 w-8">
+                                        <List className="h-5 w-5"/>
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>List View</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <Tooltip>
+                              <TooltipTrigger asChild>
+                                 <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleOpenExportModal}>
+                                      <Share2 className="h-4 w-4" />
+                                  </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Share this list with another device via a link or QR code.</p>
+                              </TooltipContent>
                             </Tooltip>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action will permanently clear your entire picking list. This cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleResetList}>Clear List</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                             <AlertDialog>
+                              <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="destructive" size="icon" className="h-9 w-9">
+                                          <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Clear all items from the list.</p>
+                                  </TooltipContent>
+                              </Tooltip>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action will permanently clear your entire picking list. This cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleResetList}>Clear List</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                       </div>
                   </div>
               </div>
@@ -812,15 +820,22 @@ export default function PickingListClient() {
               {isLoading && skeletons}
             </div>
           ) : !isLoading && products.length > 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                  <p>No products match your filter.</p>
-              </div>
+              <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+                <CardContent className="p-12 text-center text-muted-foreground">
+                    <PackageSearch className="mx-auto h-16 w-16 mb-4" />
+                    <h3 className="text-xl font-semibold text-foreground">No Matches Found</h3>
+                    <p>No products in your list match the filter "{filterQuery}".</p>
+                    <Button variant="link" onClick={() => setFilterQuery('')}>Clear filter</Button>
+                </CardContent>
+              </Card>
           ) : !isLoading && form.formState.isSubmitted ? (
-              <div className="text-center py-16 text-muted-foreground">
-                  <PackageSearch className="mx-auto h-16 w-16 mb-4" />
-                  <h3 className="text-xl font-semibold">No Products Found</h3>
-                  <p>We couldn't find any products for the SKUs you entered.</p>
-              </div>
+               <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+                <CardContent className="p-12 text-center text-muted-foreground">
+                    <PackageSearch className="mx-auto h-16 w-16 mb-4" />
+                    <h3 className="text-xl font-semibold text-foreground">No Products Found</h3>
+                    <p>We couldn't find any products for the SKUs you entered.</p>
+                </CardContent>
+              </Card>
           ) : null}
         </TooltipProvider>
       </main>
