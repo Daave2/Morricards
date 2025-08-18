@@ -32,18 +32,21 @@ export async function productChatFlow(input: ProductChatInput): Promise<ProductC
     input: {
       schema: z.object({
         productData: z.custom<FetchMorrisonsDataOutput[0]>(),
-        messages: z.custom<ChatMessage[]>(),
+        messages: z.array(z.object({
+          role: z.enum(['user', 'model']),
+          content: z.string(),
+        })),
       }),
     },
     output: { schema: z.object({ response: z.string() }) },
+    messages: [
+      ...messages,
+    ]
   });
 
   const llmResponse = await prompt({
     productData,
-    messages: messages.map(msg => ({
-      role: msg.role,
-      content: [{ text: msg.content }],
-    })),
+    messages,
   });
   
   const output = llmResponse.output || { response: "I'm sorry, I couldn't generate a response." };
