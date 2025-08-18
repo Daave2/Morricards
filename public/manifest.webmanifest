@@ -2,6 +2,10 @@
   "name": "MorriCards",
   "short_name": "MorriCards",
   "description": "Your friendly shopping assistant.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f5e9",
+  "theme_color": "#f7f5e9",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -14,9 +18,20 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#f7f5e9",
-  "background_color": "#f7f5e9",
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "portrait"
+  "screenshots": [
+    {
+      "src": "/screenshots/home-800x450.png",
+      "sizes": "800x450",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Picking List"
+    },
+    {
+      "src": "/screenshots/scan-390x844.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Scanning Interface"
+    }
+  ]
 }
