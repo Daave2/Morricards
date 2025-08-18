@@ -8,7 +8,7 @@
  */
 
 import type { components } from '../morrisons-types';
-import type { StockOrder, Order } from '../morrisons-types';
+import type { StockOrder, Order as MorrisonsOrder } from '../morrisons-types';
 
 const API_KEY = '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
 
@@ -16,9 +16,9 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
-const BASE_PRODUCT_PROXY = '/api/morrisons/product'; // Use internal proxy
+const BASE_PRODUCT_PROXY = '/api/morrisons/product'; // Use internal proxy for client-side if needed
 
-export type { Order };
+export type Order = MorrisonsOrder;
 
 type Product = components['schemas']['Product'];
 type PriceIntegrity = components['schemas']['PriceIntegrity'];
@@ -153,44 +153,21 @@ async function fetchJson<T>(
 
 // ─────────────────────────── endpoint wrappers ────────────────────────────
 
-// Reusable logic to fetch from the main Product API
+// Reusable logic to fetch from the main Product API, now callable from server actions directly.
 export async function getProductDirectly(
   sku: string,
   bearerToken?: string,
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
   
-  // Construct absolute URL for server-side fetch
-  const siteUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-      : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-
-  const url = `${siteUrl}${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
+  const url = `https://api.morrisons.com/product/v1/items/${encodeURIComponent(sku)}?apikey=${API_KEY}`;
   
   try {
-    const res = await fetch(url, {
-      headers: { 
-        'Accept': 'application/json',
-        ...(bearerToken && { 'Authorization': `Bearer ${bearerToken}`})
-      }
-    });
-
-    if (!res.ok) {
-        const errorBody = await res.text().catch(() => '');
-        let errorMessage;
-        try {
-          // Try to parse the error for a more specific message
-          const errorJson = JSON.parse(errorBody);
-          errorMessage = `Failed to fetch from proxy for SKU ${sku} (${res.status}): ${errorJson.details || errorJson.error}`;
-        } catch {
-          errorMessage = `Failed to fetch from proxy for SKU ${sku} (${res.status}): ${errorBody}`;
-        }
-        return { product: null, error: errorMessage };
+    const product = await fetchJson<Product>(url, { bearer: bearerToken, preferBearer: true });
+    if (!product) {
+       return { product: null, error: `Product not found for SKU ${sku}` };
     }
-
-    const data = await res.json();
-    return { product: data, error: null };
-
+    return { product, error: null };
   } catch (error) {
     const errorMessage = `Error in getProductDirectly for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
     return { product: null, error: errorMessage };
@@ -302,7 +279,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             // Correctly merge data, giving priority to the richer `productDetailsFromProxy` object.
             const finalProductDetails: Product = {
               ...(pi?.product || {}),
-              ...(productDetailsFromProxy || {}),
+              ...productDetailsFromProxy,
             };
 
             if (Object.keys(finalProductDetails).length === 0) {
