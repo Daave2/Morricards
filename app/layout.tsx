@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: 'Your friendly shopping assistant.',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/icons/icon-192x192.png',
-    apple: '/icons/icon-192x192.png',
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
   },
 };
 
