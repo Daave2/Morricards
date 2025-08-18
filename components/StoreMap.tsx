@@ -79,7 +79,7 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
         }
 
         .zone[data-type="chilled"] rect { fill: hsl(var(--primary) / 0.1); }
-        .zone[data-type="grocery"] rect { fill: hsl(var(--accent) / 0.2); }
+        .zone[data-type="grocery"] rect { fill: hsl(var(--primary) / 0.15); }
         .zone[data-type="household"] rect { fill: hsl(var(--chart-4) / 0.2); }
         .zone[data-type="alcohol"] rect { fill: hsl(var(--secondary) / 0.8); }
         .zone[data-type="bev"] rect { fill: hsl(var(--chart-2) / 0.2); }
