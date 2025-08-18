@@ -7,8 +7,8 @@
  * - Optional Product via your own server proxy (to get packComponents, etc).
  */
 
-import type { components, Order } from '../morrisons-types';
-import type { StockOrder } from '../morrisons-types';
+import type { components } from '../morrisons-types';
+import type { StockOrder, Order } from '../morrisons-types';
 
 const API_KEY = '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
 
@@ -297,11 +297,11 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             if (debugMode && proxyError) console.error(proxyError);
 
 
-            // Merge data, giving priority to the richer `productDetailsFromProxy` object.
+            // Correctly merge data, giving priority to the richer `productDetailsFromProxy` object.
             const finalProductDetails = {
-              ...(pi?.product || {}),
-              ...(productDetailsFromProxy || {}),
-            } as Product; // Assert as the correct type
+              ...pi?.product,
+              ...productDetailsFromProxy,
+            } as Product;
 
             if (Object.keys(finalProductDetails).length === 0) {
               throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
