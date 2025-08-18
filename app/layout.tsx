@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   title: 'MorriCards',
   description: 'Your friendly shopping assistant.',
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icons/icon-192x192.png',
+    apple: '/icons/icon-192x192.png',
+  },
 };
 
 export const viewport: Viewport = {
