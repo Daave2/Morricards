@@ -306,6 +306,13 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             if (Object.keys(finalProductDetails).length === 0) {
               throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
             }
+            
+            const mainImage = finalProductDetails?.imageUrl?.[0]?.url;
+
+            // Ensure the imageUrl on the final object is an array, as per the Product type
+            if (mainImage && !Array.isArray(finalProductDetails.imageUrl)) {
+                finalProductDetails.imageUrl = [{ url: mainImage }];
+            }
 
             const stockPosition = stockPayload.status === 'fulfilled' ? stockPayload.value?.stockPosition?.[0] : undefined;
             const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
@@ -341,8 +348,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const promos = (pi?.promotions ?? []) as any[];
             
             const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
-            const imageUrl = finalProductDetails?.imageUrl?.[0]?.url;
-
+            
             return {
               sku: internalSku,
               scannedSku,
@@ -358,7 +364,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               weight: finalProductDetails?.dimensions?.weight,
               status: finalProductDetails?.status,
               stockSkuUsed: undefined,
-              imageUrl,
+              imageUrl: mainImage,
               walkSequence: walk,
               productDetails: finalProductDetails,
               lastStockChange: stockHistory.status === 'fulfilled' ? (stockHistory.value || undefined) : undefined,
