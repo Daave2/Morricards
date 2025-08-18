@@ -107,7 +107,7 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
         productName: product?.name ?? null,
         price: systemPrice,
         eanOrSku: product?.sku ?? null,
-        productSubName: product?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; '),
+        productSubName: product?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; ') ?? null,
         unitPrice: product?.price.regular && product?.weight ? `£${(product.price.regular / product.weight).toFixed(2)}` : null,
     }
 
