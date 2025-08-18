@@ -2,26 +2,26 @@
   "name": "MorriCards",
   "short_name": "MorriCards",
   "description": "Your friendly shopping assistant.",
-  "id": "/",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#A020F0",
+  "background_color": "#f7f5e9",
+  "theme_color": "#4d8a4d",
+  "id": "/",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192-maskable.png",
+      "src": "icons/icon-192-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-512-maskable.png",
+      "src": "icons/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -30,17 +30,17 @@
   "screenshots": [
     {
       "src": "/screenshots/screenshot-desktop.png",
-      "sizes": "1280x720",
+      "sizes": "2376x1458",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "MorriCards on Desktop"
+      "label": "Picking list view on desktop."
     },
     {
       "src": "/screenshots/screenshot-mobile.png",
-      "sizes": "540x720",
+      "sizes": "719x1600",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "MorriCards on Mobile"
+      "label": "Scanning view on mobile."
     }
   ]
 }
