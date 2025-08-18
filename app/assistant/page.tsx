@@ -18,7 +18,8 @@ import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morris
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { productInsightsFlow, ProductInsightsOutput } from '@/ai/flows/product-insights-flow';
-import { productChatFlow, ProductChatInput } from '@/ai/flows/product-chat-flow';
+import { productChatFlow } from '@/ai/flows/product-chat-flow';
+import type { ProductChatInput } from '@/ai/flows/product-chat-types';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
@@ -619,3 +620,5 @@ export default function AssistantPage() {
     </>
   );
 }
+
+    
