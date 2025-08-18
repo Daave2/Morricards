@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
@@ -54,6 +54,7 @@ import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import type { AvailabilityReason } from '@/lib/idb';
+import AppHeader from '@/components/AppHeader';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -696,7 +697,7 @@ export default function AvailabilityPage() {
                   <div className="space-y-4">
                     <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
                         <Image
-                          src={productForModal.imageUrl || `https://placehold.co/100x100.png`}
+                          src={(productForModal.imageUrl && productForModal.imageUrl.trim() !== '') ? productForModal.imageUrl : `https://placehold.co/100x100.png`}
                           alt={productForModal.name}
                           width={80}
                           height={80}
@@ -980,3 +981,5 @@ export default function AvailabilityPage() {
     </>
   );
 }
+
+    
