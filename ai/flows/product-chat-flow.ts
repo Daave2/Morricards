@@ -32,21 +32,20 @@ export async function productChatFlow(input: ProductChatInput): Promise<ProductC
     input: {
       schema: z.object({
         productData: z.custom<FetchMorrisonsDataOutput[0]>(),
-        messages: z.array(z.object({
-          role: z.enum(['user', 'model']),
-          content: z.string(),
-        })),
       }),
     },
     output: { schema: z.object({ response: z.string() }) },
+    // Convert the simple chat history into the format Genkit expects.
     messages: [
-      ...messages,
+      ...messages.map(msg => ({
+        role: msg.role,
+        content: [{ text: msg.content }],
+      })),
     ]
   });
 
   const llmResponse = await prompt({
     productData,
-    messages,
   });
   
   const output = llmResponse.output || { response: "I'm sorry, I couldn't generate a response." };
