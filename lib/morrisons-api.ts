@@ -160,10 +160,12 @@ export async function getProductDirectly(
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
   
-  // This now uses a relative path, which is fine for client-side fetching to an API route.
-  // For server-to-server calls (like in a Server Action), this would need to be an absolute URL
-  // or the logic would need to be called directly.
-  const url = `${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
+  // Construct absolute URL for server-side fetch
+  const siteUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
+      : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+  const url = `${siteUrl}${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
   
   try {
     const res = await fetch(url, {
@@ -298,21 +300,18 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
 
             // Correctly merge data, giving priority to the richer `productDetailsFromProxy` object.
-            const finalProductDetails = {
-              ...pi?.product,
-              ...productDetailsFromProxy,
-            } as Product;
+            const finalProductDetails: Product = {
+              ...(pi?.product || {}),
+              ...(productDetailsFromProxy || {}),
+            };
 
             if (Object.keys(finalProductDetails).length === 0) {
               throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
             }
             
-            const mainImage = finalProductDetails?.imageUrl?.[0]?.url;
-
-            // Ensure the imageUrl on the final object is an array, as per the Product type
-            if (mainImage && !Array.isArray(finalProductDetails.imageUrl)) {
-                finalProductDetails.imageUrl = [{ url: mainImage }];
-            }
+            const mainImage = Array.isArray(finalProductDetails?.imageUrl) && finalProductDetails.imageUrl.length > 0
+              ? finalProductDetails.imageUrl[0]?.url
+              : undefined;
 
             const stockPosition = stockPayload.status === 'fulfilled' ? stockPayload.value?.stockPosition?.[0] : undefined;
             const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
