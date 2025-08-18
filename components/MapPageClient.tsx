@@ -11,17 +11,23 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Map, Search } from 'lucide-react';
+import { Loader2, Map, Search, BrainCircuit } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
+import { Separator } from '@/components/ui/separator';
+import { findAisleForProduct } from '@/ai/flows/aisle-finder-flow';
 
-const FormSchema = z.object({
+const SkuFormSchema = z.object({
   sku: z.string().min(1, { message: 'SKU or EAN is required.' }),
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
+});
+
+const AisleFormSchema = z.object({
+  productCategory: z.string().min(2, { message: 'Please enter a product to find.' }),
 });
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -50,23 +56,31 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
 
 
 export default function MapPageClient() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSkuLoading, setIsSkuLoading] = useState(false);
+  const [isAisleLoading, setIsAisleLoading] = useState(false);
   const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
+  const [highlightedAisle, setHighlightedAisle] = useState<string | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
   const searchParams = useSearchParams();
 
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
+  const skuForm = useForm<z.infer<typeof SkuFormSchema>>({
+    resolver: zodResolver(SkuFormSchema),
     defaultValues: { sku: '', locationId: '218' },
   });
 
-  const onSubmit = async (values: z.infer<typeof FormSchema>) => {
-    setIsLoading(true);
+  const aisleForm = useForm<z.infer<typeof AisleFormSchema>>({
+    resolver: zodResolver(AisleFormSchema),
+    defaultValues: { productCategory: '' },
+  });
+
+  const onSkuSubmit = async (values: z.infer<typeof SkuFormSchema>) => {
+    setIsSkuLoading(true);
     setProductLocation(null);
     setProduct(null);
+    setHighlightedAisle(null);
 
     const { data, error } = await getProductData({
       locationId: values.locationId,
@@ -77,7 +91,7 @@ export default function MapPageClient() {
 
 
     if (error || !data || data.length === 0) {
-      setIsLoading(false);
+      setIsSkuLoading(false);
       toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for: ${values.sku}` });
     } else {
       const foundProduct = data[0];
@@ -90,7 +104,29 @@ export default function MapPageClient() {
       } else {
          toast({ variant: 'destructive', title: 'Location Data Missing', description: `Could not parse location string: "${foundProduct.location.standard}"` });
       }
-      setIsLoading(false);
+      setIsSkuLoading(false);
+    }
+  };
+
+  const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>) => {
+    setIsAisleLoading(true);
+    setProductLocation(null);
+    setProduct(null);
+    setHighlightedAisle(null);
+
+    try {
+      const result = await findAisleForProduct({ productCategory: values.productCategory });
+      if (result.bestAisleId) {
+        setHighlightedAisle(result.bestAisleId);
+        toast({ title: 'Aisle Found!', description: `AI suggests this is the best aisle for ${values.productCategory}.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Aisle Not Found', description: `The AI could not determine an aisle for ${values.productCategory}.` });
+      }
+    } catch (e) {
+        const error = e instanceof Error ? e.message : String(e);
+        toast({ variant: 'destructive', title: 'AI Error', description: `An error occurred: ${error}` });
+    } finally {
+        setIsAisleLoading(false);
     }
   };
 
@@ -99,9 +135,9 @@ export default function MapPageClient() {
     const locationId = searchParams.get('locationId');
 
     if (sku && locationId) {
-      form.setValue('sku', sku);
-      form.setValue('locationId', locationId);
-      onSubmit({ sku, locationId });
+      skuForm.setValue('sku', sku);
+      skuForm.setValue('locationId', locationId);
+      onSkuSubmit({ sku, locationId });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -114,19 +150,49 @@ export default function MapPageClient() {
             <div className="space-y-8">
               <div className="sticky top-20">
                 <Card className="shadow-md">
-                  <CardHeader>
+                   <CardHeader>
                       <CardTitle>Find a Product</CardTitle>
-                      <CardDescription>Enter a product SKU or EAN to see its precise location.</CardDescription>
+                      <CardDescription>Use AI to find an aisle, or enter a product SKU to find its exact spot.</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <CardContent className="space-y-6">
+                    <Form {...aisleForm}>
+                      <form onSubmit={aisleForm.handleSubmit(onAisleSubmit)} className="space-y-4">
+                         <FormField
+                          control={aisleForm.control}
+                          name="productCategory"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Find by Category (AI)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., Ketchup, Dog Food" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="submit"
+                          className="w-full"
+                          disabled={isAisleLoading}
+                        >
+                          {isAisleLoading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <BrainCircuit className="mr-2 h-4 w-4" />
+                          )}
+                          Find Aisle with AI
+                        </Button>
+                      </form>
+                    </Form>
+                    <Separator />
+                    <Form {...skuForm}>
+                      <form onSubmit={skuForm.handleSubmit(onSkuSubmit)} className="space-y-4">
                         <FormField
-                          control={form.control}
+                          control={skuForm.control}
                           name="sku"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>SKU or EAN</FormLabel>
+                              <FormLabel>Find by SKU/EAN</FormLabel>
                               <FormControl>
                                 <Input placeholder="Enter product number..." {...field} />
                               </FormControl>
@@ -135,7 +201,7 @@ export default function MapPageClient() {
                           )}
                         />
                         <FormField
-                          control={form.control}
+                          control={skuForm.control}
                           name="locationId"
                           render={({ field }) => (
                             <FormItem>
@@ -150,14 +216,15 @@ export default function MapPageClient() {
                         <Button
                           type="submit"
                           className="w-full"
-                          disabled={isLoading}
+                          variant="secondary"
+                          disabled={isSkuLoading}
                         >
-                          {isLoading ? (
+                          {isSkuLoading ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
                             <Search className="mr-2 h-4 w-4" />
                           )}
-                          Find Product
+                          Find Exact Location
                         </Button>
                       </form>
                     </Form>
@@ -165,7 +232,7 @@ export default function MapPageClient() {
                 </Card>
               </div>
 
-              {isLoading && (
+              {isSkuLoading && (
                   <Card className="shadow-lg animate-pulse">
                       <CardHeader className="flex flex-row items-start gap-4">
                           <div className="w-[80px] h-[80px] bg-muted rounded-lg"/>
@@ -181,7 +248,7 @@ export default function MapPageClient() {
               )}
 
               {product && productLocation && (
-                <div className="sticky top-[26.5rem]">
+                <div className="sticky top-[36rem]">
                   <Card className="shadow-lg animate-in fade-in-50">
                     <CardHeader className="flex flex-row items-start gap-4">
                       <Image
@@ -213,7 +280,7 @@ export default function MapPageClient() {
           </div>
 
           <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto">
-              <StoreMap productLocation={productLocation} />
+              <StoreMap productLocation={productLocation} highlightedAisle={highlightedAisle} />
           </div>
         </div>
 

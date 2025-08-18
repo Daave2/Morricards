@@ -10,46 +10,48 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { storeLayout } from '@/lib/map-data';
 
 const AisleFinderInputSchema = z.object({
   productCategory: z
     .string()
-    .describe('The category of the product to be located, e.g., "Chilled Foods" or "Confectionery, Snacks & Biscuits".'),
-  aisleNames: z
-    .array(z.string())
-    .describe('A list of all available aisle and zone names in the store.'),
+    .describe('The category or name of the product to be located, e.g., "Ketchup" or "Dog Food".'),
 });
 export type AisleFinderInput = z.infer<typeof AisleFinderInputSchema>;
 
 const AisleFinderOutputSchema = z.object({
-  bestAisleName: z
+  bestAisleId: z
     .string()
     .nullable()
-    .describe('The single best matching aisle name from the provided list, or null if no logical match is found.'),
+    .describe('The single best matching aisle ID from the available aisles (e.g., "25"), or null if no logical match is found.'),
 });
 export type AisleFinderOutput = z.infer<typeof AisleFinderOutputSchema>;
 
 
 export async function findAisleForProduct(input: AisleFinderInput): Promise<AisleFinderOutput> {
+  const allAisles = storeLayout.aisles.map(a => ({ id: a.id, name: a.label }));
+
   const prompt = ai.definePrompt({
     name: 'aisleFinderPrompt',
     input: { schema: AisleFinderInputSchema },
     output: { schema: AisleFinderOutputSchema },
-    prompt: `You are an expert store layout planner. Your task is to find the single best location for a product based on its category.
+    prompt: `You are an expert UK supermarket store layout planner. Your task is to find the single best aisle ID for a product based on its name or category.
 
-Analyze the product category and the list of available store aisle names. Return only the single most logical aisle name from the list.
+Analyze the user's query and the list of available store aisle names with their corresponding IDs. Return only the single most logical aisle *ID* from the list.
 
-For example, if the product category is 'Chilled Foods' and the aisle list contains 'Cheese', 'Dairy', and 'Butter', you might determine 'Cheese' is the most specific and best fit, so you would return "Cheese".
-If the product category is 'Confectionery, Snacks & Biscuits', and the list contains 'Sweets', 'Biscuits', 'Crisps', you might return "Sweets" or "Biscuits".
+For example, if the user asks for 'Ketchup' and the aisle list contains {id: "25", name: "Canned food"}, you should determine that sauces are usually in the canned food aisle and return "25".
+If the user asks for 'Dog Food', and the list contains {id: "12", name: "Dog"}, you should return "12".
 
-Product Category:
-{{productCategory}}
+User's Product Query:
+"{{productCategory}}"
 
-Available Aisle Names:
-{{{json aisleNames}}}
+Available Aisles (ID and Name):
+\`\`\`json
+{{{json allAisles}}}
+\`\`\`
 `,
   });
 
-  const { output } = await prompt(input);
+  const { output } = await prompt({ ...input, allAisles });
   return output!;
 }

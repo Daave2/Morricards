@@ -12,9 +12,10 @@ export interface ProductLocation {
 
 interface StoreMapProps {
   productLocation?: ProductLocation | null;
+  highlightedAisle?: string | null;
 }
 
-const StoreMap = ({ productLocation }: StoreMapProps) => {
+const StoreMap = ({ productLocation, highlightedAisle }: StoreMapProps) => {
     const { meta, aisles, layout } = storeLayout;
 
     const itemPosition = useMemo(() => {
@@ -77,6 +78,15 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
             fill: hsl(var(--muted-foreground)); 
             letter-spacing: .2px; 
         }
+        
+        .zone.highlighted rect {
+            stroke: hsl(var(--primary));
+            stroke-width: 3;
+            fill: hsl(var(--primary) / 0.3);
+        }
+        .zone.highlighted text {
+            fill: hsl(var(--primary-foreground));
+        }
 
         .zone[data-type="chilled"] rect { fill: hsl(var(--primary) / 0.1); }
         .zone[data-type="grocery"] rect { fill: hsl(var(--primary) / 0.15); }
@@ -112,9 +122,11 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
 
                 const textX = x + width/2;
                 const textY = y + height/2;
+                
+                const isHighlighted = highlightedAisle === aisle.id;
 
                 return (
-                    <g key={aisle.id} className="zone" data-name={aisle.label} data-type={aisle.type}>
+                    <g key={aisle.id} className={`zone ${isHighlighted ? 'highlighted' : ''}`} data-name={aisle.label} data-type={aisle.type}>
                         <rect 
                             x={x} 
                             y={y} 
@@ -155,5 +167,3 @@ const StoreMap = ({ productLocation }: StoreMapProps) => {
 };
 
 export default StoreMap;
-
-    
