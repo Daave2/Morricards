@@ -719,7 +719,7 @@ export default function PickingListClient() {
                             <TooltipContent>
                               <p>Use your device's camera to scan and pick items from the list.</p>
                             </TooltipContent>
-                          </Tooltip>
+                           </Tooltip>
                           <div className="flex items-center gap-1">
                             <Select value={sortConfig} onValueChange={setSortConfig}>
                                 <Tooltip>
