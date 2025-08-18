@@ -671,10 +671,12 @@ export default function AvailabilityPage() {
                     onResult={(text) => handleScanSuccess(text)} 
                     onError={handleScanError} 
                 />
-                 <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
+            </div>
+            <div className="mt-4 w-full max-w-md">
+                <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
                     {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
                     {isOcrLoading ? 'Reading...' : 'Read with AI'}
-                 </Button>
+                </Button>
             </div>
              <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
                 <X className="h-6 w-6" />
@@ -684,133 +686,134 @@ export default function AvailabilityPage() {
       
        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
         <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>{editingItem ? 'Edit Report' : 'Report Item'}</DialogTitle>
+              <DialogDescription>
+                {editingItem ? 'Update the reason for reporting this item.' : 'Select a reason for reporting this item. This will be sent to the supply chain team.'}
+              </DialogDescription>
+            </DialogHeader>
           <Form {...reasonForm}>
             <form onSubmit={reasonForm.handleSubmit(handleReasonSubmit)} className="space-y-4">
-              <DialogHeader>
-                <DialogTitle>{editingItem ? 'Edit Report' : 'Report Item'}</DialogTitle>
-                <DialogDescription>
-                  {editingItem ? 'Update the reason for reporting this item.' : 'Select a reason for reporting this item. This will be sent to the supply chain team.'}
-                </DialogDescription>
-              </DialogHeader>
-
-                {productForModal && (
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
-                        <Image
-                          src={(productForModal.imageUrl && productForModal.imageUrl.trim() !== '') ? productForModal.imageUrl : `https://placehold.co/100x100.png`}
-                          alt={productForModal.name}
-                          width={80}
-                          height={80}
-                          className="rounded-md object-cover flex-shrink-0"
-                          data-ai-hint="product image"
-                        />
-                        <div className="text-sm space-y-1 flex-grow min-w-0">
-                          <p className="font-bold break-words">{productForModal.name}</p>
-                           {productForModal.price.promotional && (
-                              <div className="pt-1">
-                                <Badge variant="destructive" className="bg-accent text-accent-foreground">{productForModal.price.promotional}</Badge>
-                              </div>
-                            )}
-                          <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{productForModal.stockQuantity}</span></p>
-                          <div>Location: <span className="font-semibold">{productForModal.location.standard || 'N/A'}</span></div>
-                          {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
-                           <DeliveryInfoRow deliveryInfo={productForModal.deliveryInfo} allOrders={productForModal.allOrders} productName={productForModal.name} />
+                <div className="space-y-4 pr-2 -mr-2 max-h-[calc(80vh-150px)] overflow-y-auto">
+                    {productForModal && (
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
+                            <Image
+                              src={(productForModal.imageUrl && productForModal.imageUrl.trim() !== '') ? productForModal.imageUrl : `https://placehold.co/100x100.png`}
+                              alt={productForModal.name}
+                              width={80}
+                              height={80}
+                              className="rounded-md object-cover flex-shrink-0"
+                              data-ai-hint="product image"
+                            />
+                            <div className="text-sm space-y-1 flex-grow min-w-0">
+                              <p className="font-bold break-words">{productForModal.name}</p>
+                               {productForModal.price.promotional && (
+                                  <div className="pt-1">
+                                    <Badge variant="destructive" className="bg-accent text-accent-foreground">{productForModal.price.promotional}</Badge>
+                                  </div>
+                                )}
+                              <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{productForModal.stockQuantity}</span></p>
+                              <div>Location: <span className="font-semibold">{productForModal.location.standard || 'N/A'}</span></div>
+                              {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
+                               <DeliveryInfoRow deliveryInfo={productForModal.deliveryInfo} allOrders={productForModal.allOrders} productName={productForModal.name} />
+                            </div>
                         </div>
-                    </div>
-                    <div className="px-4 space-y-3 text-xs text-muted-foreground max-h-[60vh] overflow-y-auto">
-                        <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
-                        <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.productDetails.legacyItemNumbers} />
-                        <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
+                        <div className="px-1 space-y-3 text-xs text-muted-foreground">
+                            <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
+                            <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.productDetails.legacyItemNumbers} />
+                            <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
 
-                        <div className="flex justify-center py-2">
-                          <SkuQrCode sku={productForModal.sku} />
+                            <div className="flex justify-center py-2">
+                              <SkuQrCode sku={productForModal.sku} />
+                            </div>
+
+                            <Accordion type="single" collapsible className="w-full">
+                              <AccordionItem value="stock">
+                                 <AccordionTrigger className='py-2 text-xs font-semibold'>Stock & Logistics</AccordionTrigger>
+                                 <AccordionContent className="space-y-3 pt-2">
+                                    {productForModal.lastStockChange?.lastCountDateTime && (
+                                        <DataRow
+                                            icon={<History />}
+                                            label="Last Stock Event"
+                                            value={`${productForModal.lastStockChange.inventoryAction} of ${productForModal.lastStockChange.qty} by ${productForModal.lastStockChange.createdBy} at ${productForModal.lastStockChange.lastCountDateTime}`}
+                                        />
+                                      )}
+                                     <DataRow icon={<Layers />} label="Storage" value={productForModal.productDetails.storage?.join(', ')} />
+                                     <DataRow icon={<Layers />} label="Pack Info" value={productForModal.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
+                                     <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={productForModal.productDetails.productLife ? `${productForModal.productDetails.productLife.minimumCPCAcceptanceLife} / ${productForModal.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
+                                     <DataRow icon={<Flag />} label="Perishable" value={productForModal.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
+                                     <DataRow icon={<Flag />} label="Manual Order" value={productForModal.productDetails.manuallyStoreOrderedItem} />
+                                 </AccordionContent>
+                              </AccordionItem>
+                              {productForModal.productDetails.commercialHierarchy && (
+                                 <AccordionItem value="classification">
+                                    <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
+                                    <AccordionContent className="pt-2">
+                                       <p className="text-xs">
+                                            {productForModal.productDetails.commercialHierarchy.divisionName} &rarr; {productForModal.productDetails.commercialHierarchy.groupName} &rarr; {productForModal.productDetails.commercialHierarchy.className} &rarr; {productForModal.productDetails.commercialHierarchy.subclassName}
+                                        </p>
+                                    </AccordionContent>
+                                 </AccordionItem>
+                              )}
+                            </Accordion>
+                             <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-full mt-2"
+                                onClick={handleCopyRawData}
+                              >
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy Raw Data
+                              </Button>
                         </div>
-
-                        <Accordion type="single" collapsible className="w-full">
-                          <AccordionItem value="stock">
-                             <AccordionTrigger className='py-2 text-xs font-semibold'>Stock & Logistics</AccordionTrigger>
-                             <AccordionContent className="space-y-3 pt-2">
-                                {productForModal.lastStockChange?.lastCountDateTime && (
-                                    <DataRow
-                                        icon={<History />}
-                                        label="Last Stock Event"
-                                        value={`${productForModal.lastStockChange.inventoryAction} of ${productForModal.lastStockChange.qty} by ${productForModal.lastStockChange.createdBy} at ${productForModal.lastStockChange.lastCountDateTime}`}
-                                    />
-                                  )}
-                                 <DataRow icon={<Layers />} label="Storage" value={productForModal.productDetails.storage?.join(', ')} />
-                                 <DataRow icon={<Layers />} label="Pack Info" value={productForModal.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
-                                 <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={productForModal.productDetails.productLife ? `${productForModal.productDetails.productLife.minimumCPCAcceptanceLife} / ${productForModal.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
-                                 <DataRow icon={<Flag />} label="Perishable" value={productForModal.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
-                                 <DataRow icon={<Flag />} label="Manual Order" value={productForModal.productDetails.manuallyStoreOrderedItem} />
-                             </AccordionContent>
-                          </AccordionItem>
-                          {productForModal.productDetails.commercialHierarchy && (
-                             <AccordionItem value="classification">
-                                <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
-                                <AccordionContent className="pt-2">
-                                   <p className="text-xs">
-                                        {productForModal.productDetails.commercialHierarchy.divisionName} &rarr; {productForModal.productDetails.commercialHierarchy.groupName} &rarr; {productForModal.productDetails.commercialHierarchy.className} &rarr; {productForModal.productDetails.commercialHierarchy.subclassName}
-                                    </p>
-                                </AccordionContent>
-                             </AccordionItem>
-                          )}
-                        </Accordion>
-                         <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="w-full mt-2"
-                            onClick={handleCopyRawData}
-                          >
-                            <Copy className="mr-2 h-4 w-4" />
-                            Copy Raw Data
-                          </Button>
-                    </div>
-                  </div>
-              )}
-              
-              <div className="px-6 space-y-4 pt-4">
-                <FormField
-                  control={reasonForm.control}
-                  name="reason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reason</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a reason..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="No Stock">No Stock</SelectItem>
-                          <SelectItem value="Low Stock">Low Stock</SelectItem>
-                          <SelectItem value="Early Sellout">Early Sellout</SelectItem>
-                          <SelectItem value="Too Much Stock">Too Much Stock</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                      </div>
                   )}
-                />
-
-                {watchedReason === 'Other' && (
+                  
+                  <div className="space-y-4 pt-4">
                     <FormField
                       control={reasonForm.control}
-                      name="comment"
+                      name="reason"
                       render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Comment</FormLabel>
-                              <FormControl>
-                                  <Textarea placeholder="Please provide more details..." {...field} />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
+                        <FormItem>
+                          <FormLabel>Reason</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a reason..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="No Stock">No Stock</SelectItem>
+                              <SelectItem value="Low Stock">Low Stock</SelectItem>
+                              <SelectItem value="Early Sellout">Early Sellout</SelectItem>
+                              <SelectItem value="Too Much Stock">Too Much Stock</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
-                )}
-              </div>
+
+                    {watchedReason === 'Other' && (
+                        <FormField
+                          control={reasonForm.control}
+                          name="comment"
+                          render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel>Comment</FormLabel>
+                                  <FormControl>
+                                      <Textarea placeholder="Please provide more details..." {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )}
+                        />
+                    )}
+                  </div>
+                </div>
 
               <DialogFooter>
                 <Button type="submit">{editingItem ? 'Update Report' : 'Add to Report'}</Button>
