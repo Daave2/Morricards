@@ -16,6 +16,7 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
+const BASE_PRODUCT = 'https://api.morrisons.com/product/v1/items';
 
 export type Order = MorrisonsOrder;
 
@@ -146,29 +147,22 @@ async function fetchJson<T>(
 
 // ─────────────────────────── endpoint wrappers ────────────────────────────
 // Reusable logic to fetch from the main Product API, now callable from server actions directly.
-export async function getProductDirectly(
+export async function fetchProductFromUpstream(
   sku: string,
-  bearerToken?: string,
+  bearerToken?: string
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
-
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const host = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.NEXT_PUBLIC_SITE_URL || 'localhost:3000';
-  const url = `${protocol}://${host}/api/morrisons/product?sku=${encodeURIComponent(sku)}`;
-
+  
+  const url = `${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${API_KEY}`;
+  
   try {
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${bearerToken || ''}` } });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `API responded with status ${res.status}` }));
-        return { product: null, error: err.error || err.details || `Failed to fetch product for SKU ${sku}` };
-    }
-    const product = await res.json();
+    const product = await fetchJson<Product>(url, { bearer: bearerToken, preferBearer: true });
     if (!product) {
        return { product: null, error: `Product not found for SKU ${sku}` };
     }
     return { product, error: null };
   } catch (error) {
-    const errorMessage = `Error in getProductDirectly for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
+    const errorMessage = `Error in fetchProductFromUpstream for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
     return { product: null, error: errorMessage };
   }
 }
@@ -263,7 +257,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
                 stockHistory,
                 orderInfo,
             ] = await Promise.allSettled([
-                getProductDirectly(internalSku, bearerToken),
+                fetchProductFromUpstream(internalSku, bearerToken),
                 getStock(locationId, internalSku, bearerToken, debugMode),
                 getStockHistory(locationId, internalSku, bearerToken, debugMode),
                 getOrderInfo(locationId, internalSku, bearerToken, debugMode),
@@ -358,3 +352,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is Exclude<typeof r, { name: string; proxyError: string }> => 'name' in r && !r.name.startsWith('Error'));
 }
+// This can be used by a client-side component that needs the full product details
+// without going through the main `fetchMorrisonsData` aggregator.
+export { getProductDirectly } from '@/app/api/morrisons/product/route';
