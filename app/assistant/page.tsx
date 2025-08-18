@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,13 +13,11 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Send, User } from 'lucide-react';
+import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Send, User, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { productInsightsFlow, ProductInsightsOutput } from '@/ai/flows/product-insights-flow';
-import { productChatFlow } from '@/ai/flows/product-chat-flow';
-import type { ProductChatInput } from '@/ai/flows/product-chat-types';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
@@ -26,16 +25,16 @@ import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import SkuQrCode from '@/components/SkuQrCode';
+import { cn } from '@/lib/utils';
+
 
 type Product = FetchMorrisonsDataOutput[0];
-type ChatMessage = { role: 'user' | 'model'; content: string };
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
-});
-
-const ChatFormSchema = z.object({
-    message: z.string().min(1, { message: 'Message cannot be empty.' }),
 });
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
@@ -208,20 +207,17 @@ export default function AssistantPage() {
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
-  const [isChatting, setIsChatting] = useState(false);
-
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-
+  
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-
+  
   useEffect(() => {
     if (isScanMode) {
       scannerRef.current?.start();
@@ -230,29 +226,15 @@ export default function AssistantPage() {
     }
   }, [isScanMode]);
   
-  useEffect(() => {
-    chatContainerRef.current?.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-    });
-  }, [chatHistory]);
-
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: { locationId: '218' },
   });
 
-  const chatForm = useForm<z.infer<typeof ChatFormSchema>>({
-    resolver: zodResolver(ChatFormSchema),
-    defaultValues: { message: '' },
-  });
-
-
   const handleReset = () => {
     setProduct(null);
     setInsights(null);
     setProductLocation(null);
-    setChatHistory([]);
   }
 
   const handleScanSuccess = async (text: string) => {
@@ -292,7 +274,7 @@ export default function AssistantPage() {
       
       setIsGeneratingInsights(true);
       try {
-        const insightResult = await productInsightsFlow({ productData: foundProduct.productDetails });
+        const insightResult = await productInsightsFlow({ productData: foundProduct });
         setInsights(insightResult);
       } catch (e) {
         console.error("Insight generation failed:", e);
@@ -334,34 +316,9 @@ export default function AssistantPage() {
         setIsOcrLoading(false);
     }
   };
-
-  const handleChatSubmit = async (values: z.infer<typeof ChatFormSchema>) => {
-    if (!product) return;
-
-    const userMessage: ChatMessage = { role: 'user', content: values.message };
-    const newHistory = [...chatHistory, userMessage];
-    setChatHistory(newHistory);
-    chatForm.reset();
-    setIsChatting(true);
-    
-    try {
-      const chatInput: ProductChatInput = {
-        productData: product,
-        history: newHistory,
-      }
-      const result = await productChatFlow(chatInput);
-      const modelMessage: ChatMessage = { role: 'model', content: result.response };
-      setChatHistory(prev => [...prev, modelMessage]);
-    } catch (e) {
-      console.error("Chat flow failed", e);
-      toast({ variant: 'destructive', title: 'AI Chat Error', description: 'An error occurred during the conversation.' });
-      const errorMessage: ChatMessage = { role: 'model', content: "Sorry, I encountered an error. Please try again." };
-      setChatHistory(prev => [...prev, errorMessage]);
-    } finally {
-      setIsChatting(false);
-    }
-  };
-
+  
+  const bws = product?.productDetails?.beersWinesSpirits;
+  const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
 
   return (
     <div className="min-h-screen bg-background">
@@ -535,57 +492,143 @@ export default function AssistantPage() {
                             </div>
                         </div>
                         <Separator />
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-lg">Follow-up Questions</h3>
-                            <div ref={chatContainerRef} className="space-y-4 max-h-96 overflow-y-auto pr-4">
-                                {chatHistory.map((message, index) => (
-                                    <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                        {message.role === 'model' && (
-                                            <Avatar>
-                                                <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
-                                            </Avatar>
-                                        )}
-                                        <div className={`rounded-lg p-3 text-sm ${message.role === 'model' ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}>
-                                            <p>{message.content}</p>
-                                        </div>
-                                         {message.role === 'user' && (
-                                            <Avatar>
-                                                <AvatarFallback><User /></AvatarFallback>
-                                            </Avatar>
-                                        )}
+                        <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="w-full text-muted-foreground">
+                                    {isDetailsOpen ? 'Hide Full Details' : 'Show Full Details'}
+                                    <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isDetailsOpen && "rotate-180")} />
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <div className="border-t pt-4 mt-4 space-y-4 text-sm text-muted-foreground">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
+                                    <DataRow icon={<Info />} label="Status" value={product.status} />
+                                    <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers} />
+                                    <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
+                                    <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
+                                    <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
+                                    <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
+                                    <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
                                     </div>
-                                ))}
-                                {isChatting && (
-                                     <div className="flex items-start gap-3">
-                                        <Avatar>
-                                            <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
-                                        </Avatar>
-                                        <div className="rounded-lg p-3 text-sm bg-muted flex items-center gap-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            <span>Thinking...</span>
-                                        </div>
+                                    
+                                    <div className="flex justify-center py-2">
+                                    <SkuQrCode sku={product.sku} />
                                     </div>
-                                )}
-                            </div>
-                             <Form {...chatForm}>
-                                <form onSubmit={chatForm.handleSubmit(handleChatSubmit)} className="flex items-center gap-2">
-                                    <FormField
-                                    control={chatForm.control}
-                                    name="message"
-                                    render={({ field }) => (
-                                        <FormItem className="flex-grow">
-                                            <FormControl>
-                                                <Input placeholder="Ask a follow-up question..." {...field} disabled={isChatting} />
-                                            </FormControl>
-                                        </FormItem>
+                                    
+                                    <Accordion type="single" collapsible className="w-full text-xs">
+                                        <AccordionItem value="stock">
+                                            <AccordionTrigger className='py-2 font-semibold'>Stock & Logistics</AccordionTrigger>
+                                            <AccordionContent className="space-y-3 pt-2">
+                                            {product.lastStockChange?.lastCountDateTime && product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
+                                                <DataRow
+                                                    icon={<History />}
+                                                    label="Last Stock Event"
+                                                    value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
+                                                />
+                                                ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
+                                                <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
+                                                <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
+                                                <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
+                                                <DataRow icon={<Flag />} label="Perishable" value={product.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
+                                                <DataRow icon={<Flag />} label="Manual Order" value={product.productDetails.manuallyStoreOrderedItem} />
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        {product.productDetails.commercialHierarchy && (
+                                            <AccordionItem value="classification">
+                                            <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
+                                            <AccordionContent className="pt-2">
+                                                <p className="text-xs">
+                                                    {
+                                                    [
+                                                        product.productDetails.commercialHierarchy.divisionName,
+                                                        product.productDetails.commercialHierarchy.groupName,
+                                                        product.productDetails.commercialHierarchy.departmentName,
+                                                        product.productDetails.commercialHierarchy.className,
+                                                        product.productDetails.commercialHierarchy.subclassName,
+                                                    ].filter(Boolean).map(s => s?.replace(/^\d+\s/, '')).join(' → ')
+                                                    }
+                                                </p>
+                                            </AccordionContent>
+                                            </AccordionItem>
+                                        )}
+                                        { hasBwsDetails && (
+                                            <AccordionItem value="bws">
+                                                <AccordionTrigger className='py-2 font-semibold'>Beers, Wines & Spirits</AccordionTrigger>
+                                                <AccordionContent className="space-y-3 pt-2">
+                                                <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={bws.alcoholByVolume ? `${bws.alcoholByVolume}%` : null} />
+                                                <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} />
+                                                <DataRow icon={<Info />} label="Volume" value={bws.volumeInLitres ? `${bws.volumeInLitres}L` : null} />
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        )}
+                                        { (product.productDetails.ingredients && product.productDetails.ingredients.length > 0) && 
+                                            <AccordionItem value="ingredients">
+                                                <AccordionTrigger className='py-2 font-semibold'>Ingredients & Allergens</AccordionTrigger>
+                                                <AccordionContent className="space-y-4 pt-2">
+                                                    {product.productDetails.ingredients && product.productDetails.ingredients.length > 0 && (
+                                                        <div>
+                                                            <h4 className="font-bold mb-2 flex items-center gap-2"><Globe className="h-5 w-5" /> Ingredients</h4>
+                                                            <p className="text-xs">{product.productDetails.ingredients.join(', ')}</p>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0 && (
+                                                        <div>
+                                                            <h4 className="font-bold mb-2 flex items-center gap-2"><Shell className="h-5 w-5" /> Allergens</h4>
+                                                            <div className="flex flex-wrap gap-2">
+                                                            {product.productDetails.allergenInfo.map(allergen => (
+                                                                <Badge key={allergen.name} variant={allergen.value === 'Contains' ? 'destructive' : 'secondary'}>
+                                                                    {allergen.name}
+                                                                </Badge>
+                                                            ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        }
+                                        {product.productDetails.nutritionalInfo && product.productDetails.nutritionalInfo.length > 0 && (
+                                            <AccordionItem value="nutrition">
+                                                <AccordionTrigger className='py-2 font-semibold'>Nutrition</AccordionTrigger>
+                                                <AccordionContent className="space-y-2 pt-2">
+                                                    <p className="text-xs text-muted-foreground">{product.productDetails.nutritionalHeading}</p>
+                                                    <div className='space-y-1 text-xs'>
+                                                        {product.productDetails.nutritionalInfo
+                                                            .filter(n => n.name && !n.name.startsWith('*'))
+                                                            .map(nutrient => (
+                                                            <div key={nutrient.name} className="flex justify-between border-b pb-1">
+                                                                <span>{nutrient.name}</span>
+                                                                <span className="text-right">{nutrient.perComp?.split(',')[0]}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        )}
+                                    </Accordion>
+
+                                    {product.productDetails.productMarketing && <Separator className="my-4" />}
+                                    {product.productDetails.productMarketing && (
+                                        <div className='italic text-xs bg-muted/50 p-3 rounded-md'>
+                                        {product.productDetails.productMarketing}
+                                        </div>
                                     )}
-                                    />
-                                    <Button type="submit" size="icon" disabled={isChatting}>
-                                        <Send className="h-4 w-4" />
-                                    </Button>
-                                </form>
-                            </Form>
-                        </div>
+
+                                    <details className="pt-2 text-xs">
+                                        <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                                        {product.proxyError && (
+                                            <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
+                                                <strong>Proxy Error:</strong> {product.proxyError}
+                                            </div>
+                                        )}
+                                        <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                                            {JSON.stringify(product, null, 2)}
+                                        </pre>
+                                    </details>
+                                </div>
+                            </CollapsibleContent>
+                        </Collapsible>
                         </>
                     )}
 
@@ -615,3 +658,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    

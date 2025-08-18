@@ -10,12 +10,13 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { components } from '@/morrisons-types';
+import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 
-type Product = components['schemas']['Product'];
+type Product = FetchMorrisonsDataOutput[0];
+
 
 const ProductInsightsInputSchema = z.object({
-  productData: z.custom<Product>().describe('The raw JSON data of the product from the Morrisons API, including location, price, stock, and detailed product attributes.'),
+  productData: z.custom<Product>().describe('The raw JSON data of the product from the Morrisons API, including price, stock, delivery, and detailed product attributes.'),
 });
 export type ProductInsightsInput = z.infer<typeof ProductInsightsInputSchema>;
 
@@ -63,3 +64,5 @@ Product Data:
   const { output } = await prompt(input);
   return output!;
 }
+
+    
