@@ -3,12 +3,12 @@
  * @fileOverview Shared types for the product chat flow.
  */
 import { z } from 'genkit';
-import type { components } from '@/morrisons-types';
+import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 
-type Product = components['schemas']['Product'];
+type Product = FetchMorrisonsDataOutput[0];
 
 export const ProductChatInputSchema = z.object({
-  productData: z.custom<Product>().describe('The raw JSON data of the product from the Morrisons API.'),
+  productData: z.custom<Product>().describe('The raw JSON data of the product from the Morrisons API, including price, stock, delivery, and productDetails.'),
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string(),
@@ -21,5 +21,3 @@ export const ProductChatOutputSchema = z.object({
   response: z.string().describe('The AI model\'s response to the user\'s message.'),
 });
 export type ProductChatOutput = z.infer<typeof ProductChatOutputSchema>;
-
-    

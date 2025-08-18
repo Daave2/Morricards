@@ -294,7 +294,7 @@ export default function AssistantPage() {
       
       setIsGeneratingInsights(true);
       try {
-        const insightResult = await productInsightsFlow({ productData: foundProduct.productDetails });
+        const insightResult = await productInsightsFlow({ productData: foundProduct });
         setInsights(insightResult);
       } catch (e) {
         console.error("Insight generation failed:", e);
@@ -348,7 +348,7 @@ export default function AssistantPage() {
     
     try {
       const chatInput: ProductChatInput = {
-        productData: product.productDetails,
+        productData: product,
         history: newHistory,
       }
       const result = await productChatFlow(chatInput);
@@ -620,5 +620,3 @@ export default function AssistantPage() {
     </>
   );
 }
-
-    
