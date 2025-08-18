@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle } from 'lucide-react';
+import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -24,6 +24,7 @@ import { ocrFlow } from '@/ai/flows/ocr-flow';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
+import AppHeader from '@/components/AppHeader';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -209,7 +210,7 @@ export default function AssistantPage() {
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
-  const scannerRef = useRef<{ start: () => void; stop: () => void; } | null>(null);
+  const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
 
   useEffect(() => {
     if (isScanMode) {
@@ -281,7 +282,11 @@ export default function AssistantPage() {
     }
   };
 
-   const handleOcrRequest = async (imageDataUri: string) => {
+   const handleOcrRequest = async () => {
+    if (!scannerRef.current) return;
+    const imageDataUri = scannerRef.current.getOcrDataUri();
+    if (!imageDataUri) return;
+
     setIsOcrLoading(true);
     toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
     try {
@@ -304,21 +309,25 @@ export default function AssistantPage() {
 
 
   return (
+    <>
+    <AppHeader title="AI Product Assistant" />
     <div className="min-h-screen bg-background">
       {isScanMode && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md mx-auto relative p-0 pt-10">
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
             <ZXingScanner
               ref={scannerRef}
               onResult={handleScanSuccess}
               onError={handleScanError}
-              onOcrRequest={handleOcrRequest}
-              isOcrLoading={isOcrLoading}
             />
-            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
-              <X className="h-5 w-5" />
+            <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
+              {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
+              {isOcrLoading ? 'Reading...' : 'Read with AI'}
             </Button>
           </div>
+            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+              <X className="h-6 w-6" />
+            </Button>
         </div>
       )}
 
@@ -495,5 +504,6 @@ export default function AssistantPage() {
         )}
       </main>
     </div>
+    </>
   );
 }

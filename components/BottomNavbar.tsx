@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', label: 'Picking', icon: Home },
+  { href: '/picking', label: 'Picking', icon: Home },
   { href: '/availability', label: 'Availability', icon: ListChecks },
   { href: '/assistant', label: 'Assistant', icon: Bot },
   { href: '/price-checker', label: 'Price Check', icon: ScanLine },
@@ -18,8 +18,9 @@ export default function BottomNavbar() {
   const pathname = usePathname();
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return pathname === path;
+    if (path === '/picking') {
+        // Special case for root path, should only match exactly
+        return pathname === path || pathname === '/';
     }
     return pathname.startsWith(path);
   };

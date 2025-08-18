@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -126,7 +126,7 @@ export default function PickingListClient() {
   const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
-  const scannerRef = useRef<{ start: () => void; stop: () => void; } | null>(null);
+  const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -207,7 +207,7 @@ export default function PickingListClient() {
       onSubmit({ skus: skusFromUrl, locationId: locationFromUrl });
       
       // Clean the URL to avoid re-triggering on refresh
-      router.replace('/', undefined);
+      router.replace('/picking', undefined);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skusFromUrl, locationFromUrl]);
@@ -354,7 +354,11 @@ export default function PickingListClient() {
     }
   };
 
-  const handleOcrRequest = async (imageDataUri: string) => {
+  const handleOcrRequest = async () => {
+    if (!scannerRef.current) return;
+    const imageDataUri = scannerRef.current.getOcrDataUri();
+    if (!imageDataUri) return;
+
     setIsOcrLoading(true);
     toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
     try {
@@ -551,19 +555,21 @@ export default function PickingListClient() {
     <div className="min-h-screen">
       <InstallPrompt />
       {isScanMode && (
-         <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-md mx-auto relative p-0">
+         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
                 <ZXingScanner 
                     ref={scannerRef} 
                     onResult={handleScanResult} 
                     onError={handleScanError}
-                    onOcrRequest={handleOcrRequest}
-                    isOcrLoading={isOcrLoading}
                 />
-                <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
-                   <X className="h-5 w-5" />
+                <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
+                    {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
+                    {isOcrLoading ? 'Reading...' : 'Read with AI'}
                 </Button>
             </div>
+            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+               <X className="h-6 w-6" />
+            </Button>
         </div>
       )}
 

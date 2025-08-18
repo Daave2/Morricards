@@ -18,9 +18,6 @@ export default function AppSidebar() {
   const { setOpenMobile } = useSidebar();
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return pathname === path;
-    }
     return pathname.startsWith(path);
   };
 
@@ -32,7 +29,7 @@ export default function AppSidebar() {
     <>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-2 font-semibold" onClick={handleLinkClick}>
+            <Link href="/picking" className="flex items-center gap-2 font-semibold" onClick={handleLinkClick}>
                 <ShoppingBasket className="h-6 w-6 text-primary" />
                 <span className="text-lg">Store Mobile Ultra</span>
             </Link>
@@ -41,8 +38,8 @@ export default function AppSidebar() {
       <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/')}>
-              <Link href="/" onClick={handleLinkClick}>
+            <SidebarMenuButton asChild isActive={isActive('/picking')}>
+              <Link href="/picking" onClick={handleLinkClick}>
                 <Home />
                 Picking List
               </Link>

@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, CheckCircle2 } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, CheckCircle2, ScanSearch } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import {
@@ -34,7 +34,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -244,7 +243,7 @@ export default function AvailabilityPage() {
   const { isOnline } = useNetworkSync();
 
 
-  const scannerRef = useRef<{ start: () => void; stop: () => void; } | null>(null);
+  const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
 
   const startScannerWithDelay = useCallback(() => {
     setTimeout(() => {
@@ -434,7 +433,11 @@ export default function AvailabilityPage() {
     }
   }
 
-  const handleOcrRequest = async (imageDataUri: string) => {
+  const handleOcrRequest = async () => {
+    if (!scannerRef.current) return;
+    const imageDataUri = scannerRef.current.getOcrDataUri();
+    if (!imageDataUri) return;
+
     setIsOcrLoading(true);
     toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
     try {
@@ -581,7 +584,7 @@ export default function AvailabilityPage() {
     }
 
     const rows = reportedItems.map(p => ({
-        img: p.imageUrl || 'https://placehold.co/100x100.png',
+        img: p.imageUrl && p.imageUrl.trim() !== '' ? p.imageUrl : 'https://placehold.co/100x100.png',
         sku: p.sku,
         name: p.name,
         stock: p.stockQuantity,
@@ -654,22 +657,26 @@ export default function AvailabilityPage() {
   }, [productForModal, toast]);
 
   return (
+    <>
+    <AppHeader title="Availability Report" />
     <div className="min-h-screen bg-background">
       <InstallPrompt />
       {isScanMode && (
-         <div className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-md mx-auto relative p-0">
+         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
                  <ZXingScanner 
                     ref={scannerRef}
                     onResult={(text) => handleScanSuccess(text)} 
                     onError={handleScanError} 
-                    onOcrRequest={handleOcrRequest}
-                    isOcrLoading={isOcrLoading}
                 />
-                 <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
-                    <X className="h-5 w-5" />
+                 <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
+                    {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
+                    {isOcrLoading ? 'Reading...' : 'Read with AI'}
                  </Button>
             </div>
+             <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+                <X className="h-6 w-6" />
+             </Button>
         </div>
       )}
       
@@ -811,10 +818,7 @@ export default function AvailabilityPage() {
         </DialogContent>
       </Dialog>
       
-      <main className={cn(
-          "container mx-auto px-4 py-8 md:py-12 transition-all duration-300",
-          isScanMode && "pt-[calc(100vw/1.77+2rem)] sm:pt-[calc(448px/1.77+2rem)]"
-      )}>
+      <main className="container mx-auto px-4 py-8 md:py-12">
         <TooltipProvider>
         <div className={cn(isScanMode && "hidden")}>
           {!isOnline && (
@@ -943,7 +947,7 @@ export default function AvailabilityPage() {
                             <X className="h-4 w-4" />
                           </Button>
                            <Image
-                              src={item.imageUrl || `https://placehold.co/100x100.png`}
+                              src={(item.imageUrl && item.imageUrl.trim() !== '') ? item.imageUrl : `https://placehold.co/100x100.png`}
                               alt={item.name}
                               width={64}
                               height={64}
@@ -972,5 +976,6 @@ export default function AvailabilityPage() {
         </TooltipProvider>
       </main>
     </div>
+    </>
   );
 }
