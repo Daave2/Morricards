@@ -649,7 +649,7 @@ export default function AvailabilityPage() {
 
   const handleCopyRawData = useCallback(() => {
     if (productForModal) {
-      const rawJson = JSON.stringify(productForModal, null, 2);
+      const rawJson = JSON.stringify(productForModal.productDetails, null, 2);
       navigator.clipboard.writeText(rawJson).then(() => {
         toast({ title: 'Raw Data Copied', description: 'The raw JSON data has been copied to your clipboard.' });
       }).catch(err => {
@@ -719,7 +719,7 @@ export default function AvailabilityPage() {
                     </div>
                     <div className="px-4 space-y-3 text-xs text-muted-foreground max-h-[60vh] overflow-y-auto">
                         <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
-                        <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.walkSequence} />
+                        <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.productDetails.legacyItemNumbers} />
                         <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
 
                         <div className="flex justify-center py-2">

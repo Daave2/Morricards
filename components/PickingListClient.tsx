@@ -449,8 +449,8 @@ export default function PickingListClient() {
       if (a.picked && !b.picked) return 1;
       if (!a.picked && b.picked) return -1;
       
-      let valA = a[key as keyof Product];
-      let valB = b[key as keyof Product];
+      let valA: any = a[key as keyof Product];
+      let valB: any = b[key as keyof Product];
 
       if (key === 'price' && valA && valB) {
         valA = (valA as {regular?: number}).regular;

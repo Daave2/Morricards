@@ -151,7 +151,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
   const placeholderImage = `https://placehold.co/400x400.png`;
-  const imageUrl = product.imageUrl && product.imageUrl.trim() !== '' ? product.imageUrl : placeholderImage;
+  const imageUrl = product.imageUrl || placeholderImage;
   
   const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
   const bws = product.productDetails.beersWinesSpirits;
@@ -320,7 +320,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                         <DataRow icon={<Info />} label="Status" value={product.status} />
-                        <DataRow icon={<Footprints />} label="Walk Sequence" value={product.walkSequence} />
+                        <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers} />
                         <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
                         <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
                         <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />

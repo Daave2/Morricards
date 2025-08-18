@@ -294,7 +294,7 @@ export default function AssistantPage() {
       
       setIsGeneratingInsights(true);
       try {
-        const insightResult = await productInsightsFlow({ productData: foundProduct });
+        const insightResult = await productInsightsFlow({ productData: foundProduct.productDetails });
         setInsights(insightResult);
       } catch (e) {
         console.error("Insight generation failed:", e);

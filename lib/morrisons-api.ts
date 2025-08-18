@@ -16,7 +16,6 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
-const BASE_PRODUCT_PROXY = '/api/morrisons/product'; // Use internal proxy for client-side if needed
 
 export type Order = MorrisonsOrder;
 
@@ -58,8 +57,7 @@ export type FetchMorrisonsDataOutput = {
   weight?: number;
   status?: string;
   stockSkuUsed?: string;
-  imageUrl?: string;
-  walkSequence?: string;
+  imageUrl?: string; // This remains for simple access in UI
   productDetails: Product;
   lastStockChange?: StockHistory;
   deliveryInfo?: DeliveryInfo | null;
@@ -73,7 +71,7 @@ async function fetchJson<T>(
   {
     debug = false,
     bearer,
-    preferBearer = !!bearer,     // if true, try with bearer first then without
+    preferBearer = !!bearer,
   }: {
     debug?: boolean;
     bearer?: string;
@@ -82,7 +80,7 @@ async function fetchJson<T>(
 ): Promise<T | null> {
   const baseHeaders: Record<string, string> = {
     Accept: 'application/json',
-    'X-No-Auth': '1', // hint for any SW to *not* inject auth
+    'X-No-Auth': '1',
   };
 
   async function once(withBearer: boolean) {
@@ -99,7 +97,6 @@ async function fetchJson<T>(
     });
   }
 
-  // Decide order: bearer→no-bearer or no-bearer→bearer
   const attempts: boolean[] = preferBearer ? [true, false] : [false, true];
 
   let lastRes: Response | undefined;
@@ -109,7 +106,6 @@ async function fetchJson<T>(
     if (res.status === 404) return null;
     if (res.ok) return (await res.json()) as T;
     if (res.status !== 401 && res.status !== 403) {
-      // Hard fail for other statuses
       const body = debug ? await res.text().catch(() => '') : '';
       const intendedHeaders = {
         ...baseHeaders,
@@ -123,7 +119,6 @@ async function fetchJson<T>(
         )}\nResponse: ${body}`
       );
     }
-    // else 401/403 → fall through to next attempt
     if (debug) {
       console.warn(
         `[fetchJson] ${url} → ${res.status} with ${withBearer ? 'bearer' : 'no bearer'}; trying ${
@@ -133,7 +128,6 @@ async function fetchJson<T>(
     }
   }
 
-  // If we exhausted attempts, throw with the last response body (if debug)
   if (lastRes) {
     const body = debug ? await lastRes.text().catch(() => '') : '';
     const intendedHeaders = {
@@ -152,18 +146,24 @@ async function fetchJson<T>(
 }
 
 // ─────────────────────────── endpoint wrappers ────────────────────────────
-
 // Reusable logic to fetch from the main Product API, now callable from server actions directly.
 export async function getProductDirectly(
   sku: string,
   bearerToken?: string,
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
-  
-  const url = `https://api.morrisons.com/product/v1/items/${encodeURIComponent(sku)}?apikey=${API_KEY}`;
-  
+
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const host = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.NEXT_PUBLIC_SITE_URL || 'localhost:3000';
+  const url = `${protocol}://${host}/api/morrisons/product?sku=${encodeURIComponent(sku)}`;
+
   try {
-    const product = await fetchJson<Product>(url, { bearer: bearerToken, preferBearer: true });
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${bearerToken || ''}` } });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `API responded with status ${res.status}` }));
+        return { product: null, error: err.error || err.details || `Failed to fetch product for SKU ${sku}` };
+    }
+    const product = await res.json();
     if (!product) {
        return { product: null, error: `Product not found for SKU ${sku}` };
     }
@@ -173,7 +173,6 @@ export async function getProductDirectly(
     return { product: null, error: errorMessage };
   }
 }
-
 
 // Price Integrity: allow bearer if you have one; fallback without.
 async function getPI(locationId: string, sku: string, bearer?: string, debug?: boolean) {
@@ -276,7 +275,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             if (debugMode && proxyError) console.error(proxyError);
 
 
-            // Correctly merge data, giving priority to the richer `productDetailsFromProxy` object.
             const finalProductDetails: Product = {
               ...(pi?.product || {}),
               ...productDetailsFromProxy,
@@ -324,7 +322,8 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const promos = (pi?.promotions ?? []) as any[];
             
             const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
-            
+            const walkSequence = pi?.space?.standardSpace?.locations?.[0]?.storeWalkSequence?.toString();
+
             return {
               sku: internalSku,
               scannedSku,
@@ -341,7 +340,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               status: finalProductDetails?.status,
               stockSkuUsed: undefined,
               imageUrl: mainImage,
-              walkSequence: walk,
+              walkSequence: walkSequence,
               productDetails: finalProductDetails,
               lastStockChange: stockHistory.status === 'fulfilled' ? (stockHistory.value || undefined) : undefined,
               deliveryInfo: deliveryInfo,
@@ -365,6 +364,5 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
     })
   );
 
-  // This filter is important to satisfy the return type
   return rows.filter((r): r is Exclude<typeof r, { name: string; proxyError: string }> => 'name' in r && !r.name.startsWith('Error'));
 }
