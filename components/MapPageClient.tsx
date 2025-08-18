@@ -185,7 +185,7 @@ export default function MapPageClient() {
                   <Card className="shadow-lg animate-in fade-in-50">
                     <CardHeader className="flex flex-row items-start gap-4">
                       <Image
-                        src={product.imageUrl || 'https://placehold.co/100x100.png'}
+                        src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                         alt={product.name}
                         width={80}
                         height={80}
