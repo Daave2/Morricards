@@ -57,7 +57,6 @@ export type FetchMorrisonsDataOutput = {
   weight?: number;
   status?: string;
   stockSkuUsed?: string;
-  imageUrl?: string; // This remains for simple access in UI
   productDetails: Product;
   lastStockChange?: StockHistory;
   deliveryInfo?: DeliveryInfo | null;
@@ -284,10 +283,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
             }
             
-            const mainImage = Array.isArray(finalProductDetails?.imageUrl) && finalProductDetails.imageUrl.length > 0
-              ? finalProductDetails.imageUrl[0]?.url
-              : undefined;
-
             const stockPosition = stockPayload.status === 'fulfilled' ? stockPayload.value?.stockPosition?.[0] : undefined;
             const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
             
@@ -322,7 +317,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const promos = (pi?.promotions ?? []) as any[];
             
             const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
-            const walkSequence = pi?.space?.standardSpace?.locations?.[0]?.storeWalkSequence?.toString();
 
             return {
               sku: internalSku,
@@ -339,8 +333,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               weight: finalProductDetails?.dimensions?.weight,
               status: finalProductDetails?.status,
               stockSkuUsed: undefined,
-              imageUrl: mainImage,
-              walkSequence: walkSequence,
               productDetails: finalProductDetails,
               lastStockChange: stockHistory.status === 'fulfilled' ? (stockHistory.value || undefined) : undefined,
               deliveryInfo: deliveryInfo,
