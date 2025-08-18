@@ -54,7 +54,6 @@ import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import type { AvailabilityReason } from '@/lib/idb';
-import AppHeader from '@/components/AppHeader';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -660,7 +659,6 @@ export default function AvailabilityPage() {
 
   return (
     <>
-    <AppHeader title="Availability Report" />
     <div className="min-h-screen bg-background">
       <InstallPrompt />
       {isScanMode && (

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -31,7 +30,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import SkuQrCode from '@/components/SkuQrCode';
-import AppHeader from '@/components/AppHeader';
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
@@ -350,7 +348,6 @@ export default function PriceCheckerPage() {
 
   return (
     <>
-    <AppHeader title="AI Price Checker" />
     <div className="min-h-screen bg-background">
       {isCameraMode && (
         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">

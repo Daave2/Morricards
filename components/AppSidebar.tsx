@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -13,11 +12,25 @@ import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanLine } from '
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+export const navItems = [
+    { href: '/picking', label: 'Picking List', icon: Home },
+    { href: '/availability', label: 'Availability Report', icon: ListChecks },
+    { href: '/assistant', label: 'AI Product Assistant', icon: Bot },
+    { href: '/price-checker', label: 'AI Price Checker', icon: ScanLine },
+    { href: '/map', label: 'Store Map', icon: Map },
+    { href: '/settings', label: 'Settings', icon: Settings },
+];
+
+
 export default function AppSidebar() {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
 
   const isActive = (path: string) => {
+    // Special case for root, so it doesn't stay active for all pages
+    if (path === '/picking') {
+        return pathname === path || pathname === '/';
+    }
     return pathname.startsWith(path);
   };
 
@@ -37,54 +50,16 @@ export default function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/picking')}>
-              <Link href="/picking" onClick={handleLinkClick}>
-                <Home />
-                Picking List
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/availability')}>
-              <Link href="/availability" onClick={handleLinkClick}>
-                <ListChecks />
-                Availability Report
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/assistant')}>
-              <Link href="/assistant" onClick={handleLinkClick}>
-                <Bot />
-                AI Product Assistant
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/price-checker')}>
-              <Link href="/price-checker" onClick={handleLinkClick}>
-                <ScanLine />
-                AI Price Checker
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/map')}>
-              <Link href="/map" onClick={handleLinkClick}>
-                <Map />
-                Store Map
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/settings')}>
-              <Link href="/settings" onClick={handleLinkClick}>
-                <Settings />
-                Settings
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {navItems.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                <Link href={item.href} onClick={handleLinkClick}>
+                  <item.icon />
+                  {item.label}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
       </SidebarContent>
     </>

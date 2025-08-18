@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -26,7 +25,6 @@ import { ocrFlow } from '@/ai/flows/ocr-flow';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
-import AppHeader from '@/components/AppHeader';
 import { Separator } from '@/components/ui/separator';
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -366,8 +364,6 @@ export default function AssistantPage() {
 
 
   return (
-    <>
-    <AppHeader title="AI Product Assistant" />
     <div className="min-h-screen bg-background">
       {isScanMode && (
         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
@@ -617,6 +613,5 @@ export default function AssistantPage() {
         )}
       </main>
     </div>
-    </>
   );
 }
