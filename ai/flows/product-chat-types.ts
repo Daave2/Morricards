@@ -14,6 +14,7 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export const ProductChatInputSchema = z.object({
   productData: z.custom<FetchMorrisonsDataOutput[0]>(),
   messages: z.array(ChatMessageSchema),
+  locationId: z.string().optional(),
 });
 export type ProductChatInput = z.infer<typeof ProductChatInputSchema>;
 

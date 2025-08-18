@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Send, User, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag } from 'lucide-react';
+import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Send, User, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -348,7 +348,11 @@ export default function AssistantPage() {
     setIsChatting(true);
 
     try {
-      const result = await productChatFlow({ productData: product, messages: newChatHistory });
+      const result = await productChatFlow({ 
+        productData: product, 
+        messages: newChatHistory,
+        locationId: form.getValues('locationId'),
+      });
       const botMessage: ChatMessage = { role: 'model', content: result.response };
       setChatHistory(prev => [...prev, botMessage]);
     } catch (e) {
@@ -666,7 +670,7 @@ export default function AssistantPage() {
                                                 <AccordionContent className="space-y-4 pt-2">
                                                     {product.productDetails.ingredients && product.productDetails.ingredients.length > 0 && (
                                                         <div>
-                                                            <h4 className="font-bold mb-2 flex items-center gap-2"><Globe className="h-5 w-5" /> Ingredients</h4>
+                                                            <h4 className="font-bold mb-2 flex items-center gap-2"><Leaf className="h-5 w-5" /> Ingredients</h4>
                                                             <p className="text-xs">{product.productDetails.ingredients.join(', ')}</p>
                                                         </div>
                                                     )}
