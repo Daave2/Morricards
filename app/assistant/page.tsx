@@ -13,23 +13,30 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch } from 'lucide-react';
+import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Send, User } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { productInsightsFlow, ProductInsightsOutput } from '@/ai/flows/product-insights-flow';
+import { productChatFlow, ProductChatInput } from '@/ai/flows/product-chat-flow';
 import Image from 'next/image';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import AppHeader from '@/components/AppHeader';
+import { Separator } from '@/components/ui/separator';
 
 type Product = FetchMorrisonsDataOutput[0];
+type ChatMessage = { role: 'user' | 'model'; content: string };
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
+});
+
+const ChatFormSchema = z.object({
+    message: z.string().min(1, { message: 'Message cannot be empty.' }),
 });
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
@@ -202,15 +209,19 @@ export default function AssistantPage() {
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const [isChatting, setIsChatting] = useState(false);
+
 
   const [product, setProduct] = useState<Product | null>(null);
   const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isScanMode) {
@@ -219,11 +230,31 @@ export default function AssistantPage() {
       scannerRef.current?.stop();
     }
   }, [isScanMode]);
+  
+  useEffect(() => {
+    chatContainerRef.current?.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+    });
+  }, [chatHistory]);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: { locationId: '218' },
   });
+
+  const chatForm = useForm<z.infer<typeof ChatFormSchema>>({
+    resolver: zodResolver(ChatFormSchema),
+    defaultValues: { message: '' },
+  });
+
+
+  const handleReset = () => {
+    setProduct(null);
+    setInsights(null);
+    setProductLocation(null);
+    setChatHistory([]);
+  }
 
   const handleScanSuccess = async (text: string) => {
     const sku = text.split(',')[0].trim();
@@ -231,9 +262,7 @@ export default function AssistantPage() {
 
     setIsScanMode(false);
     setIsFetchingProduct(true);
-    setProduct(null);
-    setInsights(null);
-    setProductLocation(null);
+    handleReset();
 
     const locationId = form.getValues('locationId');
     if (!locationId) {
@@ -307,6 +336,33 @@ export default function AssistantPage() {
     }
   };
 
+  const handleChatSubmit = async (values: z.infer<typeof ChatFormSchema>) => {
+    if (!product) return;
+
+    const userMessage: ChatMessage = { role: 'user', content: values.message };
+    const newHistory = [...chatHistory, userMessage];
+    setChatHistory(newHistory);
+    chatForm.reset();
+    setIsChatting(true);
+    
+    try {
+      const chatInput: ProductChatInput = {
+        productData: product.productDetails,
+        history: newHistory,
+      }
+      const result = await productChatFlow(chatInput);
+      const modelMessage: ChatMessage = { role: 'model', content: result.response };
+      setChatHistory(prev => [...prev, modelMessage]);
+    } catch (e) {
+      console.error("Chat flow failed", e);
+      toast({ variant: 'destructive', title: 'AI Chat Error', description: 'An error occurred during the conversation.' });
+      const errorMessage: ChatMessage = { role: 'model', content: "Sorry, I encountered an error. Please try again." };
+      setChatHistory(prev => [...prev, errorMessage]);
+    } finally {
+      setIsChatting(false);
+    }
+  };
+
 
   return (
     <>
@@ -320,6 +376,8 @@ export default function AssistantPage() {
               onResult={handleScanSuccess}
               onError={handleScanError}
             />
+          </div>
+           <div className="mt-4 w-full max-w-md">
             <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
               {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
               {isOcrLoading ? 'Reading...' : 'Read with AI'}
@@ -411,6 +469,7 @@ export default function AssistantPage() {
                         </div>
                     )}
                     {insights && (
+                        <>
                         <div className='flex items-start gap-4 p-4 bg-muted/50 rounded-lg'>
                             <Avatar>
                                 <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
@@ -478,6 +537,59 @@ export default function AssistantPage() {
                                 )}
                             </div>
                         </div>
+                        <Separator />
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-lg">Follow-up Questions</h3>
+                            <div ref={chatContainerRef} className="space-y-4 max-h-96 overflow-y-auto pr-4">
+                                {chatHistory.map((message, index) => (
+                                    <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                                        {message.role === 'model' && (
+                                            <Avatar>
+                                                <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                        <div className={`rounded-lg p-3 text-sm ${message.role === 'model' ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}>
+                                            <p>{message.content}</p>
+                                        </div>
+                                         {message.role === 'user' && (
+                                            <Avatar>
+                                                <AvatarFallback><User /></AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                    </div>
+                                ))}
+                                {isChatting && (
+                                     <div className="flex items-start gap-3">
+                                        <Avatar>
+                                            <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
+                                        </Avatar>
+                                        <div className="rounded-lg p-3 text-sm bg-muted flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span>Thinking...</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                             <Form {...chatForm}>
+                                <form onSubmit={chatForm.handleSubmit(handleChatSubmit)} className="flex items-center gap-2">
+                                    <FormField
+                                    control={chatForm.control}
+                                    name="message"
+                                    render={({ field }) => (
+                                        <FormItem className="flex-grow">
+                                            <FormControl>
+                                                <Input placeholder="Ask a follow-up question..." {...field} disabled={isChatting} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                    />
+                                    <Button type="submit" size="icon" disabled={isChatting}>
+                                        <Send className="h-4 w-4" />
+                                    </Button>
+                                </form>
+                            </Form>
+                        </div>
+                        </>
                     )}
 
                     {!isGeneratingInsights && !insights && (
