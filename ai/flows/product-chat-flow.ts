@@ -29,11 +29,7 @@ Product Data:
 
 Conversation History:
 {{#each history}}
-  {{#if (eq role 'user')}}
-User: {{{content}}}
-  {{else}}
-Model: {{{content}}}
-  {{/if}}
+{{role}}: {{{content}}}
 {{/each}}
 `,
   });
