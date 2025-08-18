@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getProductData } from '@/app/actions';
@@ -13,10 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
-import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,7 +54,7 @@ import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import type { AvailabilityReason } from '@/lib/idb';
-import { CheckCircle2 } from 'lucide-react';
+
 
 type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
@@ -818,49 +817,15 @@ export default function AvailabilityPage() {
       )}>
         <TooltipProvider>
         <div className={cn(isScanMode && "hidden")}>
-           <header className="text-center mb-12">
-            <div className="flex justify-center items-center gap-4 relative">
-               <ServerCrash className="w-12 h-12 text-primary" />
-              <h1 className="text-5xl font-bold tracking-tight text-primary">
-                Availability Report
-              </h1>
-               <div className="absolute right-0 top-0">
-                <StatusIndicator isFetching={isFetching} />
-              </div>
-            </div>
-             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Scan items to check their data and report any availability issues you find.
-            </p>
-            <div className="mt-2 space-x-2">
-                <Button variant="link" asChild className="text-sm">
-                    <Link href="/">
-                        <LinkIcon className="mr-2 h-4 w-4" />
-                        Go to Picking List
-                    </Link>
-                </Button>
-                <Button variant="link" asChild className="text-sm">
-                    <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                    </Link>
-                </Button>
-                 <Button variant="link" asChild>
-                    <Link href="/assistant">
-                        <Bot className="mr-2 h-4 w-4" />
-                        AI Product Assistant
-                    </Link>
-                </Button>
-            </div>
-              {!isOnline && (
-                <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
-                    <WifiOff className="h-4 w-4" />
-                    <AlertTitle>You are offline</AlertTitle>
-                    <AlertDescription>
-                        Scanned items will be queued and processed when you reconnect. Some functionality may be limited.
-                    </AlertDescription>
-                </Alert>
-              )}
-          </header>
+          {!isOnline && (
+            <Alert variant="destructive" className="mb-6 max-w-4xl mx-auto text-left">
+                <WifiOff className="h-4 w-4" />
+                <AlertTitle>You are offline</AlertTitle>
+                <AlertDescription>
+                    Scanned items will be queued and processed when you reconnect. Some functionality may be limited.
+                </AlertDescription>
+            </Alert>
+          )}
           
            <Card className="max-w-4xl mx-auto mb-8 shadow-md">
             <CardContent className="p-4 space-y-4">
@@ -1009,8 +974,3 @@ export default function AvailabilityPage() {
     </div>
   );
 }
-
-    
-
-    
-

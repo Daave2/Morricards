@@ -109,20 +109,14 @@ export default function MapPageClient() {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <header className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight text-primary">Precise Store Map</h1>
-          <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Search for a product to see its exact location plotted on the map.
-          </p>
-        </header>
-
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           <div className="w-full lg:w-[350px] flex-shrink-0">
             <div className="space-y-8">
-              <div className="sticky top-4">
+              <div className="sticky top-20">
                 <Card className="shadow-md">
                   <CardHeader>
                       <CardTitle>Find a Product</CardTitle>
+                      <CardDescription>Enter a product SKU or EAN to see its precise location.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Form {...form}>
@@ -187,7 +181,7 @@ export default function MapPageClient() {
               )}
 
               {product && productLocation && (
-                <div className="sticky top-[18.5rem]">
+                <div className="sticky top-[26.5rem]">
                   <Card className="shadow-lg animate-in fade-in-50">
                     <CardHeader className="flex flex-row items-start gap-4">
                       <Image
@@ -215,15 +209,6 @@ export default function MapPageClient() {
                 </div>
               )}
 
-              {!productLocation && !isLoading && (
-                  <Alert className="lg:col-span-1">
-                      <Map className="h-4 w-4" />
-                      <AlertTitle>Ready to Search</AlertTitle>
-                      <AlertDescription>
-                          Enter a product SKU or EAN above to see its precise location on the map.
-                      </AlertDescription>
-                  </Alert>
-              )}
             </div>
           </div>
 

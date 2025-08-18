@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Loader2, ScanLine, X, AlertTriangle, CheckCircle2, Bot, Camera, Copy, Trash2, Filter } from 'lucide-react';
+import { Loader2, X, AlertTriangle, CheckCircle2, Bot, Camera, Trash2, Filter } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { validatePriceTicket } from '@/ai/flows/price-validator-flow';
@@ -31,7 +31,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 import SkuQrCode from '@/components/SkuQrCode';
 
 const FormSchema = z.object({
@@ -64,9 +63,7 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
                 {productSubName && <p className="text-sm text-muted-foreground">{productSubName}</p>}
             </div>
             
-            <Separator className="my-2" />
-
-            <div className="flex items-end justify-between gap-4">
+            <div className="flex items-end justify-between gap-4 pt-3">
                 <div className="flex-shrink-0 space-y-2">
                     {unitPrice && <p className="text-sm font-semibold">{unitPrice} per kg</p>}
                     {showQr && eanOrSku ? (
@@ -79,7 +76,7 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
                     <p className="font-mono text-xs text-center">{eanOrSku || 'N/A'}</p>
                 </div>
                 <div className={cn("p-1 rounded flex-1 text-right", isMismatch.price && "bg-destructive/20 ring-2 ring-destructive")}>
-                     <p className="text-5xl font-extrabold text-black leading-none">
+                     <p className="text-5xl font-extrabold text-black dark:text-white leading-none">
                         <span className="text-3xl align-top -mr-1">£</span>
                         {priceParts[0]}
                         <span className="text-4xl align-top">.{priceParts[1] || '00'}</span>
@@ -350,13 +347,6 @@ export default function PriceCheckerPage() {
       )}
 
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <header className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight text-primary">AI Price Checker</h1>
-          <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Capture price tickets to automatically validate them against system data.
-          </p>
-        </header>
-
         <Card className="max-w-2xl mx-auto mb-8 shadow-md">
           <CardContent className="p-4">
             <Form {...form}>
@@ -435,7 +425,7 @@ export default function PriceCheckerPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {filteredLog.map(result => (
-                <Card key={result.id} className={result.isCorrect ? 'bg-green-50/50' : 'bg-red-50/50 border-destructive'}>
+                <Card key={result.id} className={result.isCorrect ? 'bg-green-50/50 dark:bg-green-900/20' : 'bg-red-50/50 dark:bg-red-900/20 border-destructive'}>
                   <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start">
                     <Image src={result.imageDataUri} alt="Price ticket" width={150} height={100} className="rounded-md border-2 object-cover flex-shrink-0" />
                     <div className="flex-grow space-y-3 w-full">

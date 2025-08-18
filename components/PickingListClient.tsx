@@ -20,7 +20,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ToastAction } from '@/components/ui/toast';
-import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -601,50 +600,9 @@ export default function PickingListClient() {
       
       <main className="container mx-auto px-4 py-8 md:py-12">
         <TooltipProvider>
-          <header className="text-center mb-12">
-            <div className="flex justify-center items-center gap-4 relative">
-              <ShoppingBasket className="w-12 h-12 text-primary" />
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-primary">
-                Store mobile <span className="text-foreground">ULTRA</span>
-              </h1>
-               <div className="absolute right-0 top-0">
-                <StatusIndicator isFetching={isFetching} />
-              </div>
-            </div>
-             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Your friendly shopping assistant. Scan EANs or enter SKUs to build your picking list.
-            </p>
-            <div className="mt-4 space-x-4">
-                <Button variant="link" asChild>
-                    <Link href="/availability">
-                        <LinkIcon className="mr-2 h-4 w-4" />
-                        Go to Availability Checker
-                    </Link>
-                </Button>
-                 <Button variant="link" asChild>
-                    <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                    </Link>
-                </Button>
-                 <Button variant="link" asChild>
-                    <Link href="/assistant">
-                        <Bot className="mr-2 h-4 w-4" />
-                        AI Product Assistant
-                    </Link>
-                </Button>
-            </div>
-             {!isOnline && (
-              <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto text-left">
-                  <WifiOff className="h-4 w-4" />
-                  <AlertTitle>You are offline</AlertTitle>
-                  <AlertDescription>
-                      The app is running in offline mode. Some functionality may be limited, but you can still view your list. Any new data will be fetched when you reconnect.
-                  </AlertDescription>
-              </Alert>
-            )}
-          </header>
-          
+          <div className='flex justify-end mb-4'>
+             <StatusIndicator isFetching={isFetching} />
+          </div>
           <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
             <CardHeader>
               <CardTitle>Create or Add to Picking List</CardTitle>

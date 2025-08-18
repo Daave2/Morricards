@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import AppHeader from '@/components/AppHeader';
 
 const FormSchema = z.object({
   bearerToken: z.string(),
@@ -117,21 +118,14 @@ export default function SettingsPage() {
 
 
   return (
+    <>
+    <AppHeader title="Settings" />
     <main className="container mx-auto px-4 py-8 md:py-12">
-        <header className="text-center mb-12">
-            <h1 className="text-4xl font-bold tracking-tight text-primary">
-                Settings
-              </h1>
-             <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Manage application settings. These are saved in your browser&apos;s local storage.
-            </p>
-        </header>
-
         <Card className="max-w-2xl mx-auto mb-8">
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
                 <CardDescription>
-                    Manage API credentials, appearance, and other application settings.
+                    Manage API credentials, appearance, and other application settings. These are saved in your browser&apos;s local storage.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -258,5 +252,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
     </main>
+    </>
   );
 }
