@@ -562,6 +562,8 @@ export default function PickingListClient() {
                     onResult={handleScanResult} 
                     onError={handleScanError}
                 />
+            </div>
+             <div className="mt-4 w-full max-w-md">
                 <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
                     {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
                     {isOcrLoading ? 'Reading...' : 'Read with AI'}

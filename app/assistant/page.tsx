@@ -435,7 +435,7 @@ export default function AssistantPage() {
                 <CardHeader>
                 <div className='flex items-start gap-4'>
                     <Image
-                        src={product.imageUrl || 'https://placehold.co/100x100.png'}
+                        src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                         alt={product.name}
                         width={100}
                         height={100}

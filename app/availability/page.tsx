@@ -586,7 +586,7 @@ export default function AvailabilityPage() {
     }
 
     const rows = reportedItems.map(p => ({
-        img: p.imageUrl && p.imageUrl.trim() !== '' ? p.imageUrl : 'https://placehold.co/100x100.png',
+        img: p.productDetails.imageUrl?.[0]?.url && p.productDetails.imageUrl?.[0]?.url.trim() !== '' ? p.productDetails.imageUrl?.[0]?.url : 'https://placehold.co/100x100.png',
         sku: p.sku,
         name: p.name,
         stock: p.stockQuantity,
@@ -694,12 +694,12 @@ export default function AvailabilityPage() {
             </DialogHeader>
           <Form {...reasonForm}>
             <form onSubmit={reasonForm.handleSubmit(handleReasonSubmit)} className="space-y-4">
-                <div className="space-y-4 pr-2 -mr-2 max-h-[calc(80vh-150px)] overflow-y-auto">
+                <div className="space-y-4 pr-2 -mr-2 max-h-[calc(80vh-200px)] overflow-y-auto">
                     {productForModal && (
                       <div className="space-y-4">
                         <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
                             <Image
-                              src={(productForModal.imageUrl && productForModal.imageUrl.trim() !== '') ? productForModal.imageUrl : `https://placehold.co/100x100.png`}
+                              src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                               alt={productForModal.name}
                               width={80}
                               height={80}
@@ -952,7 +952,7 @@ export default function AvailabilityPage() {
                             <X className="h-4 w-4" />
                           </Button>
                            <Image
-                              src={(item.imageUrl && item.imageUrl.trim() !== '') ? item.imageUrl : `https://placehold.co/100x100.png`}
+                              src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                               alt={item.name}
                               width={64}
                               height={64}

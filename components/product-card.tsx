@@ -151,7 +151,8 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
 
   const stockColor = product.stockQuantity > 20 ? 'bg-green-500' : product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500';
   const placeholderImage = `https://placehold.co/400x400.png`;
-  const imageUrl = product.imageUrl || placeholderImage;
+  const mainImage = product.productDetails?.imageUrl?.[0]?.url;
+  const imageUrl = mainImage || placeholderImage;
   
   const isAgeRestricted = product.productDetails?.productRestrictions?.operatorAgeCheck === 'Yes';
   const bws = product.productDetails.beersWinesSpirits;
