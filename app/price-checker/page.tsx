@@ -11,7 +11,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
-import ZXingScanner from '@/components/ZXingScanner';
 import { Loader2, X, AlertTriangle, CheckCircle2, Bot, Camera, Trash2, Filter } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -32,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import SkuQrCode from '@/components/SkuQrCode';
+import AppHeader from '@/components/AppHeader';
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
@@ -43,6 +43,14 @@ type ValidationResult = PriceTicketValidationOutput & {
   timestamp: string;
 };
 
+// A log entry can now contain multiple validation results from a single image
+type LogEntry = {
+    id: string;
+    timestamp: string;
+    imageDataUri: string;
+    results: PriceTicketValidationOutput[];
+}
+
 type FilterType = 'all' | 'correct' | 'illegal' | 'discrepancy' | 'other';
 
 const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
@@ -52,7 +60,6 @@ const normalize = (p: string | null | undefined) => p?.replace(/[£\s]/g, '').to
 const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { title: string, data?: OcrData | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => {
     const { productName, price, eanOrSku, productSubName, unitPrice } = data || {};
 
-    // Split price into pounds and pence
     const priceParts = price?.replace('£', '').split('.') || ['N/A'];
 
     return (
@@ -88,11 +95,10 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
 };
 
 
-const PriceTicketDisplay = ({ result }: { result: ValidationResult }) => {
+const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput }) => {
     const { ocrData, product } = result;
     const systemPrice = product?.price.promotional || (product?.price.regular ? `£${product.price.regular.toFixed(2)}` : null);
     
-    // Simple comparison for highlighting, more complex logic can be added
     const nameMismatch = normalize(ocrData?.productName) !== normalize(product?.name);
     const priceMismatch = normalize(ocrData?.price) !== normalize(systemPrice);
     const skuMismatch = ocrData?.eanOrSku !== product?.sku;
@@ -151,7 +157,7 @@ const PriceTicketDisplay = ({ result }: { result: ValidationResult }) => {
 export default function PriceCheckerPage() {
   const [isCameraMode, setIsCameraMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [validationLog, setValidationLog] = useState<ValidationResult[]>([]);
+  const [validationLog, setValidationLog] = useState<LogEntry[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
 
@@ -237,38 +243,48 @@ export default function PriceCheckerPage() {
     const imageDataUri = canvas.toDataURL('image/jpeg', 0.9);
 
     setIsCameraMode(false);
-    toast({ title: 'Processing Ticket', description: 'AI is analyzing the price ticket...' });
+    toast({ title: 'Processing Image', description: 'AI is analyzing all price tickets...' });
 
     try {
-      const result = await validatePriceTicket({
+      const results = await validatePriceTicket({
         imageDataUri,
         locationId: form.getValues('locationId'),
         bearerToken: settings.bearerToken,
         debugMode: settings.debugMode,
       });
       
-      const newResult: ValidationResult = {
-        ...result,
+      const newLogEntry: LogEntry = {
         id: crypto.randomUUID(),
-        imageDataUri: imageDataUri,
+        imageDataUri,
         timestamp: new Date().toISOString(),
+        results: results,
       };
       
-      setValidationLog(prev => [newResult, ...prev]);
+      setValidationLog(prev => [newLogEntry, ...prev]);
 
-      if (result.isCorrect) {
+      const correctCount = results.filter(r => r.isCorrect).length;
+      const errorCount = results.length - correctCount;
+
+      if (errorCount > 0) {
+        playError();
+        toast({
+          variant: 'destructive',
+          title: 'Validation Complete',
+          description: `Found ${results.length} tickets. ${errorCount} have mismatches.`,
+        });
+      } else if (results.length > 0) {
         playSuccess();
         toast({
-          title: 'Price is Correct!',
-          description: `${result.product?.name || 'Product'} price matches the system.`,
+          title: 'All Prices Correct!',
+          description: `Checked ${results.length} tickets and all match the system.`,
           icon: <CheckCircle2 className="text-primary" />
         });
       } else {
         playError();
         toast({
-          variant: 'destructive',
-          title: 'Price Mismatch!',
-          description: result.mismatchReason || 'The price on the ticket does not match the system.',
+            variant: 'destructive',
+            title: 'No Tickets Found',
+            description: results[0]?.mismatchReason || 'The AI could not find any price tickets in the image.',
         });
       }
 
@@ -290,18 +306,18 @@ export default function PriceCheckerPage() {
     });
   };
 
-  const filteredLog = useMemo(() => {
+ const filteredLog = useMemo(() => {
     if (activeFilter === 'all') {
       return validationLog;
     }
-    
+
     const parsePrice = (priceString: string | null | undefined): number | null => {
         if (!priceString) return null;
         const num = parseFloat(priceString.replace(/[£\s,]/g, ''));
         return isNaN(num) ? null : num;
     }
 
-    return validationLog.filter(result => {
+    const filterFn = (result: PriceTicketValidationOutput) => {
         switch (activeFilter) {
             case 'correct':
                 return result.isCorrect;
@@ -322,18 +338,26 @@ export default function PriceCheckerPage() {
             default:
                 return true;
         }
-    });
+    };
+    
+    return validationLog.map(entry => ({
+        ...entry,
+        results: entry.results.filter(filterFn),
+    })).filter(entry => entry.results.length > 0);
+
 }, [validationLog, activeFilter]);
 
 
   return (
+    <>
+    <AppHeader title="AI Price Checker" />
     <div className="min-h-screen bg-background">
       {isCameraMode && (
         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
             <video ref={videoRef} autoPlay playsInline className="w-full max-w-4xl h-auto rounded-lg border aspect-video object-cover" />
             <canvas ref={canvasRef} className="hidden" />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-11/12 max-w-2xl h-1/3 border-4 border-dashed border-white/50 rounded-xl" />
+                <div className="w-11/12 max-w-2xl h-1/2 border-4 border-dashed border-white/50 rounded-xl" />
             </div>
             <div className="mt-6 flex gap-4">
                 <Button size="lg" onClick={handleCapture} className="h-16 w-16 rounded-full">
@@ -348,6 +372,10 @@ export default function PriceCheckerPage() {
 
       <main className="container mx-auto px-4 py-8 md:py-12">
         <Card className="max-w-2xl mx-auto mb-8 shadow-md">
+           <CardHeader>
+             <CardTitle>AI Shelf Edge Validator</CardTitle>
+             <CardDescription>Use your camera to capture an entire shelf edge and the AI will validate every price ticket it sees.</CardDescription>
+           </CardHeader>
           <CardContent className="p-4">
             <Form {...form}>
               <form className="flex flex-col sm:flex-row items-end gap-4">
@@ -385,7 +413,7 @@ export default function PriceCheckerPage() {
         {isProcessing && (
           <div className="text-center p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">AI is analyzing the ticket...</p>
+            <p className="text-muted-foreground">AI is analyzing the shelf image...</p>
           </div>
         )}
 
@@ -393,7 +421,7 @@ export default function PriceCheckerPage() {
           <Card className="max-w-4xl mx-auto shadow-lg">
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className='flex-grow'>
-                    <CardTitle>Validation Log ({filteredLog.length} / {validationLog.length})</CardTitle>
+                    <CardTitle>Validation Log ({validationLog.reduce((acc, e) => acc + e.results.length, 0)} tickets)</CardTitle>
                     <div className='flex flex-wrap gap-2 mt-4'>
                         <Button size="sm" variant={activeFilter === 'all' ? 'default' : 'outline'} onClick={() => setActiveFilter('all')}>All</Button>
                         <Button size="sm" variant={activeFilter === 'correct' ? 'default' : 'outline'} onClick={() => setActiveFilter('correct')}>Correct</Button>
@@ -424,26 +452,34 @@ export default function PriceCheckerPage() {
               </AlertDialog>
             </CardHeader>
             <CardContent className="space-y-4">
-              {filteredLog.map(result => (
-                <Card key={result.id} className={result.isCorrect ? 'bg-green-50/50 dark:bg-green-900/20' : 'bg-red-50/50 dark:bg-red-900/20 border-destructive'}>
-                  <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start">
-                    <Image src={result.imageDataUri} alt="Price ticket" width={150} height={100} className="rounded-md border-2 object-cover flex-shrink-0" />
-                    <div className="flex-grow space-y-3 w-full">
-                      <div className="flex justify-between items-start gap-2">
-                         <h3 className="font-bold text-lg flex-grow min-w-0 break-words">{result.product?.name || result.ocrData?.productName || 'Unknown Product'}</h3>
-                         <Badge variant={result.isCorrect ? 'default' : 'destructive'} className="flex-shrink-0">
-                           {result.isCorrect ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
-                           {result.isCorrect ? 'Correct' : 'Mismatch'}
-                         </Badge>
-                      </div>
-                      
-                      <PriceTicketDisplay result={result} />
-
-                      <p className="text-xs text-muted-foreground pt-2">
-                        Checked on {new Date(result.timestamp).toLocaleString()}
-                      </p>
-                    </div>
-                  </CardContent>
+              {filteredLog.map(entry => (
+                <Card key={entry.id}>
+                    <CardHeader className='pb-2'>
+                        <div className="flex flex-col md:flex-row gap-4 items-start">
+                            <Image src={entry.imageDataUri} alt="Price ticket capture" width={150} height={100} className="rounded-md border-2 object-cover flex-shrink-0" />
+                            <div>
+                                <CardTitle className='text-lg'>Capture from {new Date(entry.timestamp).toLocaleString()}</CardTitle>
+                                <CardDescription>{entry.results.length} tickets found in this image.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {entry.results.map((result, index) => (
+                           <Card key={index} className={result.isCorrect ? 'bg-green-50/50 dark:bg-green-900/20' : 'bg-red-50/50 dark:bg-red-900/20 border-destructive'}>
+                             <CardContent className="p-4 flex flex-col gap-4 items-start">
+                               <div className="flex justify-between items-start gap-2 w-full">
+                                  <h3 className="font-bold text-lg flex-grow min-w-0 break-words">{result.product?.name || result.ocrData?.productName || 'Unknown Product'}</h3>
+                                  <Badge variant={result.isCorrect ? 'default' : 'destructive'} className="flex-shrink-0">
+                                    {result.isCorrect ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
+                                    {result.isCorrect ? 'Correct' : 'Mismatch'}
+                                  </Badge>
+                               </div>
+                               
+                               <PriceTicketDisplay result={result} />
+                             </CardContent>
+                           </Card>
+                        ))}
+                    </CardContent>
                 </Card>
               ))}
                 {filteredLog.length === 0 && (
@@ -466,5 +502,6 @@ export default function PriceCheckerPage() {
         )}
       </main>
     </div>
+    </>
   );
 }

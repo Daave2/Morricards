@@ -4,6 +4,8 @@
  */
 
 import { z } from 'genkit';
+import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+
 
 export const OcrDataSchema = z.object({
   productName: z.string().nullable().describe("The main name of the product as seen on the ticket."),
@@ -27,6 +29,7 @@ export const PriceTicketValidationOutputSchema = z.object({
   isCorrect: z.boolean().describe("Whether the ticket price matches the system price."),
   mismatchReason: z.string().nullable().describe("The reason for the price mismatch, if any."),
   ocrData: OcrDataSchema.nullable().describe("The data extracted from the ticket via OCR."),
-  product: z.any().nullable().describe("The product data fetched from the Morrisons API."),
+  product: z.custom<FetchMorrisonsDataOutput[0]>().nullable().describe("The product data fetched from the Morrisons API."),
 });
+
 export type PriceTicketValidationOutput = z.infer<typeof PriceTicketValidationOutputSchema>;
