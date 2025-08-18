@@ -39,6 +39,13 @@ export type DeliveryInfo = {
     orderPosition: 'next' | 'last';
 }
 
+export type FetchMorrisonsDataInput = {
+  locationId: string;
+  skus: string[];
+  bearerToken?: string;
+  debugMode?: boolean;
+};
+
 export type FetchMorrisonsDataOutput = {
   sku: string;
   scannedSku: string;
@@ -53,7 +60,7 @@ export type FetchMorrisonsDataOutput = {
   stockSkuUsed?: string;
   imageUrl?: string;
   walkSequence?: string;
-  productDetails: Product; // Changed to use the official Product type
+  productDetails: Product;
   lastStockChange?: StockHistory;
   deliveryInfo?: DeliveryInfo | null;
   allOrders?: Order[] | null;
@@ -353,7 +360,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               stockSkuUsed: undefined,
               imageUrl,
               walkSequence: walk,
-              productDetails: finalProductDetails || {},
+              productDetails: finalProductDetails,
               lastStockChange: stockHistory.status === 'fulfilled' ? (stockHistory.value || undefined) : undefined,
               deliveryInfo: deliveryInfo,
               allOrders: allOrders ?? null,
@@ -369,7 +376,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               price: {},
               stockQuantity: 0,
               location: {},
-              productDetails: {},
+              productDetails: {} as Product,
               proxyError: errorMessage,
             };
         }
