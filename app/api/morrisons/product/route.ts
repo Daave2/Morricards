@@ -23,6 +23,3 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Failed to fetch product data from Morrisons API.', details: error }, { status: 500 });
   }
 }
-
-// Export a function with a different name to avoid conflicts client-side, if needed
-export { fetchProductFromUpstream as getProductDirectly };

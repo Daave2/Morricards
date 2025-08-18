@@ -1,5 +1,4 @@
 
-
 /**
  * Browser-safe Morrisons API client:
  * - Uses Price Integrity (PI) for product details (browser OK).
@@ -352,6 +351,3 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is Exclude<typeof r, { name: string; proxyError: string }> => 'name' in r && !r.name.startsWith('Error'));
 }
-// This can be used by a client-side component that needs the full product details
-// without going through the main `fetchMorrisonsData` aggregator.
-export { getProductDirectly } from '@/app/api/morrisons/product/route';
