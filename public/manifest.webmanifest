@@ -2,10 +2,6 @@
   "name": "MorriCards",
   "short_name": "MorriCards",
   "description": "Your friendly shopping assistant.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#f7f5e9",
-  "theme_color": "#4b830a",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -17,5 +13,10 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "theme_color": "#f7f5e9",
+  "background_color": "#f7f5e9",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait"
 }
