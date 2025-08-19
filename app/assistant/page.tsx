@@ -412,7 +412,7 @@ export default function AssistantPage() {
         )}
 
         {product && (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto mb-12">
             <Card className="shadow-lg">
                 <CardHeader>
                 <div className='flex items-start gap-4'>
@@ -576,47 +576,57 @@ export default function AssistantPage() {
           </div>
         )}
 
-        {!product && !isFetchingProduct && (
-          <>
-            {recentItems.length > 0 ? (
-              <div className="max-w-4xl mx-auto">
-                <h2 className="text-xl font-semibold mb-4">Recently Viewed</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {recentItems.map(item => (
-                    <Card 
-                      key={item.sku} 
-                      className="cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform"
-                      onClick={() => fetchProductAndInsights(item.sku)}
-                    >
-                      <CardContent className="p-4">
-                        <Image
-                          src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/150x150.png'}
-                          alt={item.name}
-                          width={150}
-                          height={150}
-                          className="rounded-md object-cover w-full aspect-square"
-                          data-ai-hint="product image small"
-                        />
-                        <p className="font-semibold text-sm mt-3 truncate">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
-                  <CardContent className="p-12 text-center">
-                      <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-                      <p className="text-muted-foreground">Scan a product to get started with the AI assistant.</p>
+        {recentItems.length > 0 && (
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-xl font-semibold mb-4">Recently Viewed</h2>
+            <div className="space-y-4">
+              {recentItems.map(item => (
+                <Card
+                  key={item.sku}
+                  className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-shadow"
+                  onClick={() => fetchProductAndInsights(item.sku)}
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <Image
+                      src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                      alt={item.name}
+                      width={80}
+                      height={80}
+                      className="rounded-md object-cover border"
+                      data-ai-hint="product image small"
+                    />
+                    <div className="flex-grow min-w-0">
+                      <p className="font-semibold truncate">{item.name}</p>
+                      <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
+                        {(item.price.promotional || item.price.regular) && (
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <Badge variant={item.price.promotional ? 'destructive' : 'secondary'}>
+                                    {item.price.promotional || `£${item.price.regular?.toFixed(2)}`}
+                                </Badge>
+                                {item.price.promotional && item.price.regular && (
+                                    <span className="text-xs text-muted-foreground line-through">
+                                        £{item.price.regular.toFixed(2)}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
                   </CardContent>
-              </Card>
-            )}
-          </>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!product && !isFetchingProduct && recentItems.length === 0 && (
+          <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+              <CardContent className="p-12 text-center">
+                  <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">Scan a product to get started with the AI assistant.</p>
+              </CardContent>
+          </Card>
         )}
       </main>
     </div>
   );
 }
-
-    
