@@ -231,7 +231,7 @@ export default function PickingListClient() {
 
   const handlePick = useCallback((sku: string) => {
     const productCard = document.querySelector(`[data-sku="${sku}"]`);
-    const productToUpdate = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
+    const productToUpdate = productsRef.current.find(p => p.sku === sku);
 
     if (productCard && productToUpdate && !productToUpdate.picked) {
         productCard.classList.add('picked-animation');
@@ -261,14 +261,18 @@ export default function PickingListClient() {
   }, []);
   
   const handleScanResult = useCallback(async (text: string) => {
-    const sku = text.split(',')[0].trim();
-    if (!sku) return;
+    const scannedValue = text.split(',')[0].trim();
+    if (!scannedValue) return;
 
     if (!isSpeedMode) {
         setIsScanMode(false);
     }
 
-    const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
+    const productToPick = productsRef.current.find(p => 
+        p.sku === scannedValue || 
+        p.scannedSku === scannedValue || 
+        p.primaryEan13 === scannedValue
+    );
 
     if (productToPick) {
         if (productToPick.picked) {
@@ -283,7 +287,7 @@ export default function PickingListClient() {
         toast({
             variant: 'destructive',
             title: 'Item Not on List',
-            description: `SKU ${sku} is not on your current picking list.`,
+            description: `SKU ${scannedValue} is not on your current picking list.`,
             icon: <AlertTriangle className="h-5 w-5" />
         });
     }

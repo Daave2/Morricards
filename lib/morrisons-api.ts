@@ -48,6 +48,7 @@ export type FetchMorrisonsDataInput = {
 export type FetchMorrisonsDataOutput = {
   sku: string;
   scannedSku: string;
+  primaryEan13?: string | null;
   name: string;
   price: { regular?: number; promotional?: string };
   stockQuantity: number;
@@ -310,10 +311,12 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const promos = (pi?.promotions ?? []) as any[];
             
             const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
+            const primaryEan13 = finalProductDetails?.gtins?.find(g => g.type === 'EAN13' && g.additionalProperties?.isPrimaryBarcode)?.id;
 
             return {
               sku: internalSku,
               scannedSku,
+              primaryEan13,
               name: name!,
               price: {
                 regular: prices?.[0]?.regularPrice,
