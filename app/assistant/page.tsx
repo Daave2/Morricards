@@ -175,7 +175,10 @@ const InsightSection = ({ title, content, icon, children, variant }: { title: st
   if (!content && !children) return null;
 
   const contentArray = content && (Array.isArray(content) ? content : [content]);
-  if (contentArray && (contentArray.length === 0 || (contentArray.length === 1 && !contentArray[0]))) return null;
+  if (contentArray && (contentArray.length === 0 || (contentArray.length === 1 && !contentArray[0]))) {
+      // If there's no content, only render if there are children
+      if (!children) return null;
+  }
 
   const iconColor = variant === 'destructive' ? 'text-destructive' : 'text-primary';
 
@@ -196,7 +199,7 @@ const InsightSection = ({ title, content, icon, children, variant }: { title: st
             <p>{content}</p>
         ))}
       </div>
-      {children}
+      {children && <div className="mt-4">{children}</div>}
     </div>
   );
 };
@@ -427,7 +430,13 @@ export default function AssistantPage() {
                     {insights && (
                        <div className="space-y-6">
                         <InsightSection title="About This Product" icon={<Info />} content={insights.customerFacingSummary} />
-                        <InsightSection title="Where to Find It" icon={<Map />} content={insights.customerFriendlyLocation} />
+                        <InsightSection title="Where to Find It" icon={<Map />} content={insights.customerFriendlyLocation}>
+                           {productLocation && (
+                              <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto mt-4">
+                                  <StoreMap productLocation={productLocation} />
+                              </div>
+                           )}
+                        </InsightSection>
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="item-1">
                                 <AccordionTrigger>More AI Insights</AccordionTrigger>
@@ -446,16 +455,6 @@ export default function AssistantPage() {
                                     </InsightSection>
                                 </AccordionContent>
                             </AccordionItem>
-                             {productLocation && (
-                              <AccordionItem value="item-map">
-                                <AccordionTrigger>Location Map</AccordionTrigger>
-                                <AccordionContent>
-                                   <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto mt-4">
-                                      <StoreMap productLocation={productLocation} />
-                                  </div>
-                                </AccordionContent>
-                              </AccordionItem>
-                            )}
                             <AccordionItem value="item-2">
                                 <AccordionTrigger>Full Product Details</AccordionTrigger>
                                 <AccordionContent className="pt-4 text-sm text-muted-foreground">
@@ -560,5 +559,3 @@ export default function AssistantPage() {
     </div>
   );
 }
-
-    
