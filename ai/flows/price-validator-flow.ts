@@ -22,7 +22,7 @@ const priceTicketPrompt = ai.definePrompt({
 For each ticket you find, extract the following information:
 - The full product name (e.g., "Winalot Puppy Meaty Chunks In Gravy").
 - The secondary product description (e.g., "12X100G").
-- The main price, including the currency symbol (e.g., "£4.70").
+- The main price. This is the most prominent price on the ticket. It could be a standard price (e.g., "£4.70") OR a promotional offer (e.g., "2 for £5.00", "3 for 2"). Prioritize the promotional offer if present.
 - The unit price, if available (e.g., "£3.92 per kg").
 - The EAN (13 digits) or internal SKU (7-10 digits). The SKU is usually a shorter number near the QR code/barcode.
 
@@ -94,6 +94,7 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
       const normalizePrice = (price: string | null | undefined): string | number | null => {
           if (!price) return null;
           const cleaned = price.replace(/[£\s]/g, '').toLowerCase();
+          // Regex to match patterns like "2for5.00" or "3for2"
           if (/^\d+for\d+(\.\d+)?$/.test(cleaned)) {
             return cleaned;
           }
@@ -105,6 +106,7 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
       const normalizedSystemPrice = normalizePrice(systemPriceString);
       const normalizedSystemPromo = normalizePrice(systemPromoString);
 
+      // Priority 1: Check against promotional price if the system has one.
       if (normalizedSystemPromo) {
         if (normalizedTicketPrice === normalizedSystemPromo) {
           return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
@@ -116,7 +118,7 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
             product: productData,
           };
         }
-      } else {
+      } else { // Priority 2: Check against regular price
         if (normalizedTicketPrice === normalizedSystemPrice) {
           return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
         } else {

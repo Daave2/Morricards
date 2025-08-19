@@ -59,7 +59,30 @@ const normalize = (p: string | null | undefined) => p?.replace(/[£\s]/g, '').to
 const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { title: string, data?: OcrData | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => {
     const { productName, price, eanOrSku, productSubName, unitPrice } = data || {};
 
-    const priceParts = price?.replace('£', '').split('.') || ['N/A'];
+    const isMultiBuy = price && /^\d+\s*for\s*£?\d+(\.\d+)?$/.test(price);
+    let priceContent;
+
+    if (isMultiBuy) {
+        const parts = price.match(/^(\d+)\s*for\s*£?(\d+(\.\d+)?)$/);
+        if (parts) {
+            priceContent = (
+                 <p className="text-4xl sm:text-5xl font-extrabold text-black dark:text-white leading-none">
+                    <span className="text-3xl align-top -mr-1">{parts[1]}</span> for 
+                    <span className="text-3xl align-top -mr-1 ml-1">£</span>{parts[2]}
+                </p>
+            );
+        }
+    } else {
+        const priceParts = price?.replace('£', '').split('.') || ['N/A'];
+        priceContent = (
+            <p className="text-5xl font-extrabold text-black dark:text-white leading-none">
+                <span className="text-3xl align-top -mr-1">£</span>
+                {priceParts[0]}
+                <span className="text-4xl align-top">.{priceParts[1] || '00'}</span>
+            </p>
+        );
+    }
+    
 
     return (
         <div className="border-2 border-dashed rounded-lg p-4 space-y-3 flex-1 bg-background/60 font-sans w-full max-w-sm">
@@ -82,11 +105,7 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
                     <p className="font-mono text-xs text-center">{eanOrSku || 'N/A'}</p>
                 </div>
                 <div className={cn("p-1 rounded flex-1 text-right", isMismatch.price && "bg-destructive/20 ring-2 ring-destructive")}>
-                     <p className="text-5xl font-extrabold text-black dark:text-white leading-none">
-                        <span className="text-3xl align-top -mr-1">£</span>
-                        {priceParts[0]}
-                        <span className="text-4xl align-top">.{priceParts[1] || '00'}</span>
-                    </p>
+                    {priceContent || <p className="text-5xl font-extrabold text-black dark:text-white leading-none">N/A</p>}
                 </div>
             </div>
         </div>
