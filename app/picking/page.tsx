@@ -599,6 +599,20 @@ export default function PickingListClient() {
         </div>
       )}
 
+      {scanMode === 'pick' && (
+        <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-sm border-b p-2">
+            <div className="w-full max-w-md mx-auto">
+                <div className="relative aspect-video w-full rounded-md overflow-hidden">
+                    <ZXingScanner
+                        ref={scannerRef}
+                        onResult={handleScanToPick}
+                        onError={handleScanError}
+                    />
+                </div>
+            </div>
+        </div>
+      )}
+
       <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -705,35 +719,6 @@ export default function PickingListClient() {
             </CardContent>
           </Card>
            
-          {scanMode === 'pick' && (
-            <Card className="max-w-4xl mx-auto mb-8 shadow-lg">
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle>Scan to Pick</CardTitle>
-                        <Button variant="ghost" size="icon" onClick={() => setScanMode('off')}>
-                            <X className="h-5 w-5" />
-                        </Button>
-                    </div>
-                    <CardDescription>Scan a product's barcode to mark it as picked.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
-                        <ZXingScanner
-                            ref={scannerRef}
-                            onResult={handleScanToPick}
-                            onError={handleScanError}
-                        />
-                    </div>
-                    <div className="mt-4 w-full max-w-md mx-auto">
-                        <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
-                            {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
-                            {isOcrLoading ? 'Reading...' : 'Read Label with AI'}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-          )}
-
           { (products.length > 0 || isLoading) && 
               <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
                   <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -840,9 +825,9 @@ export default function PickingListClient() {
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
+                                  <AlertDialogDescriptionComponent>
                                     This action will permanently clear your entire picking list. This cannot be undone.
-                                  </AlertDialogDescription>
+                                  </AlertDialogDescriptionComponent>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
