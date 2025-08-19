@@ -398,10 +398,15 @@ export default function AssistantPage() {
                         <CardTitle>{product.name}</CardTitle>
                         <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
                         {(product.price.promotional || product.price.regular) && (
-                            <div className="mt-2">
+                            <div className="mt-2 flex items-baseline gap-2">
                                 <Badge className="text-lg" variant={product.price.promotional ? 'destructive' : 'secondary'}>
                                     {product.price.promotional || `£${product.price.regular?.toFixed(2)}`}
                                 </Badge>
+                                {product.price.promotional && product.price.regular && (
+                                    <span className="text-sm text-muted-foreground line-through">
+                                        £{product.price.regular.toFixed(2)}
+                                    </span>
+                                )}
                             </div>
                         )}
                          <div className="mt-2">
