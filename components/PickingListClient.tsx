@@ -310,7 +310,7 @@ export default function PickingListClient() {
         });
         
         setIsFetching(false);
-        if (error || !data || data.length === 0) {
+        if (error || !data || !data.length === 0) {
             const errText = error || `Could not find product for EAN: ${sku}`;
             playError();
             toast({

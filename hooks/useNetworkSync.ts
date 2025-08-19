@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { flushAvailabilityQueue, flushProductQueue, type SyncedProduct } from '@/lib/offlineQueue';

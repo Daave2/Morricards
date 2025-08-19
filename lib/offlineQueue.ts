@@ -114,11 +114,3 @@ export async function flushProductQueue({ bearerToken, debugMode }: { bearerToke
 
     return { products: fetchedProducts, syncedCount };
 }
-
-// Back-compat shim to satisfy existing imports during build.
-// Wire this up to your real sync logic later.
-export async function flushQueue(): Promise<void> {
-  // Intentionally a no-op to unblock the build.
-  // TODO: implement by reading unsynced records from IDB and posting to your API,
-  // then marking them as synced.
-}
