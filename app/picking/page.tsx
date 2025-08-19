@@ -18,7 +18,7 @@ import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanL
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
-import { Alert, AlertTitle, AlertDescription as AlertDescriptionComponent } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ToastAction } from '@/components/ui/toast';
 import {
   AlertDialog,
@@ -34,7 +34,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription as DialogDescriptionComponent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -617,9 +617,9 @@ export default function PickingListClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Share Picking List</DialogTitle>
-            <DialogDescriptionComponent>
+            <DialogDescription>
               Share this URL or QR code with a team member to instantly load this picking list on their device.
-            </DialogDescriptionComponent>
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="flex items-center space-x-2">
@@ -825,9 +825,9 @@ export default function PickingListClient() {
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescriptionComponent>
+                                  <AlertDialogDescription>
                                     This action will permanently clear your entire picking list. This cannot be undone.
-                                  </AlertDialogDescriptionComponent>
+                                  </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
