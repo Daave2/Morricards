@@ -12,13 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription as AlertDescriptionComponent } from '@/components/ui/alert';
 import { ToastAction } from '@/components/ui/toast';
 import {
   AlertDialog,
@@ -34,7 +34,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
+  DialogDescription as DialogDescriptionComponent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -603,9 +603,9 @@ export default function PickingListClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Share Picking List</DialogTitle>
-            <DialogDescription>
+            <DialogDescriptionComponent>
               Share this URL or QR code with a team member to instantly load this picking list on their device.
-            </DialogDescription>
+            </DialogDescriptionComponent>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="flex items-center space-x-2">
@@ -897,5 +897,3 @@ export default function PickingListClient() {
     </div>
   );
 }
-
-    
