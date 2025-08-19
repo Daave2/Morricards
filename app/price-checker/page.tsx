@@ -36,12 +36,6 @@ const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
 
-type ValidationResult = PriceTicketValidationOutput & {
-  id: string;
-  imageDataUri: string;
-  timestamp: string;
-};
-
 // A log entry can now contain multiple validation results from a single image
 type LogEntry = {
     id: string;
@@ -63,7 +57,7 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
     let priceContent;
 
     if (isMultiBuy) {
-        const parts = price.match(/^(\d+)\s*for\s*£?(\d+(\.\d+)?)$/);
+        const parts = price?.match(/^(\d+)\s*for\s*£?(\d+(\.\d+)?)$/);
         if (parts) {
             priceContent = (
                  <p className="text-4xl sm:text-5xl font-extrabold text-black dark:text-white leading-none">
@@ -331,6 +325,8 @@ export default function PriceCheckerPage() {
 
     const parsePrice = (priceString: string | null | undefined): number | null => {
         if (!priceString) return null;
+        // Handle multi-buy promos like "2 for £20" by ignoring them for simple price comparison
+        if (priceString.toLowerCase().includes('for')) return null; 
         const num = parseFloat(priceString.replace(/[£\s,]/g, ''));
         return isNaN(num) ? null : num;
     }
@@ -340,16 +336,15 @@ export default function PriceCheckerPage() {
             case 'correct':
                 return result.isCorrect;
             case 'illegal': {
-                if (result.isCorrect || !result.ocrData?.price || !result.product?.price) return false;
+                if (result.isCorrect || !result.ocrData?.price || !result.product?.price?.regular) return false;
                 const ticketPrice = parsePrice(result.ocrData.price);
-                const systemPrice = parsePrice(result.product.price.promotional || `£${result.product.price.regular}`);
+                const systemPrice = result.product.price.regular; // Only compare regular prices for "illegal"
                 return ticketPrice !== null && systemPrice !== null && systemPrice < ticketPrice;
             }
             case 'discrepancy': {
-                 if (result.isCorrect || !result.ocrData?.price || !result.product?.price) return false;
-                const ticketPrice = parsePrice(result.ocrData.price);
-                const systemPrice = parsePrice(result.product.price.promotional || `£${result.product.price.regular}`);
-                return ticketPrice !== null && systemPrice !== null && systemPrice > ticketPrice;
+                 if (result.isCorrect || !result.mismatchReason) return false;
+                 // Any non-correct result with a reason is a discrepancy
+                 return !result.mismatchReason.toLowerCase().includes('illegal');
             }
             case 'other':
                 return !result.isCorrect && !result.mismatchReason?.toLowerCase().includes('price');

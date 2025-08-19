@@ -117,23 +117,22 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
         }
       }
       
-      // Scenario 2: Ticket shows a regular price
+      // Scenario 2: Ticket shows a regular price, but system has a promo
+      if (systemPromoString) {
+        return {
+         isCorrect: false,
+         mismatchReason: `Ticket has regular price "${ticketPriceString}" but system expects promo "${systemPromoString}".`,
+         ocrData,
+         product: productData,
+       };
+      }
+
+      // Scenario 3: Ticket shows a regular price, and it matches system regular price
       if (normalizedTicketPrice === normalizedSystemPrice) {
         return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
       }
 
-      // Scenario 3: Mismatch, provide a clear reason
-      // If the system expected a promo but the ticket had a regular price
-      if (systemPromoString) {
-         return {
-          isCorrect: false,
-          mismatchReason: `Ticket has regular price "${ticketPriceString}" but system expects promo "${systemPromoString}".`,
-          ocrData,
-          product: productData,
-        };
-      }
-
-      // Default mismatch for regular prices
+      // Scenario 4: Default mismatch for regular prices
       return {
         isCorrect: false,
         mismatchReason: `Ticket price "${ticketPriceString}" does not match system price "${systemPriceString}".`,
