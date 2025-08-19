@@ -100,13 +100,13 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
-        return adjustedDate.toLocaleDateString('en-GB', { 
-            weekday: 'short', 
-            day: 'numeric', 
-            month: 'short', 
+        return adjustedDate.toLocaleDateString('en-GB', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
         });
     };
-    
+
     let deliveryInfoContent;
     if (deliveryInfo) {
       const friendlyDate = formatDate(deliveryInfo.expectedDate);
@@ -122,7 +122,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     } else {
         deliveryInfoContent = (<span>There are <strong>no upcoming deliveries</strong> scheduled for this item.</span>);
     }
-  
+
   const hasAllOrders = allOrders && allOrders.length > 0;
 
   if (hasAllOrders) {
@@ -150,10 +150,10 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
 
 const InsightSection = ({ title, content, icon, children, variant }: { title: string; content?: React.ReactNode, icon?: React.ReactNode; children?: React.ReactNode, variant?: 'default' | 'destructive' }) => {
   if (!content && !children) return null;
-  
+
   const contentArray = content && (Array.isArray(content) ? content : [content]);
   if (contentArray && (contentArray.length === 0 || (contentArray.length === 1 && !contentArray[0]))) return null;
-  
+
   const iconColor = variant === 'destructive' ? 'text-destructive' : 'text-primary';
 
   return (
@@ -183,15 +183,15 @@ export default function AssistantPage() {
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
-  
+
   const [product, setProduct] = useState<Product | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
-  
+
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
-  
+
   useEffect(() => {
     if (isScanMode) {
       scannerRef.current?.start();
@@ -244,7 +244,7 @@ export default function AssistantPage() {
       const foundProduct = data[0];
       setProduct(foundProduct);
       toast({ title: 'Product Found', description: `Generating AI insights for ${foundProduct.name}...` });
-      
+
       setIsGeneratingInsights(true);
       try {
         const insightResult = await productInsightsFlow({ productData: foundProduct });
@@ -289,7 +289,7 @@ export default function AssistantPage() {
         setIsOcrLoading(false);
     }
   };
-  
+
   const bws = product?.productDetails?.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
 
@@ -347,7 +347,7 @@ export default function AssistantPage() {
             </Form>
           </CardContent>
         </Card>
-        
+
         {isFetchingProduct && (
           <div className="text-center p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
@@ -403,6 +403,7 @@ export default function AssistantPage() {
                     {insights && (
                        <div className="space-y-6">
                         <InsightSection title="About This Product" icon={<Info />} content={insights.customerFacingSummary} />
+                        <InsightSection title="Where to Find It" icon={<Map />} content={insights.customerFriendlyLocation} />
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="item-1">
                                 <AccordionTrigger>More AI Insights</AccordionTrigger>
@@ -443,7 +444,7 @@ export default function AssistantPage() {
                                                 </Button>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="flex justify-center py-2">
                                             <SkuQrCode sku={product.sku} />
                                         </div>
@@ -525,3 +526,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
