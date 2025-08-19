@@ -35,9 +35,9 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { cn } from '@/lib/utils';
 import ZXingScanner from '@/components/ZXingScanner';
@@ -311,7 +311,7 @@ export default function PickingListClient() {
 
   const handleScanToAdd = useCallback(async (text: string) => {
     const sku = text.split(',')[0].trim();
-    if (!sku) return;
+    if (!sku || sku.length < 4) return;
 
     setScanMode('off');
     
@@ -425,12 +425,12 @@ export default function PickingListClient() {
     const newSkus = values.skus
       .split(/[\s,]+/)
       .map(s => s.trim())
-      .filter(s => s && !existingSkus.has(s));
+      .filter(s => s && s.length >= 4 && !existingSkus.has(s));
 
     if (newSkus.length === 0) {
       toast({
         title: 'No new SKUs to add',
-        description: 'All entered SKUs are already in the list.',
+        description: 'All entered SKUs are either invalid, too short, or already in the list.',
       });
       return;
     }
@@ -906,5 +906,4 @@ export default function PickingListClient() {
     </div>
   );
 }
-
 
