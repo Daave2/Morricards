@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,6 +34,8 @@ type Product = FetchMorrisonsDataOutput[0];
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
+
+const LOCAL_STORAGE_KEY_RECENT_AI = 'morricards-assistant-recent';
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
   if (!location) return null;
@@ -212,11 +214,33 @@ export default function AssistantPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
+  const [recentItems, setRecentItems] = useState<Product[]>([]);
+
 
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
+
+  useEffect(() => {
+    try {
+      const savedItems = localStorage.getItem(LOCAL_STORAGE_KEY_RECENT_AI);
+      if (savedItems) {
+        setRecentItems(JSON.parse(savedItems));
+      }
+    } catch (error) {
+      console.error("Failed to load recent items from local storage", error);
+    }
+  }, []);
+
+  const updateRecentItems = (newItem: Product) => {
+    setRecentItems(prev => {
+      const withoutOld = prev.filter(item => item.sku !== newItem.sku);
+      const newRecent = [newItem, ...withoutOld].slice(0, 5);
+      localStorage.setItem(LOCAL_STORAGE_KEY_RECENT_AI, JSON.stringify(newRecent));
+      return newRecent;
+    });
+  };
 
   useEffect(() => {
     if (isScanMode) {
@@ -237,11 +261,7 @@ export default function AssistantPage() {
     setInsights(null);
   }
 
-  const handleScanSuccess = async (text: string) => {
-    const sku = text.split(',')[0].trim();
-    if (!sku) return;
-
-    setIsScanMode(false);
+  const fetchProductAndInsights = async (sku: string) => {
     setIsFetchingProduct(true);
     handleReset();
 
@@ -269,6 +289,7 @@ export default function AssistantPage() {
       playSuccess();
       const foundProduct = data[0];
       setProduct(foundProduct);
+      updateRecentItems(foundProduct);
       toast({ title: 'Product Found', description: `Generating AI insights for ${foundProduct.name}...` });
 
       setIsGeneratingInsights(true);
@@ -282,6 +303,14 @@ export default function AssistantPage() {
         setIsGeneratingInsights(false);
       }
     }
+  };
+
+
+  const handleScanSuccess = async (text: string) => {
+    const sku = text.split(',')[0].trim();
+    if (!sku) return;
+    setIsScanMode(false);
+    await fetchProductAndInsights(sku);
   };
 
   const handleScanError = (message: string) => {
@@ -548,14 +577,46 @@ export default function AssistantPage() {
         )}
 
         {!product && !isFetchingProduct && (
-            <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
-                <CardContent className="p-12 text-center">
-                    <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-                    <p className="text-muted-foreground">Scan a product to get started with the AI assistant.</p>
-                </CardContent>
-            </Card>
+          <>
+            {recentItems.length > 0 ? (
+              <div className="max-w-4xl mx-auto">
+                <h2 className="text-xl font-semibold mb-4">Recently Viewed</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {recentItems.map(item => (
+                    <Card 
+                      key={item.sku} 
+                      className="cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform"
+                      onClick={() => fetchProductAndInsights(item.sku)}
+                    >
+                      <CardContent className="p-4">
+                        <Image
+                          src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/150x150.png'}
+                          alt={item.name}
+                          width={150}
+                          height={150}
+                          className="rounded-md object-cover w-full aspect-square"
+                          data-ai-hint="product image small"
+                        />
+                        <p className="font-semibold text-sm mt-3 truncate">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+                  <CardContent className="p-12 text-center">
+                      <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                      <p className="text-muted-foreground">Scan a product to get started with the AI assistant.</p>
+                  </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </main>
     </div>
   );
 }
+
+    
