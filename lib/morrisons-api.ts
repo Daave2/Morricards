@@ -241,7 +241,6 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
         let pi: PriceIntegrity | null = null;
-        let proxyError: string | null = null;
       
         try {
             pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
@@ -265,7 +264,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             ]);
 
             const productDetailsFromProxy = productProxyResult.status === 'fulfilled' ? productProxyResult.value.product : null;
-            proxyError = productProxyResult.status === 'fulfilled' ? productProxyResult.value.error : (productProxyResult as any).reason?.message;
+            const proxyError = productProxyResult.status === 'fulfilled' ? productProxyResult.value.error : (productProxyResult.reason as Error)?.message || String(productProxyResult.reason);
             if (debugMode && proxyError) console.error(proxyError);
 
 
