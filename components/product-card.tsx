@@ -51,10 +51,10 @@ const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], produc
         <DialogTitle>Delivery History for {productName}</DialogTitle>
       </DialogHeader>
       <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
-        {orders.length > 0 ? orders.map(order => {
+        {orders.length > 0 ? orders.map((order, index) => {
           const expectedDate = order.delivery?.dateDeliveryExpected || order.lines?.status?.[0]?.ordered?.date;
           return (
-            <Card key={order.orderId}>
+            <Card key={`${order.orderId}-${order.orderPosition}-${index}`}>
               <CardHeader>
                 <CardTitle className="text-lg flex justify-between items-center">
                   <span>Order: {order.orderPosition === 'next' ? 'Next' : 'Last'}</span>
