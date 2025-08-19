@@ -77,7 +77,7 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
                             <SkuQrCode sku={eanOrSku} size={64} />
                         </div>
                     ) : (
-                         <div className="w-16 h-16 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
+                         <div className="w-64 h-16 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
                     )}
                     <p className="font-mono text-xs text-center">{eanOrSku || 'N/A'}</p>
                 </div>
