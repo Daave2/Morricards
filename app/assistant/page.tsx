@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import SkuQrCode from '@/components/SkuQrCode';
 import Link from 'next/link';
+import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -33,6 +34,28 @@ type Product = FetchMorrisonsDataOutput[0];
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
 });
+
+function parseLocationString(location: string | undefined): ProductLocation | null {
+  if (!location) return null;
+
+  const aisleRegex = /Aisle\s*(\d+)/i;
+  const bayRegex = /bay\s*(\d+)/i;
+  const sideRegex = /(Left|Right)/i;
+  
+  const aisleMatch = location.match(aisleRegex);
+  const bayMatch = location.match(bayRegex);
+  const sideMatch = location.match(sideRegex);
+
+  if (aisleMatch && bayMatch && sideMatch) {
+    return {
+      aisle: aisleMatch[1],
+      bay: bayMatch[1],
+      side: sideMatch[1] as 'Left' | 'Right',
+    };
+  }
+  
+  return null;
+}
 
 
 const DataRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode }) => {
@@ -292,6 +315,7 @@ export default function AssistantPage() {
 
   const bws = product?.productDetails?.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
+  const productLocation = product ? parseLocationString(product.location.standard) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -422,6 +446,16 @@ export default function AssistantPage() {
                                     </InsightSection>
                                 </AccordionContent>
                             </AccordionItem>
+                             {productLocation && (
+                              <AccordionItem value="item-map">
+                                <AccordionTrigger>Location Map</AccordionTrigger>
+                                <AccordionContent>
+                                   <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto mt-4">
+                                      <StoreMap productLocation={productLocation} />
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            )}
                             <AccordionItem value="item-2">
                                 <AccordionTrigger>Full Product Details</AccordionTrigger>
                                 <AccordionContent className="pt-4 text-sm text-muted-foreground">
