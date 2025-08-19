@@ -22,7 +22,8 @@ const priceTicketPrompt = ai.definePrompt({
 For each ticket you find, extract the following information:
 - The full product name (e.g., "Winalot Puppy Meaty Chunks In Gravy").
 - The secondary product description (e.g., "12X100G").
-- The main price. This is the most prominent price on the ticket. It could be a standard price (e.g., "£4.70") OR a promotional offer (e.g., "2 for £5.00", "3 for 2"). Prioritize the promotional offer if present.
+- The main price (e.g., "£4.70"). This is the most prominent standard price on the ticket.
+- The promotional offer, if present (e.g., "2 for £5.00", "3 for 2"). This is often in a different color or style.
 - The unit price, if available (e.g., "£3.92 per kg").
 - The EAN (13 digits) or internal SKU (7-10 digits). The SKU is usually a shorter number near the QR code/barcode.
 
@@ -87,55 +88,64 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
         };
       }
       
-      const ticketPriceString = ocrData.price;
-      const systemPriceString = productData.price.regular ? `£${productData.price.regular.toFixed(2)}` : null;
+      const ticketPromoString = ocrData.promotionalOffer;
+      const ticketRegularPriceString = ocrData.mainPrice;
+
       const systemPromoString = productData.price.promotional;
+      const systemRegularPriceString = productData.price.regular ? `£${productData.price.regular.toFixed(2)}` : null;
       
-      const normalizePrice = (price: string | null | undefined): string | null => {
+      const normalize = (price: string | null | undefined): string | null => {
           if (!price) return null;
           // Standardize promo format, e.g., "2 for £5.00" -> "2for5.00"
           return price.replace(/\s*for\s*/, 'for').replace(/[£\s]/g, '').toLowerCase();
       };
       
-      const isTicketPricePromo = ticketPriceString?.toLowerCase().includes('for') ?? false;
+      const normalizedTicketPromo = normalize(ticketPromoString);
+      const normalizedSystemPromo = normalize(systemPromoString);
 
-      const normalizedTicketPrice = normalizePrice(ticketPriceString);
-      const normalizedSystemPrice = normalizePrice(systemPriceString);
-      const normalizedSystemPromo = normalizePrice(systemPromoString);
-
-      // Scenario 1: Ticket shows a promotional price
-      if (isTicketPricePromo) {
-        if (normalizedTicketPrice === normalizedSystemPromo) {
+      if (normalizedTicketPromo && normalizedSystemPromo) {
+        if (normalizedTicketPromo === normalizedSystemPromo) {
           return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
         } else {
           return {
             isCorrect: false,
-            mismatchReason: `Ticket promo price "${ticketPriceString}" does not match system promo price "${systemPromoString || 'None'}".`,
+            mismatchReason: `Ticket promo "${ticketPromoString}" does not match system promo "${systemPromoString}".`,
             ocrData,
             product: productData,
           };
         }
       }
-      
-      // Scenario 2: Ticket shows a regular price, but system has a promo
-      if (systemPromoString) {
+
+      if (normalizedTicketPromo && !normalizedSystemPromo) {
         return {
-         isCorrect: false,
-         mismatchReason: `Ticket has regular price "${ticketPriceString}" but system expects promo "${systemPromoString}".`,
-         ocrData,
-         product: productData,
-       };
+          isCorrect: false,
+          mismatchReason: `Ticket shows promo "${ticketPromoString}" but system has no promo.`,
+          ocrData,
+          product: productData,
+        };
       }
 
-      // Scenario 3: Ticket shows a regular price, and it matches system regular price
-      if (normalizedTicketPrice === normalizedSystemPrice) {
+      if (!normalizedTicketPromo && normalizedSystemPromo) {
+        return {
+          isCorrect: false,
+          mismatchReason: `System expects promo "${systemPromoString}" but ticket shows none.`,
+          ocrData,
+          product: productData,
+        };
+      }
+
+      // If we are here, there are no promos involved. Check regular price.
+      const normalizedTicketRegular = normalize(ticketRegularPriceString);
+      const normalizedSystemRegular = normalize(systemRegularPriceString);
+
+      if (normalizedTicketRegular === normalizedSystemRegular) {
         return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
       }
 
-      // Scenario 4: Default mismatch for regular prices
+      // Default mismatch for regular prices
       return {
         isCorrect: false,
-        mismatchReason: `Ticket price "${ticketPriceString}" does not match system price "${systemPriceString}".`,
+        mismatchReason: `Ticket price "${ticketRegularPriceString}" does not match system price "${systemRegularPriceString}".`,
         ocrData,
         product: productData,
       };

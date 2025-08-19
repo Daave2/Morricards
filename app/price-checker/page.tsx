@@ -51,27 +51,22 @@ const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
 const normalize = (p: string | null | undefined) => p?.replace(/[£\s]/g, '').toLowerCase();
 
 const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = false }: { title: string, data?: OcrData | null, systemData?: PriceTicketValidationOutput['product'] | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => {
-    const { productName, price, eanOrSku, productSubName, unitPrice } = data || {};
+    const { productName, mainPrice, promotionalOffer, eanOrSku, productSubName, unitPrice } = data || {};
     
     // Determine the prices from the correct source
-    const ticketPromo = price?.includes('for') ? price : null;
-    const ticketRegular = !ticketPromo ? price : null;
-    const systemPromo = systemData?.price.promotional;
-    const systemRegular = systemData?.price.regular ? `£${systemData.price.regular.toFixed(2)}` : null;
+    const displayPromo = title.includes('System') ? systemData?.price.promotional : promotionalOffer;
+    const displayRegular = title.includes('System') ? (systemData?.price.regular ? `£${systemData.price.regular.toFixed(2)}` : null) : mainPrice;
 
-    // Decide what to display
-    const displayPrice = title.includes('System') ? systemRegular : ticketRegular;
-    const displayPromo = title.includes('System') ? systemPromo : ticketPromo;
     const displayProductName = title.includes('System') ? systemData?.name : productName;
     const displaySubName = title.includes('System') ? systemData?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; ') : productSubName;
     const displaySku = title.includes('System') ? systemData?.sku : eanOrSku;
 
-    const priceParts = displayPrice?.replace('£', '').split('.') || ['N/A'];
+    const priceParts = displayRegular?.replace('£', '').split('.') || ['N/A'];
     const priceContent = (
-        <p className="text-5xl font-extrabold text-black dark:text-white leading-none">
-            <span className="text-3xl align-top -mr-1">£</span>
+        <p className="text-4xl sm:text-5xl font-extrabold text-black dark:text-white leading-none">
+            <span className="text-2xl sm:text-3xl align-top -mr-1">£</span>
             {priceParts[0]}
-            <span className="text-4xl align-top">.{priceParts[1] || '00'}</span>
+            <span className="text-3xl sm:text-4xl align-top">.{priceParts[1] || '00'}</span>
         </p>
     );
 
@@ -101,7 +96,7 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = 
                     <p className="font-mono text-xs text-center">{displaySku || 'N/A'}</p>
                 </div>
                 <div className={cn("p-1 rounded flex-1 text-right", isMismatch.price && "bg-destructive/20 ring-2 ring-destructive")}>
-                    {displayPrice ? priceContent : <p className="text-5xl font-extrabold text-black dark:text-white leading-none">N/A</p>}
+                    {displayRegular ? priceContent : <p className="text-4xl sm:text-5xl font-extrabold text-black dark:text-white leading-none">N/A</p>}
                 </div>
             </div>
         </div>
@@ -125,7 +120,8 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground">TICKET DATA (OCR)</p>
                   <p><strong>Name:</strong> {result.ocrData?.productName || 'N/A'}</p>
-                  <p><strong>Price:</strong> {result.ocrData?.price || 'N/A'}</p>
+                  <p><strong>Price:</strong> {result.ocrData?.mainPrice || 'N/A'}</p>
+                   {result.ocrData?.promotionalOffer && <p><strong>Offer:</strong> {result.ocrData.promotionalOffer}</p>}
                   <p><strong>SKU/EAN:</strong> {result.ocrData?.eanOrSku || 'N/A'}</p>
                 </div>
                  <div>
@@ -333,8 +329,8 @@ export default function PriceCheckerPage() {
             case 'correct':
                 return result.isCorrect;
             case 'illegal': {
-                if (result.isCorrect || !result.ocrData?.price || !result.product?.price?.regular) return false;
-                const ticketPrice = parsePrice(result.ocrData.price);
+                if (result.isCorrect || !result.ocrData?.mainPrice || !result.product?.price?.regular) return false;
+                const ticketPrice = parsePrice(result.ocrData.mainPrice);
                 const systemPrice = result.product.price.regular; // Only compare regular prices for "illegal"
                 return ticketPrice !== null && systemPrice !== null && systemPrice < ticketPrice;
             }
