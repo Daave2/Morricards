@@ -1,4 +1,5 @@
 
+
 /**
  * Browser-safe Morrisons API client:
  * - Uses Price Integrity (PI) for product details (browser OK).
