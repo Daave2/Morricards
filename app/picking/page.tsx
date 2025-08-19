@@ -55,6 +55,8 @@ import { ocrFlow } from '@/ai/flows/ocr-flow';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
 
+type ScanMode = 'off' | 'add' | 'pick' | 'ocr';
+
 const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
@@ -114,7 +116,7 @@ export default function PickingListClient() {
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-  const [isScanMode, setIsScanMode] = useState(false);
+  const [scanMode, setScanMode] = useState<ScanMode>('off');
   const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
@@ -131,22 +133,23 @@ export default function PickingListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const isScanning = scanMode !== 'off';
 
   const startScannerWithDelay = useCallback(() => {
     setTimeout(() => {
-        if (isScanMode && scannerRef.current) {
+        if (isScanning && scannerRef.current) {
             scannerRef.current.start();
         }
     }, 1500); // 1.5 second delay
-  }, [isScanMode]);
+  }, [isScanning]);
 
   useEffect(() => {
-    if (isScanMode) {
+    if (isScanning) {
       scannerRef.current?.start();
     } else {
       scannerRef.current?.stop();
     }
-  }, [isScanMode]);
+  }, [isScanning]);
 
   // Keep the ref updated with the latest products state
   useEffect(() => {
@@ -260,12 +263,12 @@ export default function PickingListClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  const handleScanResult = useCallback(async (text: string) => {
+  const handleScanToPick = useCallback(async (text: string) => {
     const scannedValue = text.split(',')[0].trim();
     if (!scannedValue) return;
 
     if (!isSpeedMode) {
-        setIsScanMode(false);
+        setScanMode('off');
     }
 
     const productToPick = productsRef.current.find(p => 
@@ -282,7 +285,6 @@ export default function PickingListClient() {
             handlePick(productToPick.sku);
         }
     } else {
-        // Item is not on the picking list, so we inform the user instead of adding it.
         playError();
         toast({
             variant: 'destructive',
@@ -292,11 +294,76 @@ export default function PickingListClient() {
         });
     }
 
-    // In speed mode, restart the scanner for the next item
     if (isSpeedMode) {
         startScannerWithDelay();
     }
   }, [handlePick, playInfo, playError, toast, isSpeedMode, startScannerWithDelay]);
+
+  const handleScanToAdd = useCallback(async (text: string) => {
+    const sku = text.split(',')[0].trim();
+    if (!sku) return;
+
+    setScanMode('off');
+    
+    if (productsRef.current.some(p => p.sku === sku || p.scannedSku === sku || p.primaryEan13 === sku)) {
+        playInfo();
+        toast({ title: 'Item Already on List', description: 'This item is already on your picking list.', icon: <Info className="h-5 w-5 text-blue-500" /> });
+        return;
+    }
+
+    const locationId = form.getValues('locationId');
+    if (!isOnline) {
+        playSuccess();
+        toast({ 
+            title: 'Offline: Item Queued', 
+            description: `Item ${sku} will be fetched when you're back online.`,
+            icon: <WifiOff className="h-5 w-5" />
+        });
+        const placeholder = await queueProductFetch({ sku, locationId });
+        setProducts(prev => [...prev, { ...placeholder, picked: false, isOffline: true }]);
+        return;
+    }
+
+    playSuccess();
+    toast({ title: 'New Item Scanned', description: `Fetching details for EAN: ${sku}` });
+
+    setLoadingSkuCount(prev => prev + 1);
+    setIsLoading(true);
+    setIsFetching(true);
+
+    const { data, error } = await getProductData({
+      locationId,
+      skus: [sku],
+      bearerToken: settings.bearerToken,
+      debugMode: settings.debugMode,
+    });
+    
+    setIsFetching(false);
+    if (error || !data || data.length === 0) {
+        const errText = error || `Could not find product for EAN: ${sku}`;
+        playError();
+        toast({
+            variant: 'destructive',
+            title: 'Product Not Found',
+            description: errText,
+            action: (
+                <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
+                    <Copy className="mr-2 h-4 w-4" /> Copy
+                </ToastAction>
+            ),
+        });
+    } else {
+        setProducts(prevProducts => {
+            const existing = prevProducts.find(p => p.sku === data[0].sku);
+            if (existing) return prevProducts; // Already added somehow
+            return [...prevProducts, { ...data[0], picked: false }];
+        });
+    }
+    
+    setIsLoading(false);
+    setLoadingSkuCount(prev => Math.max(0, prev - 1));
+
+  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -325,7 +392,11 @@ export default function PickingListClient() {
         const result = await ocrFlow({ imageDataUri });
         if (result.eanOrSku) {
             toast({ title: 'AI OCR Success', description: `Found number: ${result.eanOrSku}` });
-            await handleScanResult(result.eanOrSku);
+            if (scanMode === 'add') {
+                await handleScanToAdd(result.eanOrSku);
+            } else if (scanMode === 'pick') {
+                await handleScanToPick(result.eanOrSku);
+            }
         } else {
             playError();
             toast({ variant: 'destructive', title: 'AI OCR Failed', description: 'Could not find a valid SKU or EAN on the label.' });
@@ -395,7 +466,7 @@ export default function PickingListClient() {
     }
     setIsLoading(false);
     setLoadingSkuCount(0);
-    if (isScanMode) setIsScanMode(false);
+    setScanMode('off');
   }
 
   const sortedAndFilteredProducts = useMemo(() => {
@@ -441,10 +512,6 @@ export default function PickingListClient() {
 
     return result;
   }, [products, filterQuery, sortConfig]);
-  
-  const handleScanButtonClick = () => {
-    setIsScanMode(prev => !prev);
-  }
 
   const handleResetList = () => {
     setProducts([]);
@@ -513,12 +580,12 @@ export default function PickingListClient() {
   return (
     <div className="min-h-screen">
       <InstallPrompt />
-      {isScanMode && (
+      {isScanning && (
          <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
                 <ZXingScanner 
                     ref={scannerRef} 
-                    onResult={handleScanResult} 
+                    onResult={scanMode === 'add' ? handleScanToAdd : handleScanToPick} 
                     onError={handleScanError}
                 />
             </div>
@@ -528,7 +595,7 @@ export default function PickingListClient() {
                     {isOcrLoading ? 'Reading...' : 'Read with AI'}
                 </Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+            <Button variant="ghost" size="icon" onClick={() => setScanMode('off')} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
                <X className="h-6 w-6" />
             </Button>
         </div>
@@ -589,9 +656,18 @@ export default function PickingListClient() {
                           <div className="relative">
                             <Textarea
                               placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                              className="min-h-[120px] resize-y"
+                              className="min-h-[120px] resize-y pr-28"
                               {...field}
                             />
+                            <Button
+                                type="button"
+                                variant='outline'
+                                className="absolute top-3 right-3"
+                                onClick={() => setScanMode('add')}
+                              >
+                                <ScanLine className="mr-2 h-4 w-4" />
+                                Scan to Add
+                              </Button>
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -653,7 +729,7 @@ export default function PickingListClient() {
                             <TooltipTrigger asChild>
                               <Button 
                                   variant={"outline"}
-                                  onClick={handleScanButtonClick}
+                                  onClick={() => setScanMode('pick')}
                                 >
                                   <ScanLine className="mr-2 h-4 w-4" />
                                   Pick by Scan
@@ -792,3 +868,5 @@ export default function PickingListClient() {
     </div>
   );
 }
+
+    
