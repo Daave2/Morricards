@@ -13,13 +13,11 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Send, User, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf } from 'lucide-react';
+import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, User, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { productInsightsFlow, ProductInsightsOutput } from '@/ai/flows/product-insights-flow';
-import { productChatFlow } from '@/ai/flows/product-chat-flow';
-import type { ChatMessage } from '@/ai/flows/product-chat-types';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
@@ -37,10 +35,6 @@ type Product = FetchMorrisonsDataOutput[0];
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
-});
-
-const ChatFormSchema = z.object({
-  message: z.string().min(1),
 });
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
@@ -213,19 +207,16 @@ export default function AssistantPage() {
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
-  const [isChatting, setIsChatting] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
   const { settings } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (isScanMode) {
@@ -235,27 +226,15 @@ export default function AssistantPage() {
     }
   }, [isScanMode]);
 
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatHistory]);
-  
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: { locationId: '218' },
-  });
-
-  const chatForm = useForm<z.infer<typeof ChatFormSchema>>({
-    resolver: zodResolver(ChatFormSchema),
-    defaultValues: { message: '' },
   });
 
   const handleReset = () => {
     setProduct(null);
     setInsights(null);
     setProductLocation(null);
-    setChatHistory([]);
   }
 
   const handleScanSuccess = async (text: string) => {
@@ -335,33 +314,6 @@ export default function AssistantPage() {
         toast({ variant: 'destructive', title: 'AI OCR Error', description: 'An error occurred while reading the image.' });
     } finally {
         setIsOcrLoading(false);
-    }
-  };
-  
-  const handleChatSubmit = async (values: z.infer<typeof ChatFormSchema>) => {
-    if (!product) return;
-
-    const userMessage: ChatMessage = { role: 'user', content: values.message };
-    const newChatHistory = [...chatHistory, userMessage];
-    setChatHistory(newChatHistory);
-    chatForm.reset();
-    setIsChatting(true);
-
-    try {
-      const result = await productChatFlow({ 
-        productData: product, 
-        messages: newChatHistory,
-        locationId: form.getValues('locationId'),
-      });
-      const botMessage: ChatMessage = { role: 'model', content: result.response };
-      setChatHistory(prev => [...prev, botMessage]);
-    } catch (e) {
-      console.error("Chat flow failed:", e);
-      const errorMessage: ChatMessage = { role: 'model', content: "I'm sorry, I encountered an error. Please try again." };
-      setChatHistory(prev => [...prev, errorMessage]);
-      toast({ variant: 'destructive', title: 'AI Error', description: 'Could not get a response.' });
-    } finally {
-      setIsChatting(false);
     }
   };
   
@@ -539,59 +491,6 @@ export default function AssistantPage() {
                                 )}
                             </div>
                         </div>
-                        <Separator />
-                        
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-lg text-center">Ask a follow-up question</h3>
-                             <div ref={chatContainerRef} className="space-y-4 max-h-96 overflow-y-auto pr-4 -mr-4">
-                                {chatHistory.map((message, index) => (
-                                    <div key={index} className={cn("flex items-start gap-3", message.role === 'user' ? 'justify-end' : '')}>
-                                        {message.role === 'model' && (
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
-                                            </Avatar>
-                                        )}
-                                        <div className={cn("p-3 rounded-lg max-w-sm prose prose-sm", message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                                            <p>{message.content}</p>
-                                        </div>
-                                        {message.role === 'user' && (
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarFallback><User /></AvatarFallback>
-                                            </Avatar>
-                                        )}
-                                    </div>
-                                ))}
-                                {isChatting && (
-                                  <div className="flex items-start gap-3">
-                                      <Avatar className="h-8 w-8">
-                                          <AvatarFallback className="bg-primary text-primary-foreground"><Bot /></AvatarFallback>
-                                      </Avatar>
-                                      <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                          <span>Thinking...</span>
-                                      </div>
-                                  </div>
-                                )}
-                            </div>
-                            <Form {...chatForm}>
-                                <form onSubmit={chatForm.handleSubmit(handleChatSubmit)} className="flex items-center gap-2 pt-4">
-                                    <FormField
-                                        control={chatForm.control}
-                                        name="message"
-                                        render={({ field }) => (
-                                            <FormItem className="flex-grow">
-                                                <FormControl>
-                                                    <Input {...field} placeholder="e.g., Is this vegan?" autoComplete="off" disabled={isChatting} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Button type="submit" disabled={isChatting}>
-                                        <Send className="h-4 w-4" />
-                                    </Button>
-                                </form>
-                            </Form>
-                        </div>
                         
                         <Separator />
                         <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -760,3 +659,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
