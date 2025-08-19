@@ -96,8 +96,10 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
       
       const normalize = (price: string | null | undefined): string | null => {
           if (!price) return null;
-          // Standardize promo format, e.g., "2 for £5.00" -> "2for5.00"
-          return price.replace(/\s*for\s*/, 'for').replace(/[£\s]/g, '').toLowerCase();
+          return price.replace(/\s*for\s*/, 'for') // "2 for £5.00" -> "2for£5.00"
+                       .replace(/[£\s]/g, '')     // "2for£5.00" -> "2for5.00"
+                       .replace(/\.00$/, '')      // "5.00" -> "5"
+                       .toLowerCase();
       };
       
       const normalizedTicketPromo = normalize(ticketPromoString);
