@@ -91,45 +91,55 @@ export async function validatePriceTicket(input: PriceTicketValidationInput): Pr
       const systemPriceString = productData.price.regular ? `£${productData.price.regular.toFixed(2)}` : null;
       const systemPromoString = productData.price.promotional;
       
-      const normalizePrice = (price: string | null | undefined): string | number | null => {
+      const normalizePrice = (price: string | null | undefined): string | null => {
           if (!price) return null;
-          const cleaned = price.replace(/[£\s]/g, '').toLowerCase();
-          // Regex to match patterns like "2for5.00" or "3for2"
-          if (/^\d+for\d+(\.\d+)?$/.test(cleaned)) {
-            return cleaned;
-          }
-          const num = parseFloat(cleaned);
-          return isNaN(num) ? cleaned : num;
+          // Standardize promo format, e.g., "2 for £5.00" -> "2for5.00"
+          return price.replace(/\s*for\s*/, 'for').replace(/[£\s]/g, '').toLowerCase();
       };
+      
+      const isTicketPricePromo = ticketPriceString?.toLowerCase().includes('for') ?? false;
 
       const normalizedTicketPrice = normalizePrice(ticketPriceString);
       const normalizedSystemPrice = normalizePrice(systemPriceString);
       const normalizedSystemPromo = normalizePrice(systemPromoString);
 
-      // Priority 1: Check against promotional price if the system has one.
-      if (normalizedSystemPromo) {
+      // Scenario 1: Ticket shows a promotional price
+      if (isTicketPricePromo) {
         if (normalizedTicketPrice === normalizedSystemPromo) {
           return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
         } else {
           return {
             isCorrect: false,
-            mismatchReason: `Ticket price "${ticketPriceString}" does not match promo price "${systemPromoString}".`,
-            ocrData,
-            product: productData,
-          };
-        }
-      } else { // Priority 2: Check against regular price
-        if (normalizedTicketPrice === normalizedSystemPrice) {
-          return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
-        } else {
-          return {
-            isCorrect: false,
-            mismatchReason: `Ticket price "${ticketPriceString}" does not match system price "${systemPriceString}".`,
+            mismatchReason: `Ticket promo price "${ticketPriceString}" does not match system promo price "${systemPromoString || 'None'}".`,
             ocrData,
             product: productData,
           };
         }
       }
+      
+      // Scenario 2: Ticket shows a regular price
+      if (normalizedTicketPrice === normalizedSystemPrice) {
+        return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
+      }
+
+      // Scenario 3: Mismatch, provide a clear reason
+      // If the system expected a promo but the ticket had a regular price
+      if (systemPromoString) {
+         return {
+          isCorrect: false,
+          mismatchReason: `Ticket has regular price "${ticketPriceString}" but system expects promo "${systemPromoString}".`,
+          ocrData,
+          product: productData,
+        };
+      }
+
+      // Default mismatch for regular prices
+      return {
+        isCorrect: false,
+        mismatchReason: `Ticket price "${ticketPriceString}" does not match system price "${systemPriceString}".`,
+        ocrData,
+        product: productData,
+      };
   };
 
   // 2. Process all OCR results in parallel.
