@@ -19,7 +19,7 @@ import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
-import { findAisleForProduct } from '@/ai/flows/aisle-finder-flow';
+import { findAisleForProductTool } from '@/ai/flows/aisle-finder-flow';
 
 const SkuFormSchema = z.object({
   sku: z.string().min(1, { message: 'SKU or EAN is required.' }),
@@ -115,7 +115,7 @@ export default function MapPageClient() {
     setHighlightedAisle(null);
 
     try {
-      const result = await findAisleForProduct({ productCategory: values.productCategory });
+      const result = await findAisleForProductTool({ productCategory: values.productCategory });
       if (result.bestAisleId) {
         setHighlightedAisle(result.bestAisleId);
         toast({ title: 'Aisle Found!', description: `AI suggests this is the best aisle for ${values.productCategory}.` });
