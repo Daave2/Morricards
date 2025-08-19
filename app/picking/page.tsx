@@ -465,7 +465,7 @@ export default function PickingListClient() {
 
     const skus = products.map(p => p.sku).join(',');
     const locationId = form.getValues('locationId');
-    const url = `${window.location.origin}/?skus=${encodeURIComponent(skus)}&location=${encodeURIComponent(locationId)}`;
+    const url = `${window.location.origin}/picking?skus=${encodeURIComponent(skus)}&location=${encodeURIComponent(locationId)}`;
     setExportUrl(url);
 
     QRCode.toDataURL(url, { width: 300, margin: 2 })
@@ -480,6 +480,14 @@ export default function PickingListClient() {
       });
 
     setIsExportModalOpen(true);
+  };
+  
+  const handleCopyExportUrl = () => {
+    navigator.clipboard.writeText(exportUrl).then(() => {
+      toast({ title: 'URL Copied', description: 'The list URL has been copied to your clipboard.' });
+    }).catch(() => {
+      toast({ title: 'Copy Failed', description: 'Could not copy the URL.', variant: 'destructive' });
+    });
   };
   
   const skeletons = Array.from({ length: loadingSkuCount }).map((_, i) => (
@@ -736,6 +744,13 @@ export default function PickingListClient() {
                           </div>
                       </div>
                   </div>
+                   <div className="flex items-center space-x-2 justify-center pt-4">
+                    <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
+                    <Label htmlFor="speed-mode" className="flex items-center gap-2">
+                        <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
+                        Speed Mode (Scan to Pick)
+                    </Label>
+                  </div>
               </div>
           }
 
@@ -746,7 +761,7 @@ export default function PickingListClient() {
           ) : sortedAndFilteredProducts.length > 0 || loadingSkuCount > 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {sortedAndFilteredProducts.map((product) => (
-                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker />
+                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker locationId={form.getValues('locationId')} />
               ))}
               {isLoading && skeletons}
             </div>
