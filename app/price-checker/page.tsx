@@ -62,7 +62,7 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
     const priceParts = price?.replace('£', '').split('.') || ['N/A'];
 
     return (
-        <div className="border-2 border-dashed rounded-lg p-4 space-y-3 flex-1 min-w-[300px] bg-background/60 font-sans">
+        <div className="border-2 border-dashed rounded-lg p-4 space-y-3 flex-1 bg-background/60 font-sans w-full max-w-sm">
             <p className="text-sm font-bold text-muted-foreground text-center mb-2">{title}</p>
             <div className={cn("p-1 rounded text-center", isMismatch.name && "bg-destructive/20 ring-2 ring-destructive")}>
                 <p className="font-semibold text-lg leading-tight">{productName || 'N/A'}</p>
@@ -74,10 +74,10 @@ const PriceTicketMockup = ({ title, data, isMismatch = {}, showQr = false }: { t
                     {unitPrice && <p className="text-sm font-semibold">{unitPrice} per kg</p>}
                     {showQr && eanOrSku ? (
                          <div className="flex justify-center">
-                            <SkuQrCode sku={eanOrSku} size={64} />
+                            <SkuQrCode sku={eanOrSku} size={80} />
                         </div>
                     ) : (
-                         <div className="w-64 h-16 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
+                         <div className="w-20 h-20 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
                     )}
                     <p className="font-mono text-xs text-center">{eanOrSku || 'N/A'}</p>
                 </div>
@@ -137,7 +137,7 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
                     {result.mismatchReason || 'An unknown validation error occurred.'}
                 </AlertDescription>
              </Alert>
-             <div className="flex flex-col sm:flex-row gap-4 justify-center">
+             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                  <PriceTicketMockup
                     title="As Seen on Ticket"
                     data={ocrData}
@@ -503,5 +503,3 @@ export default function PriceCheckerPage() {
     </>
   );
 }
-
-    
