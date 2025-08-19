@@ -62,6 +62,7 @@ type ScanMode = 'off' | 'add' | 'pick';
 const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
+  pickSku: z.string().optional(),
 });
 
 const LOCAL_STORAGE_KEY = 'morricards-products';
@@ -206,6 +207,7 @@ export default function PickingListClient() {
     defaultValues: {
       skus: '',
       locationId: '218',
+      pickSku: '',
     },
   });
 
@@ -273,7 +275,7 @@ export default function PickingListClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  const handleScanToPick = useCallback(async (text: string) => {
+  const handleScanToPick = useCallback((text: string) => {
     const scannedValue = text.split(',')[0].trim();
     if (!scannedValue) return;
 
@@ -349,7 +351,7 @@ export default function PickingListClient() {
     });
     
     setIsFetching(false);
-    if (error || !data || data.length === 0) {
+    if (error || !data || !data.length) {
         const errText = error || `Could not find product for EAN: ${sku}`;
         playError();
         toast({
@@ -405,7 +407,7 @@ export default function PickingListClient() {
             if (scanMode === 'add') {
                 await handleScanToAdd(result.eanOrSku);
             } else if (scanMode === 'pick') {
-                await handleScanToPick(result.eanOrSku);
+                handleScanToPick(result.eanOrSku);
             }
         } else {
             playError();
@@ -417,6 +419,14 @@ export default function PickingListClient() {
         toast({ variant: 'destructive', title: 'AI OCR Error', description: 'An error occurred while reading the image.' });
     } finally {
         setIsOcrLoading(false);
+    }
+  };
+  
+  const handlePickSubmit = (values: z.infer<typeof FormSchema>) => {
+    const skuToPick = values.pickSku;
+    if (skuToPick) {
+      handleScanToPick(skuToPick); // Re-use the same logic as scanning
+      form.setValue('pickSku', ''); // Clear the input after submission
     }
   };
 
@@ -761,16 +771,39 @@ export default function PickingListClient() {
                           )}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
+                          <Form {...form}>
+                            <form onSubmit={form.handleSubmit(handlePickSubmit)} className="flex items-center gap-2">
+                                <FormField
+                                    control={form.control}
+                                    name="pickSku"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                               <Input placeholder="Pick by SKU..." {...field} className="h-9 w-32" />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button type="submit" size="icon" className="h-9 w-9">
+                                            <Check className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Manually pick an item by SKU/EAN.</p></TooltipContent>
+                                </Tooltip>
+                            </form>
+                          </Form>
                            <Tooltip>
                             <TooltipTrigger asChild>
                               <Button 
                                   variant={"outline"}
                                   onClick={() => setScanMode(scanMode === 'pick' ? 'off' : 'pick')}
                                   data-active={scanMode === 'pick'}
-                                  className="data-[active=true]:ring-2 data-[active=true]:ring-primary"
+                                  className="data-[active=true]:ring-2 data-[active=true]:ring-primary h-9 w-9"
+                                  size="icon"
                                 >
-                                  <ScanLine className="mr-2 h-4 w-4" />
-                                  Pick by Scan
+                                  <ScanLine className="h-5 w-5" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -906,4 +939,3 @@ export default function PickingListClient() {
     </div>
   );
 }
-

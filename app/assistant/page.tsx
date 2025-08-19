@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -27,12 +27,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import SkuQrCode from '@/components/SkuQrCode';
 import Link from 'next/link';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
+import { Separator } from '@/components/ui/separator';
 
 
 type Product = FetchMorrisonsDataOutput[0];
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
+  sku: z.string().optional(),
 });
 
 const LOCAL_STORAGE_KEY_RECENT_AI = 'morricards-assistant-recent';
@@ -253,7 +255,7 @@ export default function AssistantPage() {
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { locationId: '218' },
+    defaultValues: { locationId: '218', sku: '' },
   });
 
   const handleReset = () => {
@@ -262,6 +264,10 @@ export default function AssistantPage() {
   }
 
   const fetchProductAndInsights = async (sku: string) => {
+    if (!sku || sku.trim().length < 4) {
+        toast({ variant: 'destructive', title: 'Invalid SKU', description: 'Please enter a valid SKU or EAN.' });
+        return;
+    }
     setIsFetchingProduct(true);
     handleReset();
 
@@ -291,6 +297,7 @@ export default function AssistantPage() {
       setProduct(foundProduct);
       updateRecentItems(foundProduct);
       toast({ title: 'Product Found', description: `Generating AI insights for ${foundProduct.name}...` });
+      form.setValue('sku', '');
 
       setIsGeneratingInsights(true);
       try {
@@ -312,6 +319,12 @@ export default function AssistantPage() {
     setIsScanMode(false);
     await fetchProductAndInsights(sku);
   };
+  
+  const handleManualSubmit = (values: z.infer<typeof FormSchema>) => {
+    if (values.sku) {
+        fetchProductAndInsights(values.sku);
+    }
+  }
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -376,12 +389,12 @@ export default function AssistantPage() {
         <Card className="max-w-2xl mx-auto mb-8 shadow-md">
           <CardContent className="p-4">
             <Form {...form}>
-              <form className="flex flex-col sm:flex-row items-end gap-4">
-                <FormField
+              <form onSubmit={form.handleSubmit(handleManualSubmit)} className="space-y-4">
+                 <FormField
                   control={form.control}
                   name="locationId"
                   render={({ field }) => (
-                    <FormItem className="w-full sm:w-auto sm:flex-grow">
+                    <FormItem>
                       <FormLabel>Store ID</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g., 218" {...field} />
@@ -390,14 +403,37 @@ export default function AssistantPage() {
                     </FormItem>
                   )}
                 />
-                <Button
+                <Separator />
+                <FormField
+                  control={form.control}
+                  name="sku"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Find by SKU/EAN</FormLabel>
+                       <div className="flex gap-2">
+                        <FormControl>
+                          <Input placeholder="Enter product number..." {...field} />
+                        </FormControl>
+                        <Button
+                          type="submit"
+                          variant="secondary"
+                          disabled={isFetchingProduct || isGeneratingInsights}
+                        >
+                           <Search className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <Button
                   type="button"
-                  className="w-full sm:w-auto flex-shrink-0"
+                  className="w-full"
                   onClick={() => setIsScanMode(true)}
                   disabled={isFetchingProduct || isGeneratingInsights}
                 >
                   <ScanLine className="mr-2 h-4 w-4" />
-                  Scan Product
+                  Or Scan Product
                 </Button>
               </form>
             </Form>

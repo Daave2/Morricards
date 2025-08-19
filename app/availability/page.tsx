@@ -61,6 +61,7 @@ type ReportedItem = Product & { reason: string; comment?: string; reportId: stri
 
 const FormSchema = z.object({
   locationId: z.string().min(1, { message: 'Store location ID is required.' }),
+  sku: z.string().optional(),
 });
 
 const ReasonSchema = z.object({
@@ -266,6 +267,7 @@ export default function AvailabilityPage() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       locationId: '218',
+      sku: '',
     },
   });
 
@@ -294,12 +296,17 @@ export default function AvailabilityPage() {
     }
   }, [reportedItems]);
 
-  const handleScanSuccess = useCallback(async (text: string) => {
-    const sku = text.split(',')[0].trim();
-    if (!sku) return;
+  const processSku = useCallback(async (sku: string) => {
+    if (!sku || sku.trim().length < 4) {
+        toast({ variant: 'destructive', title: 'Invalid SKU', description: 'Please enter a valid SKU or EAN to report.' });
+        if (isSpeedMode) startScannerWithDelay();
+        return;
+    }
     
-    if (!isSpeedMode) {
-        setIsScanMode(false); // Close scanner on scan only if not in speed mode
+    if (isSpeedMode) {
+        setIsScanMode(true); // Keep scanner active
+    } else {
+        setIsScanMode(false); // Close scanner on scan
     }
     
     const locationId = form.getValues('locationId');
@@ -336,6 +343,7 @@ export default function AvailabilityPage() {
     
     setIsLoading(true);
     setIsFetching(true);
+    form.setValue('sku', '');
 
     const { data, error } = await getProductData({
       locationId,
@@ -365,8 +373,6 @@ export default function AvailabilityPage() {
         if (isSpeedMode) {
             setIsScanMode(true);
             startScannerWithDelay();
-        } else {
-             setIsScanMode(true);
         }
     } else {
         const product = data[0];
@@ -407,7 +413,7 @@ export default function AvailabilityPage() {
                 description: `${product.name} does not seem to be ranged at this store.`,
                 icon: <AlertTriangle className="h-5 w-5" />
             });
-            setIsScanMode(true); // Re-open scanner on logical error
+            if (isSpeedMode) startScannerWithDelay();
         } else {
           playSuccess();
           setScannedProduct(product);
@@ -417,6 +423,19 @@ export default function AvailabilityPage() {
         }
     }
   }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay]);
+
+  const handleScanSuccess = useCallback(async (text: string) => {
+    const sku = text.split(',')[0].trim();
+    if (sku) {
+        await processSku(sku);
+    }
+  }, [processSku]);
+
+  const handleManualSubmit = async (values: z.infer<typeof FormSchema>) => {
+    if (values.sku) {
+      await processSku(values.sku);
+    }
+  }
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -464,8 +483,9 @@ export default function AvailabilityPage() {
     if (!open) {
       setScannedProduct(null);
       setEditingItem(null);
-      if (!editingItem) {
+      if (!editingItem && isSpeedMode) {
           setIsScanMode(true);
+          startScannerWithDelay();
       }
     }
   }
@@ -837,41 +857,56 @@ export default function AvailabilityPage() {
            <Card className="max-w-4xl mx-auto mb-8 shadow-md">
             <CardContent className="p-4 space-y-4">
               <Form {...form}>
-                <form className="flex flex-col sm:flex-row items-center gap-4">
+                <form onSubmit={form.handleSubmit(handleManualSubmit)} className="flex flex-col sm:flex-row items-end gap-4">
                   <FormField
                     control={form.control}
                     name="locationId"
                     render={({ field }) => (
-                      <FormItem className="w-full sm:w-auto sm:flex-grow">
-                        <FormLabel className="sr-only">Store Location ID</FormLabel>
+                      <FormItem className="w-full sm:w-[120px] sm:flex-shrink-0">
+                        <FormLabel>Store ID</FormLabel>
                         <FormControl>
-                          <Input placeholder="Store ID e.g., 218" {...field} />
+                          <Input placeholder="e.g., 218" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        className="w-full sm:w-auto flex-shrink-0"
-                        variant='outline'
-                        onClick={handleScanButtonClick}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                           <ScanLine className="mr-2 h-4 w-4" />
-                        )}
-                        {isLoading ? 'Checking...' : isScanMode ? 'Stop Scanning' : 'Scan Item to Report'}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Scan an item's barcode to check its data and report an issue.</p>
-                    </TooltipContent>
-                   </Tooltip>
+                  <FormField
+                    control={form.control}
+                    name="sku"
+                    render={({ field }) => (
+                      <FormItem className="w-full sm:flex-grow">
+                        <FormLabel>SKU / EAN</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter product number to report" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                            Find
+                        </Button>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                            <Button
+                                type="button"
+                                className="w-full sm:w-auto flex-shrink-0"
+                                variant='outline'
+                                onClick={handleScanButtonClick}
+                                disabled={isLoading}
+                            >
+                                <ScanLine className="mr-2 h-4 w-4" />
+                                Scan
+                            </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                            <p>Scan an item's barcode to check its data and report an issue.</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
                 </form>
               </Form>
               <div className="flex items-center space-x-2 justify-center pt-2">
