@@ -55,7 +55,7 @@ import { ocrFlow } from '@/ai/flows/ocr-flow';
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
 
-type ScanMode = 'off' | 'add' | 'pick' | 'ocr';
+type ScanMode = 'off' | 'add' | 'pick';
 
 const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
@@ -133,23 +133,21 @@ export default function PickingListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const isScanning = scanMode !== 'off';
-
   const startScannerWithDelay = useCallback(() => {
     setTimeout(() => {
-        if (isScanning && scannerRef.current) {
+        if (scanMode !== 'off' && scannerRef.current) {
             scannerRef.current.start();
         }
     }, 1500); // 1.5 second delay
-  }, [isScanning]);
+  }, [scanMode]);
 
   useEffect(() => {
-    if (isScanning) {
+    if (scanMode !== 'off') {
       scannerRef.current?.start();
     } else {
       scannerRef.current?.stop();
     }
-  }, [isScanning]);
+  }, [scanMode]);
 
   // Keep the ref updated with the latest products state
   useEffect(() => {
@@ -580,12 +578,12 @@ export default function PickingListClient() {
   return (
     <div className="min-h-screen">
       <InstallPrompt />
-      {isScanning && (
+      {scanMode === 'add' && (
          <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
                 <ZXingScanner 
                     ref={scannerRef} 
-                    onResult={scanMode === 'add' ? handleScanToAdd : handleScanToPick} 
+                    onResult={handleScanToAdd} 
                     onError={handleScanError}
                 />
             </div>
@@ -706,6 +704,35 @@ export default function PickingListClient() {
               </Form>
             </CardContent>
           </Card>
+           
+          {scanMode === 'pick' && (
+            <Card className="max-w-4xl mx-auto mb-8 shadow-lg">
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <CardTitle>Scan to Pick</CardTitle>
+                        <Button variant="ghost" size="icon" onClick={() => setScanMode('off')}>
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
+                    <CardDescription>Scan a product's barcode to mark it as picked.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
+                        <ZXingScanner
+                            ref={scannerRef}
+                            onResult={handleScanToPick}
+                            onError={handleScanError}
+                        />
+                    </div>
+                    <div className="mt-4 w-full max-w-md mx-auto">
+                        <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
+                            {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
+                            {isOcrLoading ? 'Reading...' : 'Read Label with AI'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+          )}
 
           { (products.length > 0 || isLoading) && 
               <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
@@ -729,7 +756,9 @@ export default function PickingListClient() {
                             <TooltipTrigger asChild>
                               <Button 
                                   variant={"outline"}
-                                  onClick={() => setScanMode('pick')}
+                                  onClick={() => setScanMode(scanMode === 'pick' ? 'off' : 'pick')}
+                                  data-active={scanMode === 'pick'}
+                                  className="data-[active=true]:ring-2 data-[active=true]:ring-primary"
                                 >
                                   <ScanLine className="mr-2 h-4 w-4" />
                                   Pick by Scan
