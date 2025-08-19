@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, User, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf } from 'lucide-react';
+import { Bot, Loader2, MapPin, ScanLine, Sparkles, X, ShoppingCart, ChefHat, Map, Expand, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, User, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, Target, ThumbsUp, Lightbulb } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -540,6 +540,25 @@ export default function AssistantPage() {
                                 </form>
                             </Form>
                         </div>
+                        <Accordion type="single" collapsible className="w-full" defaultValue='item-1'>
+                            <AccordionItem value="item-1">
+                                <AccordionTrigger>More AI Insights</AccordionTrigger>
+                                <AccordionContent className="space-y-6 pt-4">
+                                    <InsightSection title="Key Selling Points" icon={<ThumbsUp />} content={insights.sellingPoints} />
+                                    <InsightSection title="Recipe Ideas" icon={<ChefHat />} content={insights.recipeIdeas} />
+                                    <InsightSection title="Allergens" icon={<Shell />} content={insights.allergens} variant={insights.allergens?.includes('None listed') ? 'default' : 'destructive'} />
+                                    <InsightSection title="Ideal Customer" icon={<Users />} content={insights.customerProfile} />
+                                    <InsightSection title="Placement Notes" icon={<Lightbulb />} content={insights.placementNotes} />
+                                    <InsightSection title="Where to Find Cross-Sell Items" icon={<Map />}>
+                                       <div className="text-sm prose prose-sm max-w-none">
+                                          <ul className="list-disc pl-5 space-y-1">
+                                              {insights.crossSell?.map((item, index) => <li key={index}>{item}</li>)}
+                                          </ul>
+                                       </div>
+                                    </InsightSection>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
                        </>
                     )}
 
@@ -569,3 +588,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
