@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -12,20 +13,20 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription as AlertDescriptionComponent } from '@/components/ui/alert';
 import { ToastAction } from '@/components/ui/toast';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
+  AlertDialogDescription as AlertDialogDescriptionComponent,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -34,7 +35,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
+  DialogDescription as DialogDescriptionComponent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -51,9 +52,12 @@ import { queueProductFetch } from '@/lib/offlineQueue';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
+
+type ScanMode = 'off' | 'add' | 'pick';
 
 const FormSchema = z.object({
   skus: z.string().min(1, { message: 'Please enter at least one SKU.' }),
@@ -114,9 +118,10 @@ export default function PickingListClient() {
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [filterQuery, setFilterQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-  const [isScanMode, setIsScanMode] = useState(false);
+  const [scanMode, setScanMode] = useState<ScanMode>('off');
   const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   
@@ -131,22 +136,21 @@ export default function PickingListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-
   const startScannerWithDelay = useCallback(() => {
     setTimeout(() => {
-        if (isScanMode && scannerRef.current) {
+        if (scanMode !== 'off' && scannerRef.current) {
             scannerRef.current.start();
         }
     }, 1500); // 1.5 second delay
-  }, [isScanMode]);
+  }, [scanMode]);
 
   useEffect(() => {
-    if (isScanMode) {
+    if (scanMode !== 'off') {
       scannerRef.current?.start();
     } else {
       scannerRef.current?.stop();
     }
-  }, [isScanMode]);
+  }, [scanMode]);
 
   // Keep the ref updated with the latest products state
   useEffect(() => {
@@ -158,10 +162,19 @@ export default function PickingListClient() {
     try {
       const savedProducts = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedProducts) {
-        setProducts(JSON.parse(savedProducts));
+        const parsedProducts = JSON.parse(savedProducts);
+        setProducts(parsedProducts);
+        // Set initial state of add form based on whether there are products
+        if (parsedProducts.length === 0) {
+            setIsAddFormOpen(true);
+        }
+      } else {
+        // If no saved products, list is blank, so open the form
+        setIsAddFormOpen(true);
       }
     } catch (error) {
       console.error("Failed to load products from local storage", error);
+      setIsAddFormOpen(true); // Open form on error as well
     }
   }, []);
 
@@ -231,7 +244,7 @@ export default function PickingListClient() {
 
   const handlePick = useCallback((sku: string) => {
     const productCard = document.querySelector(`[data-sku="${sku}"]`);
-    const productToUpdate = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
+    const productToUpdate = productsRef.current.find(p => p.sku === sku);
 
     if (productCard && productToUpdate && !productToUpdate.picked) {
         productCard.classList.add('picked-animation');
@@ -260,15 +273,19 @@ export default function PickingListClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  const handleScanResult = useCallback(async (text: string) => {
-    const sku = text.split(',')[0].trim();
-    if (!sku) return;
+  const handleScanToPick = useCallback(async (text: string) => {
+    const scannedValue = text.split(',')[0].trim();
+    if (!scannedValue) return;
 
     if (!isSpeedMode) {
-        setIsScanMode(false); // Close scanner on scan only if not in speed mode
+        setScanMode('off');
     }
 
-    const productToPick = productsRef.current.find(p => p.sku === sku || p.scannedSku === sku);
+    const productToPick = productsRef.current.find(p => 
+        p.sku === scannedValue || 
+        p.scannedSku === scannedValue || 
+        p.primaryEan13 === scannedValue
+    );
 
     if (productToPick) {
         if (productToPick.picked) {
@@ -277,66 +294,86 @@ export default function PickingListClient() {
         } else {
             handlePick(productToPick.sku);
         }
-        if (isSpeedMode) startScannerWithDelay();
-        return;
     } else {
-        const locationId = form.getValues('locationId');
-        if (!isOnline) {
-            playSuccess();
-            toast({ 
-                title: 'Offline: Item Queued', 
-                description: `Item ${sku} will be fetched when you're back online.`,
-                icon: <WifiOff className="h-5 w-5" />
-            });
-            const placeholder = await queueProductFetch({ sku, locationId });
-            setProducts(prev => [...prev, { ...placeholder, picked: false, isOffline: true }]);
-            if (isSpeedMode) startScannerWithDelay();
-            return;
-        }
-
-        playSuccess();
-        toast({ title: 'New Item Scanned', description: `Fetching details for EAN: ${sku}` });
-
-        setLoadingSkuCount(prev => prev + 1);
-        setIsLoading(true);
-        setIsFetching(true);
-
-        
-        const { data, error } = await getProductData({
-          locationId,
-          skus: [sku],
-          bearerToken: settings.bearerToken,
-          debugMode: settings.debugMode,
+        playError();
+        toast({
+            variant: 'destructive',
+            title: 'Item Not on List',
+            description: `SKU ${scannedValue} is not on your current picking list.`,
+            icon: <AlertTriangle className="h-5 w-5" />
         });
-        
-        setIsFetching(false);
-        if (error || !data || !data.length === 0) {
-            const errText = error || `Could not find product for EAN: ${sku}`;
-            playError();
-            toast({
-                variant: 'destructive',
-                title: 'Product Not Found',
-                description: errText,
-                action: (
-                    <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
-                        <Copy className="mr-2 h-4 w-4" /> Copy
-                    </ToastAction>
-                ),
-            });
-        } else {
-            setProducts(prevProducts => {
-                const existing = prevProducts.find(p => p.sku === data[0].sku);
-                if (existing) return prevProducts; // Already added somehow
-                return [...prevProducts, { ...data[0], picked: false }];
-            });
-        }
-        
-        setIsLoading(false);
-        setLoadingSkuCount(prev => Math.max(0, prev - 1));
-        if (isSpeedMode) startScannerWithDelay();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handlePick, playInfo, playSuccess, toast, playError, form, settings.bearerToken, settings.debugMode, isOnline, isSpeedMode, startScannerWithDelay]);
+
+    if (isSpeedMode) {
+        startScannerWithDelay();
+    }
+  }, [handlePick, playInfo, playError, toast, isSpeedMode, startScannerWithDelay]);
+
+  const handleScanToAdd = useCallback(async (text: string) => {
+    const sku = text.split(',')[0].trim();
+    if (!sku) return;
+
+    setScanMode('off');
+    
+    if (productsRef.current.some(p => p.sku === sku || p.scannedSku === sku || p.primaryEan13 === sku)) {
+        playInfo();
+        toast({ title: 'Item Already on List', description: 'This item is already on your picking list.', icon: <Info className="h-5 w-5 text-blue-500" /> });
+        return;
+    }
+
+    const locationId = form.getValues('locationId');
+    if (!isOnline) {
+        playSuccess();
+        toast({ 
+            title: 'Offline: Item Queued', 
+            description: `Item ${sku} will be fetched when you're back online.`,
+            icon: <WifiOff className="h-5 w-5" />
+        });
+        const placeholder = await queueProductFetch({ sku, locationId });
+        setProducts(prev => [...prev, { ...placeholder, picked: false, isOffline: true }]);
+        return;
+    }
+
+    playSuccess();
+    toast({ title: 'New Item Scanned', description: `Fetching details for EAN: ${sku}` });
+
+    setLoadingSkuCount(prev => prev + 1);
+    setIsLoading(true);
+    setIsFetching(true);
+
+    const { data, error } = await getProductData({
+      locationId,
+      skus: [sku],
+      bearerToken: settings.bearerToken,
+      debugMode: settings.debugMode,
+    });
+    
+    setIsFetching(false);
+    if (error || !data || data.length === 0) {
+        const errText = error || `Could not find product for EAN: ${sku}`;
+        playError();
+        toast({
+            variant: 'destructive',
+            title: 'Product Not Found',
+            description: errText,
+            action: (
+                <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
+                    <Copy className="mr-2 h-4 w-4" /> Copy
+                </ToastAction>
+            ),
+        });
+    } else {
+        setProducts(prevProducts => {
+            const existing = prevProducts.find(p => p.sku === data[0].sku);
+            if (existing) return prevProducts; // Already added somehow
+            return [...prevProducts, { ...data[0], picked: false }];
+        });
+    }
+    
+    setIsLoading(false);
+    setLoadingSkuCount(prev => Math.max(0, prev - 1));
+
+  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -365,7 +402,11 @@ export default function PickingListClient() {
         const result = await ocrFlow({ imageDataUri });
         if (result.eanOrSku) {
             toast({ title: 'AI OCR Success', description: `Found number: ${result.eanOrSku}` });
-            await handleScanResult(result.eanOrSku);
+            if (scanMode === 'add') {
+                await handleScanToAdd(result.eanOrSku);
+            } else if (scanMode === 'pick') {
+                await handleScanToPick(result.eanOrSku);
+            }
         } else {
             playError();
             toast({ variant: 'destructive', title: 'AI OCR Failed', description: 'Could not find a valid SKU or EAN on the label.' });
@@ -397,6 +438,7 @@ export default function PickingListClient() {
     setLoadingSkuCount(newSkus.length);
     setIsLoading(true);
     setIsFetching(true);
+    setIsAddFormOpen(false); // Close form on submit
 
     const { data, error } = await getProductData({
       ...values,
@@ -435,7 +477,7 @@ export default function PickingListClient() {
     }
     setIsLoading(false);
     setLoadingSkuCount(0);
-    if (isScanMode) setIsScanMode(false);
+    setScanMode('off');
   }
 
   const sortedAndFilteredProducts = useMemo(() => {
@@ -463,8 +505,8 @@ export default function PickingListClient() {
       }
 
       if (key === 'walkSequence') {
-        valA = Number(valA) || Infinity;
-        valB = Number(valB) || Infinity;
+        valA = Number(a.productDetails.legacyItemNumbers) || Infinity;
+        valB = Number(b.productDetails.legacyItemNumbers) || Infinity;
       }
       
       if (valA === undefined || valA === null) return 1;
@@ -481,16 +523,13 @@ export default function PickingListClient() {
 
     return result;
   }, [products, filterQuery, sortConfig]);
-  
-  const handleScanButtonClick = () => {
-    setIsScanMode(prev => !prev);
-  }
 
   const handleResetList = () => {
     setProducts([]);
     setFilterQuery('');
     setSortConfig('walkSequence-asc');
-    form.reset();
+    form.reset({skus: '', locationId: form.getValues('locationId')});
+    setIsAddFormOpen(true); // Open form when list is cleared
     toast({
         title: 'List Cleared',
         description: 'The picking list has been successfully cleared.',
@@ -509,7 +548,7 @@ export default function PickingListClient() {
 
     const skus = products.map(p => p.sku).join(',');
     const locationId = form.getValues('locationId');
-    const url = `${window.location.origin}/?skus=${encodeURIComponent(skus)}&location=${encodeURIComponent(locationId)}`;
+    const url = `${window.location.origin}/picking?skus=${encodeURIComponent(skus)}&location=${encodeURIComponent(locationId)}`;
     setExportUrl(url);
 
     QRCode.toDataURL(url, { width: 300, margin: 2 })
@@ -533,7 +572,6 @@ export default function PickingListClient() {
       toast({ title: 'Copy Failed', description: 'Could not copy the URL.', variant: 'destructive' });
     });
   };
-
   
   const skeletons = Array.from({ length: loadingSkuCount }).map((_, i) => (
     <Card key={`skeleton-${i}`} className="w-full">
@@ -554,12 +592,12 @@ export default function PickingListClient() {
   return (
     <div className="min-h-screen">
       <InstallPrompt />
-      {isScanMode && (
+      {scanMode === 'add' && (
          <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
                 <ZXingScanner 
                     ref={scannerRef} 
-                    onResult={handleScanResult} 
+                    onResult={handleScanToAdd} 
                     onError={handleScanError}
                 />
             </div>
@@ -569,9 +607,23 @@ export default function PickingListClient() {
                     {isOcrLoading ? 'Reading...' : 'Read with AI'}
                 </Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+            <Button variant="ghost" size="icon" onClick={() => setScanMode('off')} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
                <X className="h-6 w-6" />
             </Button>
+        </div>
+      )}
+
+      {scanMode === 'pick' && (
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b p-2 shadow-md">
+             <div className="w-full max-w-sm mx-auto">
+                <div className="relative aspect-[4/3] w-full rounded-md overflow-hidden">
+                    <ZXingScanner
+                        ref={scannerRef}
+                        onResult={handleScanToPick}
+                        onError={handleScanError}
+                    />
+                </div>
+            </div>
         </div>
       )}
 
@@ -579,9 +631,9 @@ export default function PickingListClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Share Picking List</DialogTitle>
-            <DialogDescription>
+            <DialogDescriptionComponent>
               Share this URL or QR code with a team member to instantly load this picking list on their device.
-            </DialogDescription>
+            </DialogDescriptionComponent>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="flex items-center space-x-2">
@@ -611,83 +663,86 @@ export default function PickingListClient() {
           <div className='flex justify-end mb-4'>
              <StatusIndicator isFetching={isFetching} />
           </div>
-          <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
-            <CardHeader>
-              <CardTitle>Create or Add to Picking List</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="skus"
-                    render={({ field }) => (
-                      <FormItem>
-                         <div className="flex justify-between items-center mb-2">
-                          <FormLabel>Product SKUs / EANs</FormLabel>
-                        </div>
-                        <FormControl>
-                          <div className="relative">
-                            <Textarea
-                              placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                              className="min-h-[120px] resize-y pr-28"
-                              {...field}
-                            />
-                            <Button
-                                type="button"
-                                variant='outline'
-                                className="absolute top-3 right-3"
-                                onClick={handleScanButtonClick}
-                              >
-                                <ScanLine className="mr-2 h-4 w-4" />
-                                Scan to Add
-                              </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="locationId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Store Location ID</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., 218" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex items-center space-x-2 justify-end pt-2">
-                    <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
-                    <Label htmlFor="speed-mode" className="flex items-center gap-2">
-                        <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
-                        Speed Mode
-                    </Label>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Fetching Data...
-                      </>
-                    ) : !isOnline ? (
-                      <>
-                        <WifiOff className="mr-2 h-4 w-4" />
-                        Offline - Cannot Fetch
-                      </>
-                    ) : (
-                      'Get/Add to Picking List'
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-
+          <Collapsible open={isAddFormOpen} onOpenChange={setIsAddFormOpen} className="max-w-4xl mx-auto mb-12">
+            <Card className="shadow-lg">
+                <CollapsibleTrigger asChild>
+                    <div className='flex items-center justify-between p-6 cursor-pointer'>
+                        <CardTitle>Create or Add to Picking List</CardTitle>
+                        <Button variant="ghost" size="icon">
+                            <ChevronsUpDown className="h-5 w-5" />
+                            <span className="sr-only">Toggle Add to List Form</span>
+                        </Button>
+                    </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <CardContent>
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                          <FormField
+                            control={form.control}
+                            name="skus"
+                            render={({ field }) => (
+                              <FormItem>
+                                 <div className="flex justify-between items-center mb-2">
+                                  <FormLabel>Product SKUs / EANs</FormLabel>
+                                </div>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Textarea
+                                      placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
+                                      className="min-h-[120px] resize-y pr-28"
+                                      {...field}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant='outline'
+                                        className="absolute top-3 right-3"
+                                        onClick={() => setScanMode('add')}
+                                      >
+                                        <ScanLine className="mr-2 h-4 w-4" />
+                                        Scan to Add
+                                      </Button>
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="locationId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Store Location ID</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="e.g., 218" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Fetching Data...
+                              </>
+                            ) : !isOnline ? (
+                              <>
+                                <WifiOff className="mr-2 h-4 w-4" />
+                                Offline - Cannot Fetch
+                              </>
+                            ) : (
+                              'Get/Add to Picking List'
+                            )}
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+          </Collapsible>
+           
           { (products.length > 0 || isLoading) && 
               <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
                   <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -710,7 +765,9 @@ export default function PickingListClient() {
                             <TooltipTrigger asChild>
                               <Button 
                                   variant={"outline"}
-                                  onClick={handleScanButtonClick}
+                                  onClick={() => setScanMode(scanMode === 'pick' ? 'off' : 'pick')}
+                                  data-active={scanMode === 'pick'}
+                                  className="data-[active=true]:ring-2 data-[active=true]:ring-primary"
                                 >
                                   <ScanLine className="mr-2 h-4 w-4" />
                                   Pick by Scan
@@ -792,9 +849,9 @@ export default function PickingListClient() {
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
+                                  <AlertDialogDescriptionComponent>
                                     This action will permanently clear your entire picking list. This cannot be undone.
-                                  </AlertDialogDescription>
+                                  </AlertDialogDescriptionComponent>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -804,6 +861,13 @@ export default function PickingListClient() {
                             </AlertDialog>
                           </div>
                       </div>
+                  </div>
+                   <div className="flex items-center space-x-2 justify-center pt-4">
+                    <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
+                    <Label htmlFor="speed-mode" className="flex items-center gap-2">
+                        <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
+                        Speed Mode (Scan to Pick)
+                    </Label>
                   </div>
               </div>
           }
@@ -815,7 +879,7 @@ export default function PickingListClient() {
           ) : sortedAndFilteredProducts.length > 0 || loadingSkuCount > 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {sortedAndFilteredProducts.map((product) => (
-                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker />
+                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker locationId={form.getValues('locationId')} />
               ))}
               {isLoading && skeletons}
             </div>
@@ -842,3 +906,4 @@ export default function PickingListClient() {
     </div>
   );
 }
+
