@@ -14,11 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription as AlertDescriptionComponent } from '@/components/ui/alert';
 import { ToastAction } from '@/components/ui/toast';
 import {
   AlertDialog,
@@ -34,7 +34,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
+  DialogDescription as DialogDescriptionComponent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -51,6 +51,7 @@ import { queueProductFetch } from '@/lib/offlineQueue';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
@@ -119,6 +120,7 @@ export default function PickingListClient() {
   const [scanMode, setScanMode] = useState<ScanMode>('off');
   const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   
@@ -159,10 +161,19 @@ export default function PickingListClient() {
     try {
       const savedProducts = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedProducts) {
-        setProducts(JSON.parse(savedProducts));
+        const parsedProducts = JSON.parse(savedProducts);
+        setProducts(parsedProducts);
+        // Set initial state of add form based on whether there are products
+        if (parsedProducts.length === 0) {
+            setIsAddFormOpen(true);
+        }
+      } else {
+        // If no saved products, list is blank, so open the form
+        setIsAddFormOpen(true);
       }
     } catch (error) {
       console.error("Failed to load products from local storage", error);
+      setIsAddFormOpen(true); // Open form on error as well
     }
   }, []);
 
@@ -426,6 +437,7 @@ export default function PickingListClient() {
     setLoadingSkuCount(newSkus.length);
     setIsLoading(true);
     setIsFetching(true);
+    setIsAddFormOpen(false); // Close form on submit
 
     const { data, error } = await getProductData({
       ...values,
@@ -516,6 +528,7 @@ export default function PickingListClient() {
     setFilterQuery('');
     setSortConfig('walkSequence-asc');
     form.reset({skus: '', locationId: form.getValues('locationId')});
+    setIsAddFormOpen(true); // Open form when list is cleared
     toast({
         title: 'List Cleared',
         description: 'The picking list has been successfully cleared.',
@@ -600,7 +613,7 @@ export default function PickingListClient() {
       )}
 
       {scanMode === 'pick' && (
-        <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-sm border-b p-2">
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b p-2 shadow-md">
             <div className="w-full max-w-md mx-auto">
                 <div className="relative aspect-video w-full rounded-md overflow-hidden">
                     <ZXingScanner
@@ -617,9 +630,9 @@ export default function PickingListClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Share Picking List</DialogTitle>
-            <DialogDescription>
+            <DialogDescriptionComponent>
               Share this URL or QR code with a team member to instantly load this picking list on their device.
-            </DialogDescription>
+            </DialogDescriptionComponent>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="flex items-center space-x-2">
@@ -649,75 +662,85 @@ export default function PickingListClient() {
           <div className='flex justify-end mb-4'>
              <StatusIndicator isFetching={isFetching} />
           </div>
-          <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
-            <CardHeader>
-              <CardTitle>Create or Add to Picking List</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="skus"
-                    render={({ field }) => (
-                      <FormItem>
-                         <div className="flex justify-between items-center mb-2">
-                          <FormLabel>Product SKUs / EANs</FormLabel>
-                        </div>
-                        <FormControl>
-                          <div className="relative">
-                            <Textarea
-                              placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                              className="min-h-[120px] resize-y pr-28"
-                              {...field}
-                            />
-                            <Button
-                                type="button"
-                                variant='outline'
-                                className="absolute top-3 right-3"
-                                onClick={() => setScanMode('add')}
-                              >
-                                <ScanLine className="mr-2 h-4 w-4" />
-                                Scan to Add
-                              </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="locationId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Store Location ID</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., 218" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Fetching Data...
-                      </>
-                    ) : !isOnline ? (
-                      <>
-                        <WifiOff className="mr-2 h-4 w-4" />
-                        Offline - Cannot Fetch
-                      </>
-                    ) : (
-                      'Get/Add to Picking List'
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+          <Collapsible open={isAddFormOpen} onOpenChange={setIsAddFormOpen} className="max-w-4xl mx-auto mb-12">
+            <Card className="shadow-lg">
+                <CollapsibleTrigger asChild>
+                    <div className='flex items-center justify-between p-6 cursor-pointer'>
+                        <CardTitle>Create or Add to Picking List</CardTitle>
+                        <Button variant="ghost" size="icon">
+                            <ChevronsUpDown className="h-5 w-5" />
+                            <span className="sr-only">Toggle Add to List Form</span>
+                        </Button>
+                    </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <CardContent>
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                          <FormField
+                            control={form.control}
+                            name="skus"
+                            render={({ field }) => (
+                              <FormItem>
+                                 <div className="flex justify-between items-center mb-2">
+                                  <FormLabel>Product SKUs / EANs</FormLabel>
+                                </div>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Textarea
+                                      placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
+                                      className="min-h-[120px] resize-y pr-28"
+                                      {...field}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant='outline'
+                                        className="absolute top-3 right-3"
+                                        onClick={() => setScanMode('add')}
+                                      >
+                                        <ScanLine className="mr-2 h-4 w-4" />
+                                        Scan to Add
+                                      </Button>
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="locationId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Store Location ID</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="e.g., 218" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Fetching Data...
+                              </>
+                            ) : !isOnline ? (
+                              <>
+                                <WifiOff className="mr-2 h-4 w-4" />
+                                Offline - Cannot Fetch
+                              </>
+                            ) : (
+                              'Get/Add to Picking List'
+                            )}
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+          </Collapsible>
            
           { (products.length > 0 || isLoading) && 
               <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
