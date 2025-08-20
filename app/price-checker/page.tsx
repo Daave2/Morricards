@@ -48,7 +48,6 @@ type FilterType = 'all' | 'correct' | 'illegal' | 'discrepancy' | 'other';
 
 const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
 
-const normalize = (p: string | null | undefined) => p?.replace(/[£\s]/g, '').toLowerCase();
 
 const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = false }: { title: string, data?: OcrData | null, systemData?: PriceTicketValidationOutput['product'] | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => {
     const { productName, mainPrice, promotionalOffer, eanOrSku, productSubName, unitPrice } = data || {};
@@ -71,11 +70,11 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = 
     );
 
     return (
-        <div className="border-2 border-dashed rounded-lg p-4 space-y-3 flex-1 bg-background/60 font-sans w-full max-w-sm">
+        <div className="border-2 border-dashed rounded-lg p-3 sm:p-4 space-y-3 flex-1 bg-background/60 font-sans w-full max-w-sm">
             <p className="text-sm font-bold text-muted-foreground text-center mb-2">{title}</p>
             <div className={cn("p-1 rounded text-center", isMismatch.name && "bg-destructive/20 ring-2 ring-destructive")}>
-                <p className="font-semibold text-lg leading-tight">{displayProductName || 'N/A'}</p>
-                {displaySubName && <p className="text-sm text-muted-foreground">{displaySubName}</p>}
+                <p className="font-semibold text-base sm:text-lg leading-tight">{displayProductName || 'N/A'}</p>
+                {displaySubName && <p className="text-xs sm:text-sm text-muted-foreground">{displaySubName}</p>}
                  {displayPromo && (
                     <div className="mt-2 flex justify-center">
                         <Badge variant="destructive">{displayPromo}</Badge>
@@ -83,17 +82,17 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = 
                 )}
             </div>
             
-            <div className="flex items-end justify-between gap-4 pt-3">
+            <div className="flex items-end justify-between gap-2 sm:gap-4 pt-3">
                 <div className="flex-shrink-0 space-y-2">
-                    {unitPrice && <p className="text-sm font-semibold">{unitPrice} per kg</p>}
+                    {unitPrice && <p className="text-xs sm:text-sm font-semibold">{unitPrice} per kg</p>}
                     {showQr && displaySku ? (
-                         <div className="flex justify-center">
+                         <div className="flex justify-center w-16 h-16 sm:w-20 sm:h-20">
                             <SkuQrCode sku={displaySku} size={80} />
                         </div>
                     ) : (
-                         <div className="w-20 h-20 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
+                         <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
                     )}
-                    <p className="font-mono text-xs text-center">{displaySku || 'N/A'}</p>
+                    <p className="font-mono text-[10px] sm:text-xs text-center break-all">{displaySku || 'N/A'}</p>
                 </div>
                 <div className={cn("p-1 rounded flex-1 text-right", isMismatch.price && "bg-destructive/20 ring-2 ring-destructive")}>
                     {displayRegular ? priceContent : <p className="text-4xl sm:text-5xl font-extrabold text-black dark:text-white leading-none">N/A</p>}
@@ -106,9 +105,8 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = 
 
 const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput }) => {
     const { ocrData, product } = result;
-    const systemPrice = product?.price.promotional || (product?.price.regular ? `£${product.price.regular.toFixed(2)}` : null);
     
-    const nameMismatch = normalize(ocrData?.productName) !== normalize(product?.name);
+    const nameMismatch = ocrData?.productName?.toLowerCase() !== product?.name?.toLowerCase();
     // This price check is complex and handled by the flow, but we can highlight if the mismatch reason mentions price
     const priceMismatch = !!result.mismatchReason?.toLowerCase().includes('price');
     const skuMismatch = ocrData?.eanOrSku !== product?.sku;
@@ -127,7 +125,8 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
                  <div>
                   <p className="text-xs font-semibold text-muted-foreground">SYSTEM DATA (API)</p>
                    <p><strong>Name:</strong> {result.product?.name || 'N/A'}</p>
-                   <p><strong>Price:</strong> {systemPrice || 'N/A'}</p>
+                   <p><strong>Price:</strong> {result.product?.price?.regular ? `£${result.product.price.regular.toFixed(2)}` : 'N/A'}</p>
+                   {result.product?.price?.promotional && <p><strong>Offer:</strong> {result.product.price.promotional}</p>}
                    <p><strong>SKU:</strong> {result.product?.sku || 'N/A'}</p>
                 </div>
               </div>
@@ -143,7 +142,7 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
                     {result.mismatchReason || 'An unknown validation error occurred.'}
                 </AlertDescription>
              </Alert>
-             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+             <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch">
                  <PriceTicketMockup
                     title="As Seen on Ticket"
                     data={ocrData}
