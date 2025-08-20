@@ -219,7 +219,7 @@ export default function PickingListClient() {
     if (skusFromUrl && locationFromUrl) {
       form.setValue('skus', skusFromUrl);
       form.setValue('locationId', locationFromUrl);
-      onSubmit({ skus: skusFromUrl, locationId: locationFromUrl });
+      onSubmit({ skus: skusFromUrl, locationId: locationFromUrl, pickSku: '' });
       
       // Clean the URL to avoid re-triggering on refresh
       router.replace('/picking', undefined);
@@ -538,7 +538,7 @@ export default function PickingListClient() {
     setProducts([]);
     setFilterQuery('');
     setSortConfig('walkSequence-asc');
-    form.reset({skus: '', locationId: form.getValues('locationId')});
+    form.reset({skus: '', locationId: form.getValues('locationId'), pickSku: ''});
     setIsAddFormOpen(true); // Open form when list is cleared
     toast({
         title: 'List Cleared',
@@ -674,7 +674,7 @@ export default function PickingListClient() {
              <StatusIndicator isFetching={isFetching} />
           </div>
           <Collapsible open={isAddFormOpen} onOpenChange={setIsAddFormOpen} className="max-w-4xl mx-auto mb-12">
-            <Card className="shadow-lg">
+            <Card>
                 <CollapsibleTrigger asChild>
                     <div className='flex items-center justify-between p-6 cursor-pointer'>
                         <CardTitle>Create or Add to Picking List</CardTitle>
@@ -754,7 +754,7 @@ export default function PickingListClient() {
           </Collapsible>
            
           { (products.length > 0 || isLoading) && 
-              <div className="mb-8 p-4 bg-card rounded-lg shadow-md">
+              <div className="mb-8 p-4 bg-card/80 backdrop-blur-sm rounded-lg shadow-md">
                   <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
                       <div className="relative w-full sm:w-auto sm:flex-grow max-w-xs">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -917,7 +917,7 @@ export default function PickingListClient() {
               {isLoading && skeletons}
             </div>
           ) : !isLoading && products.length > 0 ? (
-              <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+              <Card>
                 <CardContent className="p-12 text-center text-muted-foreground">
                     <PackageSearch className="mx-auto h-16 w-16 mb-4" />
                     <h3 className="text-xl font-semibold text-foreground">No Matches Found</h3>
@@ -926,7 +926,7 @@ export default function PickingListClient() {
                 </CardContent>
               </Card>
           ) : !isLoading && form.formState.isSubmitted ? (
-               <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+               <Card>
                 <CardContent className="p-12 text-center text-muted-foreground">
                     <PackageSearch className="mx-auto h-16 w-16 mb-4" />
                     <h3 className="text-xl font-semibold text-foreground">No Products Found</h3>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -363,7 +364,7 @@ export default function AssistantPage() {
   const productLocation = product ? parseLocationString(product.location.standard) : null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {isScanMode && (
         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
           <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
@@ -386,7 +387,7 @@ export default function AssistantPage() {
       )}
 
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <Card className="max-w-2xl mx-auto mb-8 shadow-md">
+        <Card className="max-w-2xl mx-auto mb-8">
           <CardContent className="p-4">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleManualSubmit)} className="space-y-4">
@@ -449,7 +450,7 @@ export default function AssistantPage() {
 
         {product && (
           <div className="max-w-4xl mx-auto mb-12">
-            <Card className="shadow-lg">
+            <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
                     <Image
@@ -497,7 +498,7 @@ export default function AssistantPage() {
                         <InsightSection title="About This Product" icon={<Info />} content={insights.customerFacingSummary} />
                         <InsightSection title="Where to Find It" icon={<Map />} content={insights.customerFriendlyLocation}>
                            {productLocation && (
-                              <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto mt-4">
+                              <div className="flex-grow w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
                                   <StoreMap productLocation={productLocation} />
                               </div>
                            )}
@@ -655,7 +656,7 @@ export default function AssistantPage() {
         )}
 
         {!product && !isFetchingProduct && recentItems.length === 0 && (
-          <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+          <Card>
               <CardContent className="p-12 text-center">
                   <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
                   <p className="text-muted-foreground">Scan a product to get started with the AI assistant.</p>

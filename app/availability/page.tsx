@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -679,7 +680,7 @@ export default function AvailabilityPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <InstallPrompt />
       {isScanMode && (
          <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
@@ -854,7 +855,7 @@ export default function AvailabilityPage() {
             </Alert>
           )}
           
-           <Card className="max-w-4xl mx-auto mb-8 shadow-md">
+           <Card className="max-w-4xl mx-auto mb-8">
             <CardContent className="p-4 space-y-4">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleManualSubmit)} className="flex flex-col sm:flex-row items-end gap-4">
@@ -922,7 +923,7 @@ export default function AvailabilityPage() {
 
 
           {reportedItems.length > 0 && 
-              <Card className="max-w-4xl mx-auto mb-12 shadow-lg">
+              <Card>
                   <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
                       <div className="flex flex-wrap items-center gap-2">

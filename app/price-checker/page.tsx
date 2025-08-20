@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -114,7 +115,7 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
 
     if (result.isCorrect) {
         return (
-            <div className="p-2 bg-background/50 rounded-md grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-2 rounded-md grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground">TICKET DATA (OCR)</p>
                   <p><strong>Name:</strong> {result.ocrData?.productName || 'N/A'}</p>
@@ -355,7 +356,7 @@ export default function PriceCheckerPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {isCameraMode && (
         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
             <video ref={videoRef} autoPlay playsInline className="w-full max-w-4xl h-auto rounded-lg border aspect-video object-cover" />
@@ -375,7 +376,7 @@ export default function PriceCheckerPage() {
       )}
 
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <Card className="max-w-2xl mx-auto mb-8 shadow-md">
+        <Card className="max-w-2xl mx-auto mb-8">
            <CardHeader>
              <CardTitle>AI Shelf Edge Validator</CardTitle>
              <CardDescription>Use your camera to capture an entire shelf edge and the AI will validate every price ticket it sees.</CardDescription>
@@ -422,7 +423,7 @@ export default function PriceCheckerPage() {
         )}
 
         {validationLog.length > 0 && (
-          <Card className="max-w-4xl mx-auto shadow-lg">
+          <Card>
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className='flex-grow'>
                     <CardTitle>Validation Log ({validationLog.reduce((acc, e) => acc + e.results.length, 0)} tickets)</CardTitle>
@@ -497,7 +498,7 @@ export default function PriceCheckerPage() {
         )}
 
         {!isProcessing && validationLog.length === 0 && (
-            <Card className="max-w-2xl mx-auto shadow-lg border-dashed">
+            <Card>
                 <CardContent className="p-12 text-center">
                     <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
                     <p className="text-muted-foreground">Use the camera to start validating price tickets.</p>

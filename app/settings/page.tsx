@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -119,7 +120,7 @@ export default function SettingsPage() {
   return (
     <>
       <main className="container mx-auto px-4 py-8 md:py-12">
-          <Card className="max-w-2xl mx-auto mb-8">
+          <Card>
               <CardHeader>
                   <CardTitle>Application Settings</CardTitle>
                   <CardDescription>
@@ -217,7 +218,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
             
-            <Card className="max-w-2xl mx-auto border-destructive/50">
+            <Card className="mt-8 border-destructive/50">
                <CardHeader>
                   <CardTitle>Data Management</CardTitle>
                   <CardDescription>
