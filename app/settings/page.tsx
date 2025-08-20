@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +34,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const FormSchema = z.object({
   bearerToken: z.string(),
@@ -46,6 +46,11 @@ export default function SettingsPage() {
   const { settings, setSettings, clearAllData } = useApiSettings();
   const { theme, setTheme } = useTheme();
   const [isFetchingToken, setIsFetchingToken] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -53,8 +58,10 @@ export default function SettingsPage() {
   });
   
   useEffect(() => {
-    form.reset(settings);
-  }, [settings, form]);
+    if (isClient) {
+      form.reset(settings);
+    }
+  }, [settings, form, isClient]);
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
     setSettings(data);
@@ -118,7 +125,6 @@ export default function SettingsPage() {
 
 
   return (
-    <>
       <main className="container mx-auto px-4 py-8 md:py-12">
           <Card>
               <CardHeader>
@@ -132,6 +138,13 @@ export default function SettingsPage() {
                     <div className="space-y-4 rounded-lg border p-4">
                         <FormLabel className="text-base">Theme</FormLabel>
                         <FormDescription>Select a theme for the application.</FormDescription>
+                        {!isClient ? (
+                           <div className="grid max-w-md grid-cols-2 gap-8 pt-2">
+                             <Skeleton className="h-24 w-full" />
+                             <Skeleton className="h-24 w-full" />
+                             <Skeleton className="h-24 w-full" />
+                           </div>
+                        ) : (
                          <RadioGroup
                             value={theme}
                             onValueChange={setTheme}
@@ -198,6 +211,7 @@ export default function SettingsPage() {
                                 </FormLabel>
                             </FormItem>
                         </RadioGroup>
+                        )}
                     </div>
 
                     <Form {...form}>
@@ -282,10 +296,8 @@ export default function SettingsPage() {
                           </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleClearData}>
-                              Yes, delete all data
-                          </AlertDialogAction>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleClearData}>Clear All Data</AlertDialogAction>
                           </AlertDialogFooter>
                       </AlertDialogContent>
                   </AlertDialog>
