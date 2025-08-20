@@ -26,7 +26,7 @@ export default function BottomNavbar() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/20 bg-white/10 backdrop-blur-lg md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/20 bg-white/20 backdrop-blur-xl md:hidden">
       <div className="grid h-16 grid-cols-5 items-center justify-center text-xs">
         {navItems.map((item) => (
           <Link
