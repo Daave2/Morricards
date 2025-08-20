@@ -41,6 +41,7 @@ body {
     --sidebar-accent-foreground: 142 76% 20%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 142 76% 36%;
+    --radius: 1rem;
   }
 
   .dark {
@@ -76,6 +77,7 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 215 20% 65%;
+    --radius: 1rem;
   }
 
   html.theme-glass {
@@ -98,6 +100,7 @@ body {
     --border: 142 20% 40%;
     --input: 142 20% 40%;
     --ring: 142 80% 70%;
+    --radius: 1rem;
   }
 }
 
