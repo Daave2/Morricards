@@ -81,22 +81,24 @@ body {
 
   html.theme-glass {
     --primary: 276 80% 60%;
-    --primary-foreground: 0 0% 98%;
-    --background: 276 80% 96%;
-    --foreground: 276 10% 15%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: hsl(var(--foreground) / 0.7);
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 276 20% 25%;
+    --secondary-foreground: 0 0% 100%;
+    --background: 276 50% 5%;
+    --foreground: 0 0% 100%;
+    --muted: 276 20% 25%;
+    --muted-foreground: 276 10% 85%;
+    --accent: 276 30% 35%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 142 70% 45%;
+    --card: 276 10% 50%; /* Fallback */
+    --card-foreground: 0 0% 100%;
+    --popover: 276 20% 15%;
+    --popover-foreground: 0 0% 100%;
+    --border: 276 20% 40%;
+    --input: 276 20% 40%;
+    --ring: 276 80% 70%;
   }
 }
 
@@ -115,6 +117,59 @@ body {
     background-position: center;
     background-attachment: fixed;
   }
+
+  .theme-glass .card,
+  .theme-glass .dialog-content,
+  .theme-glass .popover-content,
+  .theme-glass .sheet-content {
+      @apply border-white/20 bg-black/30 backdrop-blur-xl;
+  }
+
+  .theme-glass .button-default {
+      @apply bg-primary text-primary-foreground;
+  }
+
+  .theme-glass .button-secondary {
+      @apply bg-white/10 text-white hover:bg-white/20;
+  }
+  
+  .theme-glass .button-outline {
+      @apply border-white/30 bg-white/10 text-white hover:bg-white/20;
+  }
+
+  .theme-glass .button-ghost {
+      @apply hover:bg-white/10 text-white;
+  }
+  
+  .theme-glass .input,
+  .theme-glass .textarea,
+  .theme-glass .select-trigger {
+    @apply border-white/30 bg-white/10 backdrop-blur-lg text-white placeholder:text-white/60;
+  }
+
+  .theme-glass .select-content {
+      @apply border-white/20 bg-black/50 backdrop-blur-xl;
+  }
+
+  .theme-glass .separator {
+      @apply bg-white/20;
+  }
+
+  .theme-glass .badge-secondary {
+      @apply bg-white/10 text-white border-white/20;
+  }
+
+  .theme-glass nav {
+    @apply border-white/20 bg-black/30 backdrop-blur-xl;
+  }
+
+   .theme-glass [data-sidebar="sidebar"] {
+    @apply border-white/20 bg-black/30 backdrop-blur-xl;
+   }
+
+   .theme-glass header {
+     @apply border-white/20 bg-black/30 backdrop-blur-xl;
+   }
 }
 
 
