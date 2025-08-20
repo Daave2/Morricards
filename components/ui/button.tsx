@@ -14,10 +14,10 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground theme-glass:border-white/30 theme-glass:bg-white/20 theme-glass:text-foreground theme-glass:backdrop-blur-lg theme-glass:hover:bg-white/30",
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 theme-glass:border-white/30 theme-glass:bg-white/20 theme-glass:text-foreground theme-glass:backdrop-blur-lg theme-glass:hover:bg-white/30",
-        ghost: "hover:bg-accent hover:text-accent-foreground theme-glass:hover:bg-white/20",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -45,7 +45,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, className }), "glass-effect")}
         ref={ref}
         {...props}
       />

@@ -28,7 +28,7 @@ export default function BottomNavbar() {
   return (
     <nav className={cn(
         "fixed bottom-0 left-0 right-0 z-40 border-t bg-background md:hidden",
-        "theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-xl"
+        "glass-effect"
     )}>
       <div className="grid h-16 grid-cols-5 items-center justify-center text-xs">
         {navItems.map((item) => (

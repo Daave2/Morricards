@@ -207,7 +207,7 @@ const Sidebar = React.forwardRef<
             data-mobile="true"
             className={cn(
                 "w-[--sidebar-width] border-r bg-background p-0",
-                "theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:text-card-foreground theme-glass:backdrop-blur-xl [&>button]:theme-glass:hidden",
+                "glass-effect [&>button]:hidden",
                 className
             )}
             style={
@@ -268,7 +268,7 @@ const Sidebar = React.forwardRef<
             className={cn(
                 "flex h-full w-full flex-col",
                 "group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow",
-                "theme-glass:rounded-lg theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:text-card-foreground theme-glass:shadow-sm theme-glass:backdrop-blur-xl"
+                "glass-effect group-data-[variant=floating]:rounded-lg"
             )}
           >
             {children}

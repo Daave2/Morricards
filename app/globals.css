@@ -78,22 +78,6 @@ body {
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 215 20% 65%;
   }
-
-  html.theme-glass {
-    --background: 276 80% 96%;
-    --foreground: 276 10% 15%;
-    --muted-foreground: hsl(var(--foreground) / 0.75);
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-  }
-
-  html.theme-glass.dark {
-    --background: 276 10% 15%;
-    --foreground: 0 0% 98%;
-    --muted-foreground: hsl(var(--foreground) / 0.8);
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-  }
 }
 
 /* Base element resets using Tailwind tokens */
@@ -104,14 +88,50 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
 
-  html.theme-glass body {
+/* Glass Theme Styles */
+@layer base {
+  html.theme-glass {
+    --card: theme('colors.white' / 0.2);
+    --popover: theme('colors.white' / 0.2);
+    --secondary: theme('colors.white' / 0.2);
+    --muted: theme('colors.white' / 0.2);
+    --accent: theme('colors.white' / 0.25);
+    --accent-foreground: theme('colors.white');
+    --background: 276 80% 96%;
+    --foreground: 276 10% 15%;
+    --muted-foreground: hsl(var(--foreground) / 0.75);
+    --border: theme('colors.white' / 0.3);
+    --input: theme('colors.white' / 0.3);
+  }
+
+  html.theme-glass.dark {
+    --background: 276 10% 15%;
+    --foreground: 0 0% 98%;
+    --muted-foreground: hsl(var(--foreground) / 0.8);
+    --card: theme('colors.black' / 0.1);
+    --popover: theme('colors.black' / 0.1);
+    --secondary: theme('colors.black' / 0.1);
+    --muted: theme('colors.black' / 0.1);
+    --accent: theme('colors.black' / 0.2);
+    --accent-foreground: theme('colors.white');
+    --border: theme('colors.white' / 0.1);
+    --input: theme('colors.white' / 0.1);
+  }
+
+  .theme-glass body {
     background-image: url('/Background.png');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
   }
+
+  .theme-glass .glass-effect {
+    @apply backdrop-blur-xl;
+  }
 }
+
 
 /* Utilities */
 @layer utilities {
