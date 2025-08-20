@@ -453,13 +453,15 @@ export default function AssistantPage() {
             <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
-                    <Image
-                        src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                        alt={product.name}
-                        width={100}
-                        height={100}
-                        className="rounded-lg border object-cover"
-                    />
+                    <div className="rounded-lg border-white/20 bg-white/10 backdrop-blur-lg p-2">
+                        <Image
+                            src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                            alt={product.name}
+                            width={100}
+                            height={100}
+                            className="rounded-md object-cover"
+                        />
+                    </div>
                     <div className='flex-grow'>
                         <CardTitle>{product.name}</CardTitle>
                         <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
@@ -624,14 +626,16 @@ export default function AssistantPage() {
                   onClick={() => fetchProductAndInsights(item.sku)}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <Image
-                      src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                      alt={item.name}
-                      width={80}
-                      height={80}
-                      className="rounded-md object-cover border"
-                      data-ai-hint="product image small"
-                    />
+                    <div className="rounded-lg border-white/20 bg-white/10 backdrop-blur-lg p-2">
+                        <Image
+                          src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                          alt={item.name}
+                          width={80}
+                          height={80}
+                          className="rounded-md object-cover"
+                          data-ai-hint="product image small"
+                        />
+                    </div>
                     <div className="flex-grow min-w-0">
                       <p className="font-semibold truncate">{item.name}</p>
                       <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>

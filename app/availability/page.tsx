@@ -717,14 +717,16 @@ export default function AvailabilityPage() {
                     {productForModal && (
                       <div className="space-y-4">
                         <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
-                            <Image
-                              src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
-                              alt={productForModal.name}
-                              width={80}
-                              height={80}
-                              className="rounded-md object-cover flex-shrink-0"
-                              data-ai-hint="product image"
-                            />
+                            <div className="rounded-lg border-white/20 bg-white/10 backdrop-blur-lg p-2">
+                                <Image
+                                  src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
+                                  alt={productForModal.name}
+                                  width={80}
+                                  height={80}
+                                  className="rounded-md object-cover flex-shrink-0"
+                                  data-ai-hint="product image"
+                                />
+                            </div>
                             <div className="text-sm space-y-1 flex-grow min-w-0">
                               <p className="font-bold break-words">{productForModal.name}</p>
                                {productForModal.price.promotional && (
@@ -985,14 +987,16 @@ export default function AvailabilityPage() {
                           <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 z-10" onClick={(e) => handleDeleteItem(e, item.reportId)}>
                             <X className="h-4 w-4" />
                           </Button>
-                           <Image
-                              src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
-                              alt={item.name}
-                              width={64}
-                              height={64}
-                              className="rounded-md object-cover"
-                              data-ai-hint="product image small"
-                          />
+                            <div className="rounded-lg border-white/20 bg-white/10 backdrop-blur-lg p-2">
+                               <Image
+                                  src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
+                                  alt={item.name}
+                                  width={64}
+                                  height={64}
+                                  className="rounded-md object-cover"
+                                  data-ai-hint="product image small"
+                              />
+                            </div>
                           <div className="flex-grow">
                              <div className="flex justify-between items-start">
                                 <div>
