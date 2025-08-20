@@ -28,7 +28,7 @@ export default function BottomNavbar() {
   return (
     <nav className={cn(
         "fixed bottom-0 left-0 right-0 z-40 border-t bg-background md:hidden",
-        "glass-effect"
+        "theme-glass:border-white/20 theme-glass:bg-black/10 theme-glass:backdrop-blur-xl"
     )}>
       <div className="grid h-16 grid-cols-5 items-center justify-center text-xs">
         {navItems.map((item) => (
@@ -37,7 +37,9 @@ export default function BottomNavbar() {
             href={item.href}
             className={cn(
               'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary',
-              isActive(item.href) ? 'text-primary' : ''
+              isActive(item.href) ? 'text-primary' : '',
+              'theme-glass:text-white/70 theme-glass:hover:text-white',
+              isActive(item.href) ? 'theme-glass:text-white' : ''
             )}
           >
             <item.icon className="h-5 w-5" />

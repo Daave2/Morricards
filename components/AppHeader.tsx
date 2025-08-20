@@ -28,7 +28,7 @@ export default function AppHeader() {
   return (
     <header className={cn(
         "sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4",
-        "glass-effect"
+        "theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl"
     )}>
       <SidebarTrigger className="sm:hidden" />
       <div className="w-full flex-1">

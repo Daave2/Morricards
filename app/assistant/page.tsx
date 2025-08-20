@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -454,7 +453,7 @@ export default function AssistantPage() {
             <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
-                    <div className={cn("rounded-lg p-2", "border glass-effect")}>
+                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10")}>
                         <Image
                             src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                             alt={product.name}
@@ -627,7 +626,7 @@ export default function AssistantPage() {
                   onClick={() => fetchProductAndInsights(item.sku)}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className={cn("rounded-lg p-2", "border glass-effect")}>
+                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10")}>
                         <Image
                           src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                           alt={item.name}

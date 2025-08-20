@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -716,8 +715,8 @@ export default function AvailabilityPage() {
                 <div className="space-y-4 pr-2 -mr-2 max-h-[calc(80vh-200px)] overflow-y-auto">
                     {productForModal && (
                       <div className="space-y-4">
-                        <div className="flex items-start gap-4 p-4 rounded-lg bg-card glass-effect">
-                            <div className={cn("rounded-lg p-2", "border glass-effect")}>
+                        <div className="flex items-start gap-4 p-4 rounded-lg bg-card theme-glass:bg-white/10 theme-glass:backdrop-blur-lg">
+                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10")}>
                                 <Image
                                   src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                                   alt={productForModal.name}
@@ -987,7 +986,7 @@ export default function AvailabilityPage() {
                           <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 z-10" onClick={(e) => handleDeleteItem(e, item.reportId)}>
                             <X className="h-4 w-4" />
                           </Button>
-                            <div className={cn("rounded-lg p-2", "border glass-effect")}>
+                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10")}>
                                <Image
                                   src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                                   alt={item.name}
