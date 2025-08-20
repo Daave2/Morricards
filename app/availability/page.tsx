@@ -167,7 +167,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <div className="flex items-center gap-3 text-sm cursor-pointer hover:text-foreground/80 p-3 rounded-md transition-colors">
+                <div className="flex items-center gap-3 text-sm cursor-pointer hover:text-foreground/80 p-3 rounded-md -mx-3 transition-colors">
                     <Truck className="h-5 w-5 text-primary" />
                     {deliveryInfoContent}
                 </div>
@@ -178,7 +178,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
   }
 
   return (
-    <div className="flex items-center gap-3 text-sm p-3">
+    <div className="flex items-center gap-3 text-sm p-3 -mx-3">
         <Truck className="h-5 w-5 text-primary" />
         {deliveryInfoContent}
     </div>
