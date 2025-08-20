@@ -163,7 +163,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
         <Card 
             data-sku={product.sku}
             className={cn(
-                "w-full transition-all duration-300 flex flex-col relative bg-muted/30 overflow-hidden", 
+                "w-full transition-all duration-300 flex flex-col relative overflow-hidden", 
                 layout === 'list' && "flex-row",
             )}>
             <div className={cn("flex flex-col flex-grow", layout === 'list' ? 'w-full' : '')}>
@@ -476,10 +476,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
             className={cn(
                 "w-full transition-all duration-300 flex flex-col relative overflow-hidden", 
                 layout === 'list' && "flex-row",
-                isPicker && isPicked ? 'bg-muted/50 opacity-60 scale-95' : 'bg-card hover:shadow-xl hover:-translate-y-1',
-                isAgeRestricted ? 'bg-red-50/50' : 
-                product.temperature === 'Chilled' ? 'bg-teal-50/50' :
-                product.temperature === 'Frozen' ? 'bg-sky-50/50' : ''
+                isPicker && isPicked && 'opacity-60 scale-95',
             )}>
             {isPicker && isPicked && (
                  <div className="absolute top-2 right-2 z-10 p-1 bg-primary text-primary-foreground rounded-full">
