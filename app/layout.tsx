@@ -45,7 +45,7 @@ export default function RootLayout({
           defaultTheme="light"
           enableSystem
           disableTransitionOnChange
-          themes={['light', 'dark', 'glass']}
+          themes={['light', 'dark', 'theme-glass']}
         >
           <AppLayout>
             {children}

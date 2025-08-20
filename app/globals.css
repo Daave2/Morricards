@@ -79,7 +79,7 @@ body {
     --sidebar-ring: 215 20% 65%;
   }
 
-  .theme-glass {
+  html.theme-glass {
     --background: 276 80% 96%;
     --foreground: 276 10% 15%;
     --muted-foreground: hsl(var(--foreground) / 0.75);
@@ -87,7 +87,7 @@ body {
     --card-foreground: 240 10% 3.9%;
   }
 
-  .theme-glass.dark {
+  html.theme-glass.dark {
     --background: 276 10% 15%;
     --foreground: 0 0% 98%;
     --muted-foreground: hsl(var(--foreground) / 0.8);
@@ -105,7 +105,7 @@ body {
     @apply bg-background text-foreground;
   }
 
-  .theme-glass body {
+  html.theme-glass body {
     background-image: url('/Background.png');
     background-size: cover;
     background-position: center;

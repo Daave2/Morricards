@@ -130,7 +130,7 @@ export default function SettingsPage() {
               <CardHeader>
                   <CardTitle>Application Settings</CardTitle>
                   <CardDescription>
-                      Manage API credentials, appearance, and other application settings. These are saved in your browser&apos;s local storage.
+                      Manage API credentials, appearance, and other application settings. These are saved in your browser's local storage.
                   </CardDescription>
               </CardHeader>
               <CardContent>
@@ -193,7 +193,7 @@ export default function SettingsPage() {
                             <FormItem>
                                 <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
                                     <FormControl>
-                                        <RadioGroupItem value="glass" className="sr-only" />
+                                        <RadioGroupItem value="theme-glass" className="sr-only" />
                                     </FormControl>
                                     <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
                                         <div className="space-y-2 rounded-sm bg-slate-950 p-2 bg-cover bg-center" style={{ backgroundImage: "url('/Background.png')"}}>
