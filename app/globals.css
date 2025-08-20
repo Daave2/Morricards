@@ -33,7 +33,6 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --radius: 0.8rem;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 142 76% 36%;
@@ -80,25 +79,25 @@ body {
   }
 
   html.theme-glass {
-    --primary: 276 80% 60%;
+    --primary: 142 70% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 276 20% 25%;
+    --secondary: 142 30% 25%;
     --secondary-foreground: 0 0% 100%;
-    --background: 276 50% 5%;
+    --background: 142 50% 5%;
     --foreground: 0 0% 100%;
-    --muted: 276 20% 25%;
-    --muted-foreground: 276 10% 85%;
-    --accent: 276 30% 35%;
+    --muted: 142 20% 25%;
+    --muted-foreground: 142 10% 85%;
+    --accent: 142 40% 40%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --card: 276 10% 50%; /* Fallback */
+    --card: 142 10% 50%; /* Fallback */
     --card-foreground: 0 0% 100%;
-    --popover: 276 20% 15%;
+    --popover: 142 20% 15%;
     --popover-foreground: 0 0% 100%;
-    --border: 276 20% 40%;
-    --input: 276 20% 40%;
-    --ring: 276 80% 70%;
+    --border: 142 20% 40%;
+    --input: 142 20% 40%;
+    --ring: 142 80% 70%;
   }
 }
 
