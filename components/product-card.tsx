@@ -466,7 +466,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
           <CardFooter className={cn("pt-4 mt-auto", layout === 'list' ? 'p-0 items-center justify-center' : 'p-6 pt-0')}>
                <CollapsibleTrigger asChild>
                   <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setIsOpen(!isOpen)}>
-                      {isOpen ? 'Show Less' : 'Show More'}
+                      {isOpen ? 'Show Less' : 'More'}
                       <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isOpen && "rotate-180")} />
                   </Button>
               </CollapsibleTrigger>
