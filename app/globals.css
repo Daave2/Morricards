@@ -95,7 +95,7 @@ body {
   html.theme-glass {
     --background: 276 80% 96%;
     --foreground: 276 10% 15%;
-    --muted-foreground: hsl(var(--foreground) / 0.75);
+    --muted-foreground: hsl(var(--foreground) / 0.85);
     --border: theme('colors.white' / 0.3);
     --input: theme('colors.white' / 0.3);
     --card: theme('colors.white' / 0.2);
@@ -104,20 +104,24 @@ body {
     --muted: theme('colors.white' / 0.2);
     --accent: theme('colors.white' / 0.25);
     --accent-foreground: theme('colors.white');
+    --primary-foreground: theme('colors.white');
+    --destructive-foreground: theme('colors.white');
   }
 
   html.theme-glass.dark {
     --background: 276 10% 15%;
     --foreground: 0 0% 98%;
-    --muted-foreground: hsl(var(--foreground) / 0.8);
+    --muted-foreground: hsl(var(--foreground) / 0.85);
     --border: theme('colors.white' / 0.1);
     --input: theme('colors.white' / 0.1);
-    --card: theme('colors.black' / 0.1);
-    --popover: theme('colors.black' / 0.1);
-    --secondary: theme('colors.black' / 0.1);
-    --muted: theme('colors.black' / 0.1);
-    --accent: theme('colors.black' / 0.2);
+    --card: theme('colors.black' / 0.2);
+    --popover: theme('colors.black' / 0.2);
+    --secondary: theme('colors.black' / 0.2);
+    --muted: theme('colors.black' / 0.2);
+    --accent: theme('colors.black' / 0.25);
     --accent-foreground: theme('colors.white');
+    --primary-foreground: theme('colors.white');
+    --destructive-foreground: theme('colors.white');
   }
   
   .theme-glass body {
