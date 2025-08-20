@@ -187,7 +187,10 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
         {layout === 'grid' && (
            <div className="p-4 flex justify-center">
             <ImageModal src={imageUrl} alt={product.name}>
-              <div className="relative aspect-square w-32 h-32 cursor-pointer group/image rounded-lg overflow-hidden border-white/20 bg-white/10 backdrop-blur-lg p-2">
+              <div className={cn(
+                  "relative aspect-square w-32 h-32 cursor-pointer group/image rounded-lg overflow-hidden p-2",
+                  "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg"
+              )}>
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity">
                     <Expand className="h-6 w-6 text-white" />
                 </div>
@@ -218,7 +221,10 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
             )}
             {layout === 'list' && (
               <ImageModal src={imageUrl} alt={product.name}>
-                <div className="relative aspect-square w-24 h-24 flex-shrink-0 cursor-pointer group/image rounded-lg overflow-hidden border-white/20 bg-white/10 backdrop-blur-lg p-2">
+                <div className={cn(
+                    "relative aspect-square w-24 h-24 flex-shrink-0 cursor-pointer group/image rounded-lg overflow-hidden p-2",
+                    "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg"
+                )}>
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
                         <Expand className="h-6 w-6 text-white" />
                     </div>

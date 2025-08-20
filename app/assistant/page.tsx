@@ -29,6 +29,7 @@ import SkuQrCode from '@/components/SkuQrCode';
 import Link from 'next/link';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -157,7 +158,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <div className="flex items-start gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md -mx-3">
+                <div className="flex items-start gap-3 text-sm cursor-pointer hover:text-foreground/80 p-3 rounded-md -mx-3 transition-colors">
                     <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                     <div className="flex-grow">{deliveryInfoContent}</div>
                 </div>
@@ -453,7 +454,7 @@ export default function AssistantPage() {
             <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
-                    <div className="rounded-lg border-white/20 bg-white/10 backdrop-blur-lg p-2">
+                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg")}>
                         <Image
                             src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                             alt={product.name}
@@ -626,7 +627,7 @@ export default function AssistantPage() {
                   onClick={() => fetchProductAndInsights(item.sku)}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className="rounded-lg border-white/20 bg-white/20 backdrop-blur-lg p-2">
+                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-lg")}>
                         <Image
                           src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                           alt={item.name}

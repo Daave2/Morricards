@@ -167,7 +167,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md">
+                <div className="flex items-center gap-3 text-sm cursor-pointer hover:text-foreground/80 p-3 rounded-md transition-colors">
                     <Truck className="h-5 w-5 text-primary" />
                     {deliveryInfoContent}
                 </div>
@@ -716,8 +716,8 @@ export default function AvailabilityPage() {
                 <div className="space-y-4 pr-2 -mr-2 max-h-[calc(80vh-200px)] overflow-y-auto">
                     {productForModal && (
                       <div className="space-y-4">
-                        <div className="flex items-start gap-4 p-4 rounded-lg bg-white/10">
-                            <div className="rounded-lg border-white/20 bg-white/20 backdrop-blur-lg p-2">
+                        <div className="flex items-start gap-4 p-4 rounded-lg bg-card theme-glass:bg-white/10">
+                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-lg")}>
                                 <Image
                                   src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                                   alt={productForModal.name}
@@ -983,11 +983,11 @@ export default function AvailabilityPage() {
                   <CardContent>
                     <div className="space-y-4">
                       {reportedItems.map((item) => (
-                        <div key={item.reportId} onClick={() => handleEditItem(item)} className="relative flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                        <div key={item.reportId} onClick={() => handleEditItem(item)} className="relative flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
                           <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 z-10" onClick={(e) => handleDeleteItem(e, item.reportId)}>
                             <X className="h-4 w-4" />
                           </Button>
-                            <div className="rounded-lg border-white/20 bg-white/20 backdrop-blur-lg p-2">
+                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-lg")}>
                                <Image
                                   src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                                   alt={item.name}
@@ -1007,7 +1007,7 @@ export default function AvailabilityPage() {
                              </div>
                              <div className="text-sm mt-2">
                                <p><strong>Stock:</strong> {item.stockQuantity}</p>
-                               {item.comment && <p className="text-xs text-muted-foreground mt-1 bg-white/10 p-2 rounded-md"><strong>Comment:</strong> {item.comment}</p>}
+                               {item.comment && <p className="text-xs text-muted-foreground mt-1 bg-muted p-2 rounded-md"><strong>Comment:</strong> {item.comment}</p>}
                              </div>
                           </div>
                         </div>

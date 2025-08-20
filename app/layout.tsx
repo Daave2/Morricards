@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
 import AppLayout from '@/components/AppLayout';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'MorriCards',
@@ -44,6 +45,7 @@ export default function RootLayout({
           defaultTheme="light"
           enableSystem
           disableTransitionOnChange
+          themes={['light', 'dark', 'glass']}
         >
           <AppLayout>
             {children}

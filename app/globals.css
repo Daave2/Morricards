@@ -78,6 +78,22 @@ body {
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 215 20% 65%;
   }
+
+  .theme-glass {
+    --background: 276 80% 96%;
+    --foreground: 276 10% 15%;
+    --muted-foreground: hsl(var(--foreground) / 0.75);
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+  }
+
+  .theme-glass.dark {
+    --background: 276 10% 15%;
+    --foreground: 0 0% 98%;
+    --muted-foreground: hsl(var(--foreground) / 0.8);
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+  }
 }
 
 /* Base element resets using Tailwind tokens */
@@ -87,6 +103,9 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  .theme-glass body {
     background-image: url('/Background.png');
     background-size: cover;
     background-position: center;

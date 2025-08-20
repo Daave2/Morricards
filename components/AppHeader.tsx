@@ -4,6 +4,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import { navItems } from "./AppSidebar";
+import { cn } from "@/lib/utils";
 
 export default function AppHeader() {
   const pathname = usePathname();
@@ -25,7 +26,10 @@ export default function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-white/20 bg-white/20 px-4 backdrop-blur-xl sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
+    <header className={cn(
+        "sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4",
+        "theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-xl"
+    )}>
       <SidebarTrigger className="sm:hidden" />
       <div className="w-full flex-1">
           <h1 className="text-xl font-semibold md:text-2xl">{title}</h1>
@@ -33,5 +37,3 @@ export default function AppHeader() {
     </header>
   );
 }
-
-    

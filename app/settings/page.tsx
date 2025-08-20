@@ -20,10 +20,9 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Trash2, Moon, Sun, DatabaseZap, DownloadCloud } from 'lucide-react';
+import { Settings, Trash2, Moon, Sun, DatabaseZap, DownloadCloud, Sparkles } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const FormSchema = z.object({
   bearerToken: z.string(),
@@ -44,7 +44,7 @@ const FormSchema = z.object({
 
 export default function SettingsPage() {
   const { settings, setSettings, clearAllData } = useApiSettings();
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [isFetchingToken, setIsFetchingToken] = useState(false);
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -128,38 +128,79 @@ export default function SettingsPage() {
                   </CardDescription>
               </CardHeader>
               <CardContent>
-                <Form {...form}>
-                  <div className="space-y-8">
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                            <FormLabel className="text-base">
-                                Theme
-                            </FormLabel>
-                            <FormDescription>
-                                Select a theme for the application.
-                            </FormDescription>
-                        </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="icon">
-                                <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                                <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                                <span className="sr-only">Toggle theme</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setTheme("light")}>
-                                Light
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                                Dark
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setTheme("system")}>
-                                System
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                <div className="space-y-8">
+                    <div className="space-y-4 rounded-lg border p-4">
+                        <FormLabel className="text-base">Theme</FormLabel>
+                        <FormDescription>Select a theme for the application.</FormDescription>
+                         <RadioGroup
+                            value={theme}
+                            onValueChange={setTheme}
+                            className="grid max-w-md grid-cols-2 gap-8 pt-2"
+                        >
+                            <FormItem>
+                                <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                                    <FormControl>
+                                        <RadioGroupItem value="light" className="sr-only" />
+                                    </FormControl>
+                                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
+                                        <div className="space-y-2 rounded-sm bg-[#ecedef] p-2">
+                                            <div className="space-y-2 rounded-md bg-white p-2 shadow-sm">
+                                                <div className="h-2 w-[80px] rounded-lg bg-[#ecedef]" />
+                                                <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
+                                            </div>
+                                            <div className="flex items-center space-x-2 rounded-md bg-white p-2 shadow-sm">
+                                                <div className="h-4 w-4 rounded-full bg-[#ecedef]" />
+                                                <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="block w-full p-2 text-center font-normal">Light</span>
+                                </FormLabel>
+                            </FormItem>
+                             <FormItem>
+                                <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                                    <FormControl>
+                                        <RadioGroupItem value="dark" className="sr-only" />
+                                    </FormControl>
+                                    <div className="items-center rounded-md border-2 border-muted bg-popover p-1 hover:bg-accent hover:text-accent-foreground">
+                                        <div className="space-y-2 rounded-sm bg-slate-950 p-2">
+                                            <div className="space-y-2 rounded-md bg-slate-800 p-2 shadow-sm">
+                                                <div className="h-2 w-[80px] rounded-lg bg-slate-400" />
+                                                <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
+                                            </div>
+                                            <div className="flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-sm">
+                                                <div className="h-4 w-4 rounded-full bg-slate-400" />
+                                                <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="block w-full p-2 text-center font-normal">Dark</span>
+                                </FormLabel>
+                            </FormItem>
+                            <FormItem>
+                                <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                                    <FormControl>
+                                        <RadioGroupItem value="glass" className="sr-only" />
+                                    </FormControl>
+                                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
+                                        <div className="space-y-2 rounded-sm bg-slate-950 p-2 bg-cover bg-center" style={{ backgroundImage: "url('/Background.png')"}}>
+                                            <div className="space-y-2 rounded-md bg-white/20 p-2 shadow-sm backdrop-blur-sm">
+                                                <div className="h-2 w-[80px] rounded-lg bg-slate-400/50" />
+                                                <div className="h-2 w-[100px] rounded-lg bg-slate-400/50" />
+                                            </div>
+                                            <div className="flex items-center space-x-2 rounded-md bg-white/20 p-2 shadow-sm backdrop-blur-sm">
+                                                <div className="h-4 w-4 rounded-full bg-slate-400/50" />
+                                                <div className="h-2 w-[100px] rounded-lg bg-slate-400/50" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="block w-full p-2 text-center font-normal">Glass</span>
+                                </FormLabel>
+                            </FormItem>
+                        </RadioGroup>
                     </div>
+
+                    <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                         <FormField
                         control={form.control}
@@ -213,8 +254,8 @@ export default function SettingsPage() {
                             <Button type="submit">Save Settings</Button>
                         </div>
                     </form>
+                    </Form>
                   </div>
-                </Form>
               </CardContent>
             </Card>
             
