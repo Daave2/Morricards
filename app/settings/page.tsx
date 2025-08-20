@@ -290,10 +290,10 @@ export default function SettingsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                           <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete all picking lists, availability reports, and queued offline data from this device.
-                          </AlertDialogDescription>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete all picking lists, availability reports, and queued offline data from this device.
+                            </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -304,6 +304,5 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
       </main>
-    </>
   );
 }
