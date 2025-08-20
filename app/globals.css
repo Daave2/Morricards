@@ -78,6 +78,26 @@ body {
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 215 20% 65%;
   }
+
+  html.theme-glass {
+    --primary: 276 80% 60%;
+    --primary-foreground: 0 0% 98%;
+    --background: 276 80% 96%;
+    --foreground: 276 10% 15%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: hsl(var(--foreground) / 0.7);
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 142 70% 45%;
+  }
 }
 
 /* Base element resets using Tailwind tokens */
@@ -88,51 +108,12 @@ body {
   body {
     @apply bg-background text-foreground;
   }
-}
 
-/* Glass Theme Styles */
-@layer base {
-  html.theme-glass {
-    --background: 276 80% 96%;
-    --foreground: 276 10% 15%;
-    --muted-foreground: hsl(var(--foreground) / 0.85);
-    --border: theme('colors.white' / 0.3);
-    --input: theme('colors.white' / 0.3);
-    --card: theme('colors.white' / 0.2);
-    --popover: theme('colors.white' / 0.2);
-    --secondary: theme('colors.white' / 0.2);
-    --muted: theme('colors.white' / 0.2);
-    --accent: theme('colors.white' / 0.25);
-    --accent-foreground: theme('colors.white');
-    --primary-foreground: theme('colors.white');
-    --destructive-foreground: theme('colors.white');
-  }
-
-  html.theme-glass.dark {
-    --background: 276 10% 15%;
-    --foreground: 0 0% 98%;
-    --muted-foreground: hsl(var(--foreground) / 0.85);
-    --border: theme('colors.white' / 0.1);
-    --input: theme('colors.white' / 0.1);
-    --card: theme('colors.black' / 0.2);
-    --popover: theme('colors.black' / 0.2);
-    --secondary: theme('colors.black' / 0.2);
-    --muted: theme('colors.black' / 0.2);
-    --accent: theme('colors.black' / 0.25);
-    --accent-foreground: theme('colors.white');
-    --primary-foreground: theme('colors.white');
-    --destructive-foreground: theme('colors.white');
-  }
-  
-  .theme-glass body {
+  html.theme-glass body {
     background-image: url('/Background.png');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-  }
-  
-  .theme-glass .glass-effect {
-    @apply backdrop-blur-xl;
   }
 }
 
