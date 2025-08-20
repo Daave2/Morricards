@@ -449,11 +449,11 @@ export default function AssistantPage() {
         )}
 
         {product && (
-          <div className="max-w-4xl mx-auto mb-12">
+          <div className="max-w-4xl mx-auto mb-12 animate-in fade-in-50">
             <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
-                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg")}>
+                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
                         <Image
                             src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                             alt={product.name}
@@ -619,14 +619,15 @@ export default function AssistantPage() {
           <div className="max-w-4xl mx-auto">
             <h2 className="text-xl font-semibold mb-4">Recently Viewed</h2>
             <div className="space-y-4">
-              {recentItems.map(item => (
+              {recentItems.map((item, i) => (
                 <Card
                   key={item.sku}
-                  className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-shadow"
+                  className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-shadow animate-in fade-in-50"
+                  style={{ animationDelay: `${i * 100}ms` }}
                   onClick={() => fetchProductAndInsights(item.sku)}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg")}>
+                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
                         <Image
                           src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                           alt={item.name}
