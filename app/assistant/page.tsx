@@ -157,7 +157,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <div className="flex items-start gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md hover:bg-muted -mx-3">
+                <div className="flex items-start gap-3 text-sm cursor-pointer hover:underline p-3 rounded-md -mx-3">
                     <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                     <div className="flex-grow">{deliveryInfoContent}</div>
                 </div>
@@ -626,7 +626,7 @@ export default function AssistantPage() {
                   onClick={() => fetchProductAndInsights(item.sku)}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className="rounded-lg border-white/20 bg-white/10 backdrop-blur-lg p-2">
+                    <div className="rounded-lg border-white/20 bg-white/20 backdrop-blur-lg p-2">
                         <Image
                           src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                           alt={item.name}
