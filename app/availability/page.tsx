@@ -54,6 +54,7 @@ import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import type { AvailabilityReason } from '@/lib/idb';
+import Link from 'next/link';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -238,6 +239,7 @@ export default function AvailabilityPage() {
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<ReportedItem | null>(null);
   const [lastDeletedItem, setLastDeletedItem] = useState<{ item: ReportedItem; index: number } | null>(null);
+  const [consecutiveFails, setConsecutiveFails] = useState(0);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
@@ -359,22 +361,37 @@ export default function AvailabilityPage() {
     if (error || !data || data.length === 0) {
         const errText = error || `Could not find product data for EAN: ${sku}`;
         playError();
+        const newFailCount = consecutiveFails + 1;
+        setConsecutiveFails(newFailCount);
+
+        let toastAction: React.ReactElement | undefined = (
+            <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
+                 <Copy className="mr-2 h-4 w-4" /> Copy
+            </ToastAction>
+        );
+
+        if (newFailCount >= 2) {
+            toastAction = (
+                <ToastAction altText="Fetch Latest?" asChild>
+                     <Link href="/settings">Fetch Latest?</Link>
+                </ToastAction>
+            )
+        }
+
         toast({
             variant: 'destructive',
             title: 'Product Not Found',
-            description: errText,
+            description: newFailCount >= 2 ? "Lookup failed again. Your token may have expired." : errText,
             duration: 15000,
-            action: (
-                <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
-                     <Copy className="mr-2 h-4 w-4" /> Copy
-                </ToastAction>
-            ),
+            action: toastAction,
         });
+
         if (isSpeedMode) {
             setIsScanMode(true);
             startScannerWithDelay();
         }
     } else {
+        setConsecutiveFails(0); // Reset on success
         const product = data[0];
         let defaultReason: AvailabilityReason = 'Early Sellout';
         if (product.stockQuantity === 0) {
@@ -422,7 +439,7 @@ export default function AvailabilityPage() {
           setIsModalOpen(true);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay, consecutiveFails]);
 
   const handleScanSuccess = useCallback(async (text: string) => {
     const sku = text.split(',')[0].trim();

@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, Copy } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -30,6 +30,7 @@ import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ToastAction } from '@/components/ui/toast';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -220,6 +221,7 @@ export default function AssistantPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
   const [recentItems, setRecentItems] = useState<Product[]>([]);
+  const [consecutiveFails, setConsecutiveFails] = useState(0);
 
 
   const { toast } = useToast();
@@ -293,8 +295,25 @@ export default function AssistantPage() {
 
     if (error || !data || data.length === 0) {
       playError();
-      toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for EAN/SKU: ${sku}` });
+      const newFailCount = consecutiveFails + 1;
+      setConsecutiveFails(newFailCount);
+      let toastAction;
+      if (newFailCount >= 2) {
+          toastAction = (
+              <ToastAction altText="Fetch Latest?" asChild>
+                   <Link href="/settings">Fetch Latest?</Link>
+              </ToastAction>
+          )
+      }
+      toast({ 
+        variant: 'destructive', 
+        title: 'Product Not Found', 
+        description: newFailCount >= 2 ? `Lookup failed again. Your token may have expired.` : `Could not find product data for EAN/SKU: ${sku}`,
+        action: toastAction,
+      });
+
     } else {
+      setConsecutiveFails(0); // Reset on success
       playSuccess();
       const foundProduct = data[0];
       setProduct(foundProduct);

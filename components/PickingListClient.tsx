@@ -53,6 +53,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import Link from 'next/link';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
@@ -125,6 +126,7 @@ export default function PickingListClient() {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [consecutiveFails, setConsecutiveFails] = useState(0);
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -354,17 +356,31 @@ export default function PickingListClient() {
     if (error || !data || !data.length) {
         const errText = error || `Could not find product for EAN: ${sku}`;
         playError();
+        const newFailCount = consecutiveFails + 1;
+        setConsecutiveFails(newFailCount);
+
+        let toastAction: React.ReactElement | undefined = (
+            <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
+                <Copy className="mr-2 h-4 w-4" /> Copy
+            </ToastAction>
+        );
+
+        if (newFailCount >= 2) {
+            toastAction = (
+                <ToastAction altText="Fetch Latest?" asChild>
+                     <Link href="/settings">Fetch Latest?</Link>
+                </ToastAction>
+            )
+        }
+        
         toast({
             variant: 'destructive',
             title: 'Product Not Found',
-            description: errText,
-            action: (
-                <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(errText)}>
-                    <Copy className="mr-2 h-4 w-4" /> Copy
-                </ToastAction>
-            ),
+            description: newFailCount >= 2 ? "Lookup failed again. Your token may have expired." : errText,
+            action: toastAction
         });
     } else {
+        setConsecutiveFails(0); // Reset on success
         setProducts(prevProducts => {
             const existing = prevProducts.find(p => p.sku === data[0].sku);
             if (existing) return prevProducts; // Already added somehow
@@ -375,7 +391,7 @@ export default function PickingListClient() {
     setIsLoading(false);
     setLoadingSkuCount(prev => Math.max(0, prev - 1));
 
-  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast]);
+  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -459,18 +475,30 @@ export default function PickingListClient() {
 
     setIsFetching(false);
     if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error,
-        duration: 15000,
-        action: (
+      const newFailCount = consecutiveFails + 1;
+      setConsecutiveFails(newFailCount);
+       let toastAction: React.ReactElement | undefined = (
             <ToastAction altText="Copy" onClick={() => navigator.clipboard.writeText(error)}>
                 <Copy className="mr-2 h-4 w-4" /> Copy
             </ToastAction>
-        ),
+        );
+
+        if (newFailCount >= 2) {
+            toastAction = (
+                <ToastAction altText="Fetch Latest?" asChild>
+                     <Link href="/settings">Fetch Latest?</Link>
+                </ToastAction>
+            )
+        }
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: newFailCount >= 2 ? "Lookup failed again. Your token may have expired." : error,
+        duration: 15000,
+        action: toastAction,
       });
     } else if (data) {
+       setConsecutiveFails(0); // Reset on success
        if (data.length === 0) {
         toast({
           title: 'No new products found',

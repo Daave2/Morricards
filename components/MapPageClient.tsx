@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Map, Search, BrainCircuit } from 'lucide-react';
+import { Loader2, Map, Search, BrainCircuit, Copy } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -20,6 +20,8 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { findAisleForProductTool } from '@/ai/flows/aisle-finder-flow';
+import Link from 'next/link';
+import { ToastAction } from '@/components/ui/toast';
 
 const SkuFormSchema = z.object({
   sku: z.string().min(1, { message: 'SKU or EAN is required.' }),
@@ -61,6 +63,7 @@ export default function MapPageClient() {
   const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
   const [highlightedAisle, setHighlightedAisle] = useState<string | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
+  const [consecutiveFails, setConsecutiveFails] = useState(0);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -92,8 +95,25 @@ export default function MapPageClient() {
 
     if (error || !data || data.length === 0) {
       setIsSkuLoading(false);
-      toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for: ${values.sku}` });
+      const newFailCount = consecutiveFails + 1;
+      setConsecutiveFails(newFailCount);
+       let toastAction;
+      if (newFailCount >= 2) {
+          toastAction = (
+              <ToastAction altText="Fetch Latest?" asChild>
+                   <Link href="/settings">Fetch Latest?</Link>
+              </ToastAction>
+          )
+      }
+      toast({ 
+        variant: 'destructive', 
+        title: 'Product Not Found', 
+        description: newFailCount >= 2 ? `Lookup failed again. Your token may have expired.` : `Could not find product data for: ${values.sku}`,
+        action: toastAction,
+      });
+
     } else {
+      setConsecutiveFails(0); // Reset on success
       const foundProduct = data[0];
       const parsedLoc = parseLocationString(foundProduct.location.standard);
 
