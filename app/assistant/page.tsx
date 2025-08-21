@@ -544,7 +544,7 @@ export default function AssistantPage() {
                                 <AccordionTrigger>Full Product Details</AccordionTrigger>
                                 <AccordionContent className="pt-4 text-sm text-muted-foreground">
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                                             <DataRow icon={<Info />} label="Status" value={product.status} />
                                             <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers} />
@@ -553,7 +553,7 @@ export default function AssistantPage() {
                                             <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
                                             <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
                                             <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
-                                            <div className='md:col-span-2'>
+                                            <div className='sm:col-span-2'>
                                                 <Button variant="outline" size="sm" className="w-full" asChild>
                                                 <Link href={`/map?sku=${product.sku}&locationId=${form.getValues('locationId')}`}>
                                                     <Map className="mr-2 h-4 w-4" />
@@ -689,7 +689,3 @@ export default function AssistantPage() {
     </div>
   );
 }
-
-    
-
-    
