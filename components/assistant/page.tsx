@@ -270,17 +270,28 @@ export default function AssistantPageClient() {
   
   // Handle dynamic links from URL params
   useEffect(() => {
-    const skuFromUrl = searchParams.get('sku');
+    let skuFromUrl = searchParams.get('sku');
     const locationFromUrl = searchParams.get('locationId');
+
+    // If 'sku' param doesn't exist, check for a keyless numeric param
+    if (!skuFromUrl) {
+      for (const [key, value] of searchParams.entries()) {
+        if (!value && /^\d{7,13}$/.test(key)) {
+          skuFromUrl = key;
+          break;
+        }
+      }
+    }
+
     if (skuFromUrl) {
-      if(locationFromUrl) {
+      if (locationFromUrl) {
         form.setValue('locationId', locationFromUrl);
       }
       fetchProductAndInsights(skuFromUrl);
       // Clean the URL to avoid re-triggering on refresh
       router.replace('/assistant', undefined);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const handleReset = () => {
@@ -704,7 +715,7 @@ export default function AssistantPageClient() {
                           data-ai-hint="product image small"
                         />
                     </div>
-                    <div className="flex-grow min-w-0 break-words">
+                    <div className="flex-grow min-w-0">
                       <p className="font-semibold">{item.name}</p>
                       <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
                         {(item.price.promotional || item.price.regular) && (
