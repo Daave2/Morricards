@@ -682,24 +682,37 @@ export default function AvailabilityPage() {
     <div className="min-h-screen">
       <InstallPrompt />
       {isScanMode && (
-         <div className={cn(
-            "fixed bottom-4 inset-x-4 z-50 p-4 space-y-4 max-w-md mx-auto",
-            "rounded-2xl border shadow-xl",
-            "bg-background/80 backdrop-blur-sm",
-            "theme-glass:bg-black/30 theme-glass:border-white/20 theme-glass:backdrop-blur-xl"
-         )}>
-            <ZXingScanner 
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={() => setIsScanMode(false)}
+          />
+          <div
+            className={cn(
+              'fixed bottom-4 inset-x-4 z-50 p-4 space-y-4 max-w-md mx-auto',
+              'rounded-2xl border shadow-xl',
+              'bg-background',
+              'theme-glass:bg-black/30 theme-glass:border-white/20 theme-glass:backdrop-blur-xl'
+            )}
+          >
+            <ZXingScanner
               ref={scannerRef}
-              onResult={(text) => handleScanSuccess(text)} 
-              onError={handleScanError} 
+              onResult={(text) => handleScanSuccess(text)}
+              onError={handleScanError}
             />
             <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full">
-              {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
+              {isOcrLoading ? <Loader2 className="animate-spin" /> : <ScanSearch />}
               {isOcrLoading ? 'Reading...' : 'Read with AI'}
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 rounded-full bg-background/50 hover:bg-background/80">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsScanMode(false)}
+              className="absolute top-2 right-2 z-10 rounded-full bg-background/50 hover:bg-background/80"
+            >
               <X className="h-5 w-5" />
             </Button>
+          </div>
         </div>
       )}
       
