@@ -31,6 +31,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ToastAction } from '@/components/ui/toast';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -228,6 +229,10 @@ export default function AssistantPage() {
   const { playSuccess, playError } = useAudioFeedback();
   const { settings, fetchAndUpdateToken } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
+  
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
 
   useEffect(() => {
     try {
@@ -262,6 +267,21 @@ export default function AssistantPage() {
     resolver: zodResolver(FormSchema),
     defaultValues: { locationId: '218', sku: '' },
   });
+  
+  // Handle dynamic links from URL params
+  useEffect(() => {
+    const skuFromUrl = searchParams.get('sku');
+    const locationFromUrl = searchParams.get('locationId');
+    if (skuFromUrl) {
+      if(locationFromUrl) {
+        form.setValue('locationId', locationFromUrl);
+      }
+      fetchProductAndInsights(skuFromUrl);
+      // Clean the URL to avoid re-triggering on refresh
+      router.replace('/assistant', undefined);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleReset = () => {
     setProduct(null);
@@ -719,3 +739,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
