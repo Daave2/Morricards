@@ -131,7 +131,6 @@ body {
 
   /* Add shine effect on hover */
   .theme-glass .card:hover::before,
-  .theme-glass .dialog-content:hover::before,
   .theme-glass .popover-content:hover::before,
   .theme-glass .sheet-content:hover::before {
     content: "";
