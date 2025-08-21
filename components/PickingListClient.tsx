@@ -714,7 +714,7 @@ export default function PickingListClient() {
                                     <Button
                                         type="button"
                                         variant='outline'
-                                        className="absolute top-3 right-3"
+                                        className="absolute bottom-3 right-3"
                                         onClick={() => setScanMode('add')}
                                       >
                                         <ScanLine className="mr-2 h-4 w-4" />
