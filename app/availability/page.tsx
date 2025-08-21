@@ -682,7 +682,11 @@ export default function AvailabilityPage() {
     <div className="min-h-screen">
       <InstallPrompt />
       {isScanMode && (
-         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+         <div className={cn(
+            "fixed inset-0 z-50 flex flex-col items-center justify-center p-4",
+            "bg-background/90 backdrop-blur-sm",
+            "theme-glass:bg-black/10 theme-glass:backdrop-blur-xl"
+         )}>
             <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
                  <ZXingScanner 
                     ref={scannerRef}
@@ -716,7 +720,7 @@ export default function AvailabilityPage() {
                     {productForModal && (
                       <div className="space-y-4">
                         <div className="flex items-start gap-4 p-4 rounded-lg bg-card theme-glass:bg-white/10 theme-glass:backdrop-blur-lg">
-                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10")}>
+                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-lg")}>
                                 <Image
                                   src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                                   alt={productForModal.name}
@@ -986,7 +990,7 @@ export default function AvailabilityPage() {
                           <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 z-10" onClick={(e) => handleDeleteItem(e, item.reportId)}>
                             <X className="h-4 w-4" />
                           </Button>
-                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10")}>
+                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg")}>
                                <Image
                                   src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
                                   alt={item.name}

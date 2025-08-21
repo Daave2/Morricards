@@ -603,7 +603,11 @@ export default function PickingListClient() {
     <div className="min-h-screen">
       <InstallPrompt />
       {scanMode === 'add' && (
-         <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+         <div className={cn(
+            "fixed inset-0 z-50 flex flex-col items-center justify-center p-4",
+            "bg-background/90 backdrop-blur-sm",
+            "theme-glass:bg-black/10 theme-glass:backdrop-blur-xl"
+         )}>
             <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
                 <ZXingScanner 
                     ref={scannerRef} 
@@ -624,7 +628,11 @@ export default function PickingListClient() {
       )}
 
       {scanMode === 'pick' && (
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b p-2 shadow-md">
+        <div className={cn(
+            "sticky top-0 z-40 p-2 shadow-md",
+            "bg-background/95 backdrop-blur-sm border-b",
+            "theme-glass:bg-black/10 theme-glass:backdrop-blur-xl"
+        )}>
              <div className="w-full max-w-sm mx-auto">
                 <div className="relative aspect-[4/3] w-full rounded-md overflow-hidden">
                     <ZXingScanner
