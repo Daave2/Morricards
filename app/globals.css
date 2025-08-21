@@ -142,7 +142,7 @@ body {
     height: 100%;
     background: linear-gradient(110deg, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 55%);
     transform: skewX(-25deg);
-    animation: shine 1.2s infinite linear;
+    animation: shine 1.2s linear;
   }
 
   @keyframes shine {
