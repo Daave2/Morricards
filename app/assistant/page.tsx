@@ -515,7 +515,7 @@ export default function AssistantPage() {
                                     </Button>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
-                                  <div className="flex-grow w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
+                                  <div className="w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
                                       <StoreMap productLocation={productLocation} />
                                   </div>
                                 </CollapsibleContent>
@@ -689,5 +689,7 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
 
     
