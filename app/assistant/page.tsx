@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -29,6 +29,7 @@ import Link from 'next/link';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -214,6 +215,7 @@ export default function AssistantPage() {
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
@@ -504,9 +506,20 @@ export default function AssistantPage() {
                         <InsightSection title="About This Product" icon={<Info />} content={insights.customerFacingSummary} />
                         <InsightSection title="Where to Find It" icon={<Map />} content={insights.customerFriendlyLocation}>
                            {productLocation && (
-                              <div className="flex-grow w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
-                                  <StoreMap productLocation={productLocation} />
-                              </div>
+                              <Collapsible open={isMapOpen} onOpenChange={setIsMapOpen}>
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="outline" className="w-full">
+                                        <Map className="mr-2 h-4 w-4" />
+                                        {isMapOpen ? 'Hide Map' : 'Show Map'}
+                                        <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isMapOpen && "rotate-180")} />
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="flex-grow w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
+                                      <StoreMap productLocation={productLocation} />
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
                            )}
                         </InsightSection>
                         <Accordion type="single" collapsible className="w-full">
@@ -676,3 +689,5 @@ export default function AssistantPage() {
     </div>
   );
 }
+
+    
