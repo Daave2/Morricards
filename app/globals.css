@@ -119,6 +119,10 @@ body {
     background-position: center;
     background-attachment: fixed;
   }
+  
+  html.theme-dark-gradient body {
+    background: linear-gradient(135deg, hsl(230, 25%, 18%), hsl(260, 30%, 12%));
+  }
 
   .theme-glass .card,
   .theme-glass .dialog-content,

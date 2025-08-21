@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Trash2, Moon, Sun, DatabaseZap, DownloadCloud, Sparkles } from 'lucide-react';
+import { Settings, Trash2, Moon, Sun, DatabaseZap, DownloadCloud, Sparkles, Paintbrush } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 import {
@@ -208,6 +208,17 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
                                     <span className="block w-full p-2 text-center font-normal">Glass</span>
+                                </FormLabel>
+                            </FormItem>
+                             <FormItem>
+                                <FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+                                    <FormControl>
+                                        <RadioGroupItem value="theme-dark-gradient" className="sr-only" />
+                                    </FormControl>
+                                    <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
+                                        <div className="h-[96px] w-full rounded-sm" style={{ background: 'linear-gradient(135deg, hsl(230, 25%, 18%), hsl(260, 30%, 12%))' }} />
+                                    </div>
+                                    <span className="block w-full p-2 text-center font-normal">Dark Gradient</span>
                                 </FormLabel>
                             </FormItem>
                         </RadioGroup>
