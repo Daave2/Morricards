@@ -288,9 +288,9 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                     )}
                 </div>
                 {product.price.promotional && (
-                    <CardDescription className="pt-2">
+                    <div className="text-sm text-muted-foreground pt-2">
                         <Badge variant="destructive" className="bg-accent text-accent-foreground">{product.price.promotional}</Badge>
-                    </CardDescription>
+                    </div>
                 )}
             </div>
           </CardHeader>
