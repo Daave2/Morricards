@@ -455,7 +455,7 @@ export default function AssistantPage() {
         )}
 
         {product && (
-          <div className="max-w-4xl mx-auto mb-12 animate-in fade-in-50">
+          <div className="max-w-2xl mx-auto mb-12 animate-in fade-in-50">
             <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
@@ -633,7 +633,7 @@ export default function AssistantPage() {
         )}
 
         {recentItems.length > 0 && (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-2xl mx-auto">
             <h2 className="text-xl font-semibold mb-4">Recently Viewed</h2>
             <div className="space-y-4">
               {recentItems.map((item, i) => (
