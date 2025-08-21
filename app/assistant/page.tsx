@@ -654,7 +654,7 @@ export default function AssistantPage() {
                           data-ai-hint="product image small"
                         />
                     </div>
-                    <div className="flex-grow min-w-0">
+                    <div className="flex-grow min-w-0 break-words">
                       <p className="font-semibold truncate">{item.name}</p>
                       <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
                         {(item.price.promotional || item.price.regular) && (
