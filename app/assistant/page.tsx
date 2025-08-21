@@ -655,7 +655,7 @@ export default function AssistantPage() {
                         />
                     </div>
                     <div className="flex-grow min-w-0 break-words">
-                      <p className="font-semibold truncate">{item.name}</p>
+                      <p className="font-semibold">{item.name}</p>
                       <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
                         {(item.price.promotional || item.price.regular) && (
                             <div className="mt-2 flex items-baseline gap-2">
