@@ -117,15 +117,12 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
 
   if (hasAllOrders) {
     return (
-        <Dialog>
-            <DialogTrigger asChild>
-                <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline">
-                    <Truck className="h-5 w-5 text-primary" />
-                    {deliveryInfoContent}
-                </div>
-            </DialogTrigger>
-            <DeliveryDetailsModal orders={allOrders} productName={productName} />
-        </Dialog>
+        <DialogTrigger asChild>
+            <div className="flex items-center gap-3 text-sm cursor-pointer hover:underline">
+                <Truck className="h-5 w-5 text-primary" />
+                {deliveryInfoContent}
+            </div>
+        </DialogTrigger>
     )
   }
 
@@ -475,21 +472,24 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
   );
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <Card 
-            data-sku={product.sku}
-            className={cn(
-                "w-full transition-all duration-300 flex flex-col relative overflow-hidden", 
-                layout === 'list' && "flex-row",
-                isPicker && isPicked && 'opacity-60 scale-95',
-            )}>
-            {isPicker && isPicked && (
-                 <div className="absolute top-2 right-2 z-10 p-1 bg-primary text-primary-foreground rounded-full">
-                    <CheckCircle2 className="h-5 w-5" />
-                </div>
-            )}
-           {cardContent}
-        </Card>
-    </Collapsible>
+    <Dialog>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <Card 
+              data-sku={product.sku}
+              className={cn(
+                  "w-full transition-all duration-300 flex flex-col relative overflow-hidden", 
+                  layout === 'list' && "flex-row",
+                  isPicker && isPicked && 'opacity-60 scale-95',
+              )}>
+              {isPicker && isPicked && (
+                   <div className="absolute top-2 right-2 z-10 p-1 bg-primary text-primary-foreground rounded-full">
+                      <CheckCircle2 className="h-5 w-5" />
+                  </div>
+              )}
+             {cardContent}
+          </Card>
+      </Collapsible>
+      {product.allOrders && <DeliveryDetailsModal orders={product.allOrders} productName={product.name} />}
+    </Dialog>
   );
 }
