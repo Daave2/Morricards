@@ -8,6 +8,7 @@ import { toast } from './use-toast';
 const LOCAL_STORAGE_KEY_SETTINGS = 'morricards-api-settings';
 const LOCAL_STORAGE_KEY_PRODUCTS = 'morricards-products';
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
+const LOCAL_STORAGE_KEY_CUSTOM_BG = 'morricards-custom-background';
 const DB_NAME = 'smu';
 
 export interface ApiSettings {
@@ -58,6 +59,8 @@ export function useApiSettings() {
       // Clear local storage items
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_PRODUCTS);
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_AVAILABILITY);
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY_CUSTOM_BG);
+
 
       // Clear IndexedDB stores
       const clearDB = async () => {

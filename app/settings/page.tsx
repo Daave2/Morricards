@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Trash2, Moon, Sun, DatabaseZap, DownloadCloud, Sparkles, Paintbrush } from 'lucide-react';
+import { Settings, Trash2, Moon, Sun, DatabaseZap, DownloadCloud, Sparkles, Paintbrush, UploadCloud, Image as ImageIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 import {
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCustomTheme } from '@/hooks/useCustomTheme';
 
 const FormSchema = z.object({
   bearerToken: z.string(),
@@ -47,6 +48,8 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [isFetchingToken, setIsFetchingToken] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const { hasCustomBackground, setCustomBackground, removeCustomBackground } = useCustomTheme();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -122,6 +125,28 @@ export default function SettingsPage() {
       setIsFetchingToken(false);
     }
   }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setCustomBackground(dataUrl);
+        toast({ title: 'Background Updated', description: 'Your custom background has been set.' });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveBackground = () => {
+    removeCustomBackground();
+    toast({ title: 'Background Removed', description: 'The custom background has been removed.' });
+  };
 
 
   return (
@@ -224,6 +249,31 @@ export default function SettingsPage() {
                         </RadioGroup>
                         )}
                     </div>
+                    {theme === 'theme-glass' && isClient && (
+                      <div className="space-y-4 rounded-lg border p-4">
+                        <FormLabel className="text-base flex items-center gap-2"><ImageIcon /> Custom Background</FormLabel>
+                        <FormDescription>Upload your own background image for the glass theme.</FormDescription>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={handleUploadClick}>
+                            <UploadCloud className="mr-2 h-4 w-4" />
+                            Upload Image
+                          </Button>
+                          {hasCustomBackground && (
+                            <Button variant="destructive" onClick={handleRemoveBackground}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

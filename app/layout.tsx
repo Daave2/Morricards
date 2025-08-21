@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
 import AppLayout from '@/components/AppLayout';
 import { cn } from '@/lib/utils';
+import { useCustomTheme } from '@/hooks/useCustomTheme';
 
 export const metadata: Metadata = {
   title: 'MorriCards',
@@ -25,6 +26,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover'
 }
+
+function CustomThemeProvider({ children }: { children: React.ReactNode }) {
+  useCustomTheme();
+  return <>{children}</>;
+}
+
 
 export default function RootLayout({
   children,
@@ -47,10 +54,12 @@ export default function RootLayout({
           disableTransitionOnChange
           themes={['light', 'dark', 'theme-glass', 'theme-dark-gradient']}
         >
-          <AppLayout>
-            {children}
-          </AppLayout>
-          <Toaster />
+          <CustomThemeProvider>
+            <AppLayout>
+              {children}
+            </AppLayout>
+            <Toaster />
+          </CustomThemeProvider>
         </ThemeProvider>
       </body>
     </html>
