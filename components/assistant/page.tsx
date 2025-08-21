@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -29,6 +29,9 @@ import Link from 'next/link';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ToastAction } from '@/components/ui/toast';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -209,21 +212,27 @@ const InsightSection = ({ title, content, icon, children, variant }: { title: st
   );
 };
 
-export default function AssistantPage() {
+export default function AssistantPageClient() {
   const [isScanMode, setIsScanMode] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
   const [recentItems, setRecentItems] = useState<Product[]>([]);
+  const [consecutiveFails, setConsecutiveFails] = useState(0);
 
 
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
-  const { settings } = useApiSettings();
+  const { settings, fetchAndUpdateToken } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
+  
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
 
   useEffect(() => {
     try {
@@ -258,6 +267,21 @@ export default function AssistantPage() {
     resolver: zodResolver(FormSchema),
     defaultValues: { locationId: '218', sku: '' },
   });
+  
+  // Handle dynamic links from URL params
+  useEffect(() => {
+    const skuFromUrl = searchParams.get('sku');
+    const locationFromUrl = searchParams.get('locationId');
+    if (skuFromUrl) {
+      if(locationFromUrl) {
+        form.setValue('locationId', locationFromUrl);
+      }
+      fetchProductAndInsights(skuFromUrl);
+      // Clean the URL to avoid re-triggering on refresh
+      router.replace('/assistant', undefined);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleReset = () => {
     setProduct(null);
@@ -291,8 +315,26 @@ export default function AssistantPage() {
 
     if (error || !data || data.length === 0) {
       playError();
-      toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not find product data for EAN/SKU: ${sku}` });
+      const newFailCount = consecutiveFails + 1;
+      setConsecutiveFails(newFailCount);
+      let toastAction;
+      if (newFailCount >= 2) {
+          toastAction = (
+              <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
+                   <DownloadCloud className="mr-2 h-4 w-4" />
+                   Fetch Latest?
+              </ToastAction>
+          )
+      }
+      toast({ 
+        variant: 'destructive', 
+        title: 'Product Not Found', 
+        description: newFailCount >= 2 ? `Lookup failed again. Your token may have expired.` : `Could not find product data for EAN/SKU: ${sku}`,
+        action: toastAction,
+      });
+
     } else {
+      setConsecutiveFails(0); // Reset on success
       playSuccess();
       const foundProduct = data[0];
       setProduct(foundProduct);
@@ -366,23 +408,37 @@ export default function AssistantPage() {
   return (
     <div className="min-h-screen">
       {isScanMode && (
-        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={() => setIsScanMode(false)}
+          />
+          <div
+            className={cn(
+              'fixed bottom-4 inset-x-4 z-50 p-4 space-y-4 max-w-md mx-auto',
+              'rounded-2xl border shadow-xl',
+              'bg-background',
+              'theme-glass:bg-black/30 theme-glass:border-white/20 theme-glass:backdrop-blur-xl'
+            )}
+          >
             <ZXingScanner
               ref={scannerRef}
               onResult={handleScanSuccess}
               onError={handleScanError}
             />
-          </div>
-           <div className="mt-4 w-full max-w-md">
-            <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
-              {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
+            <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full">
+              {isOcrLoading ? <Loader2 className="animate-spin" /> : <ScanSearch />}
               {isOcrLoading ? 'Reading...' : 'Read with AI'}
             </Button>
-          </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
-              <X className="h-6 w-6" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsScanMode(false)}
+              className="absolute top-2 right-2 z-10 rounded-full bg-background/50 hover:bg-background/80"
+            >
+              <X className="h-5 w-5" />
             </Button>
+          </div>
         </div>
       )}
 
@@ -449,7 +505,7 @@ export default function AssistantPage() {
         )}
 
         {product && (
-          <div className="max-w-4xl mx-auto mb-12 animate-in fade-in-50">
+          <div className="max-w-2xl mx-auto mb-12 animate-in fade-in-50">
             <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
@@ -500,9 +556,20 @@ export default function AssistantPage() {
                         <InsightSection title="About This Product" icon={<Info />} content={insights.customerFacingSummary} />
                         <InsightSection title="Where to Find It" icon={<Map />} content={insights.customerFriendlyLocation}>
                            {productLocation && (
-                              <div className="flex-grow w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
-                                  <StoreMap productLocation={productLocation} />
-                              </div>
+                              <Collapsible open={isMapOpen} onOpenChange={setIsMapOpen}>
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="outline" className="w-full">
+                                        <Map className="mr-2 h-4 w-4" />
+                                        {isMapOpen ? 'Hide Map' : 'Show Map'}
+                                        <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isMapOpen && "rotate-180")} />
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
+                                      <StoreMap productLocation={productLocation} />
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
                            )}
                         </InsightSection>
                         <Accordion type="single" collapsible className="w-full">
@@ -527,7 +594,7 @@ export default function AssistantPage() {
                                 <AccordionTrigger>Full Product Details</AccordionTrigger>
                                 <AccordionContent className="pt-4 text-sm text-muted-foreground">
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                                             <DataRow icon={<Info />} label="Status" value={product.status} />
                                             <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers} />
@@ -536,7 +603,7 @@ export default function AssistantPage() {
                                             <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
                                             <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
                                             <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
-                                            <div className='md:col-span-2'>
+                                            <div className='sm:col-span-2'>
                                                 <Button variant="outline" size="sm" className="w-full" asChild>
                                                 <Link href={`/map?sku=${product.sku}&locationId=${form.getValues('locationId')}`}>
                                                     <Map className="mr-2 h-4 w-4" />
@@ -616,7 +683,7 @@ export default function AssistantPage() {
         )}
 
         {recentItems.length > 0 && (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-2xl mx-auto">
             <h2 className="text-xl font-semibold mb-4">Recently Viewed</h2>
             <div className="space-y-4">
               {recentItems.map((item, i) => (
@@ -637,8 +704,8 @@ export default function AssistantPage() {
                           data-ai-hint="product image small"
                         />
                     </div>
-                    <div className="flex-grow min-w-0">
-                      <p className="font-semibold truncate">{item.name}</p>
+                    <div className="flex-grow min-w-0 break-words">
+                      <p className="font-semibold">{item.name}</p>
                       <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
                         {(item.price.promotional || item.price.regular) && (
                             <div className="mt-2 flex items-baseline gap-2">
