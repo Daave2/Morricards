@@ -287,11 +287,11 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                         </TooltipProvider>
                     )}
                 </div>
-                {product.price.promotional && (
-                    <div className="text-sm text-muted-foreground pt-2">
-                        <Badge variant="destructive" className="bg-accent text-accent-foreground">{product.price.promotional}</Badge>
-                    </div>
-                )}
+                <div className="text-sm text-muted-foreground pt-2">
+                  {product.price.promotional && (
+                      <Badge variant="destructive" className="bg-accent text-accent-foreground">{product.price.promotional}</Badge>
+                  )}
+                </div>
             </div>
           </CardHeader>
           <CardContent className={cn('flex-grow', layout === 'list' ? 'p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-start' : 'p-6 pt-0 space-y-3')}>
