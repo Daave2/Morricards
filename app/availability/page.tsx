@@ -683,26 +683,23 @@ export default function AvailabilityPage() {
       <InstallPrompt />
       {isScanMode && (
          <div className={cn(
-            "fixed inset-0 z-50 flex flex-col items-center justify-center p-4",
-            "bg-background/90 backdrop-blur-sm",
-            "theme-glass:bg-black/10 theme-glass:backdrop-blur-xl"
+            "fixed bottom-4 inset-x-4 z-50 p-4 space-y-4 max-w-md mx-auto",
+            "rounded-2xl border shadow-xl",
+            "bg-background/80 backdrop-blur-sm",
+            "theme-glass:bg-black/30 theme-glass:border-white/20 theme-glass:backdrop-blur-xl"
          )}>
-            <div className="w-full max-w-md mx-auto relative p-0 space-y-4">
-                 <ZXingScanner 
-                    ref={scannerRef}
-                    onResult={(text) => handleScanSuccess(text)} 
-                    onError={handleScanError} 
-                />
-            </div>
-            <div className="mt-4 w-full max-w-md">
-                <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full" size="lg">
-                    {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
-                    {isOcrLoading ? 'Reading...' : 'Read with AI'}
-                </Button>
-            </div>
-             <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
-                <X className="h-6 w-6" />
-             </Button>
+            <ZXingScanner 
+              ref={scannerRef}
+              onResult={(text) => handleScanSuccess(text)} 
+              onError={handleScanError} 
+            />
+            <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full">
+              {isOcrLoading ? ( <Loader2 className="animate-spin" /> ) : ( <ScanSearch /> )}
+              {isOcrLoading ? 'Reading...' : 'Read with AI'}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setIsScanMode(false)} className="absolute top-2 right-2 z-10 rounded-full bg-background/50 hover:bg-background/80">
+              <X className="h-5 w-5" />
+            </Button>
         </div>
       )}
       
