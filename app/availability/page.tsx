@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2 } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2, DownloadCloud } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import {
@@ -243,7 +243,7 @@ export default function AvailabilityPage() {
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
-  const { settings } = useApiSettings();
+  const { settings, fetchAndUpdateToken } = useApiSettings();
   const { isOnline } = useNetworkSync();
 
 
@@ -372,8 +372,9 @@ export default function AvailabilityPage() {
 
         if (newFailCount >= 2) {
             toastAction = (
-                <ToastAction altText="Fetch Latest?" asChild>
-                     <Link href="/settings">Fetch Latest?</Link>
+                <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
+                     <DownloadCloud className="mr-2 h-4 w-4" />
+                     Fetch Latest?
                 </ToastAction>
             )
         }
@@ -439,7 +440,7 @@ export default function AvailabilityPage() {
           setIsModalOpen(true);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay, consecutiveFails]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay, consecutiveFails, fetchAndUpdateToken]);
 
   const handleScanSuccess = useCallback(async (text: string) => {
     const sku = text.split(',')[0].trim();

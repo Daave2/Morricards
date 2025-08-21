@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, Copy } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -226,7 +226,7 @@ export default function AssistantPage() {
 
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
-  const { settings } = useApiSettings();
+  const { settings, fetchAndUpdateToken } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
 
   useEffect(() => {
@@ -300,8 +300,9 @@ export default function AssistantPage() {
       let toastAction;
       if (newFailCount >= 2) {
           toastAction = (
-              <ToastAction altText="Fetch Latest?" asChild>
-                   <Link href="/settings">Fetch Latest?</Link>
+              <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
+                   <DownloadCloud className="mr-2 h-4 w-4" />
+                   Fetch Latest?
               </ToastAction>
           )
       }

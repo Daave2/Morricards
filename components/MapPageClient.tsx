@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Map, Search, BrainCircuit, Copy } from 'lucide-react';
+import { Loader2, Map, Search, BrainCircuit, Copy, DownloadCloud } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -66,7 +66,7 @@ export default function MapPageClient() {
   const [consecutiveFails, setConsecutiveFails] = useState(0);
 
   const { toast } = useToast();
-  const { settings } = useApiSettings();
+  const { settings, fetchAndUpdateToken } = useApiSettings();
   const searchParams = useSearchParams();
 
   const skuForm = useForm<z.infer<typeof SkuFormSchema>>({
@@ -100,8 +100,9 @@ export default function MapPageClient() {
        let toastAction;
       if (newFailCount >= 2) {
           toastAction = (
-              <ToastAction altText="Fetch Latest?" asChild>
-                   <Link href="/settings">Fetch Latest?</Link>
+              <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
+                   <DownloadCloud className="mr-2 h-4 w-4" />
+                   Fetch Latest?
               </ToastAction>
           )
       }

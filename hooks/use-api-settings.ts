@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { openDB } from 'idb';
+import { toast } from './use-toast';
 
 const LOCAL_STORAGE_KEY_SETTINGS = 'morricards-api-settings';
 const LOCAL_STORAGE_KEY_PRODUCTS = 'morricards-products';
@@ -79,10 +80,42 @@ export function useApiSettings() {
     }
   }, []);
 
-  // Return default settings on server or before mount, and real settings after mount
+  const fetchAndUpdateToken = useCallback(async () => {
+    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/5c7d6426cb1406f0cae7d1f3d90f6bd497533943/gistfile1.txt';
+    toast({ title: 'Fetching latest token...' });
+    try {
+      const response = await fetch(tokenUrl, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch token: ${response.statusText}`);
+      }
+      const token = await response.text();
+      const trimmedToken = token.trim();
+
+      if (!trimmedToken) {
+          throw new Error('Fetched token is empty.');
+      }
+
+      setSettings(prev => ({ ...prev, bearerToken: trimmedToken }));
+      toast({
+        title: 'Token Updated',
+        description: 'The latest bearer token has been fetched and saved.',
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: 'Fetch Failed',
+        description: `Could not fetch the token. ${errorMessage}`,
+      });
+      console.error(error);
+    }
+  }, [setSettings]);
+
   return { 
     settings: isMounted ? settings : DEFAULT_SETTINGS, 
     setSettings: updateSettings,
-    clearAllData
+    clearAllData,
+    fetchAndUpdateToken
   };
 }

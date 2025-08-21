@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ShoppingBasket, LayoutGrid, List, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud } from 'lucide-react';
 import ProductCard from '@/components/product-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -130,7 +130,7 @@ export default function PickingListClient() {
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
-  const { settings } = useApiSettings();
+  const { settings, fetchAndUpdateToken } = useApiSettings();
   const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
@@ -367,8 +367,9 @@ export default function PickingListClient() {
 
         if (newFailCount >= 2) {
             toastAction = (
-                <ToastAction altText="Fetch Latest?" asChild>
-                     <Link href="/settings">Fetch Latest?</Link>
+                <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
+                     <DownloadCloud className="mr-2 h-4 w-4" />
+                     Fetch Latest?
                 </ToastAction>
             )
         }
@@ -391,7 +392,7 @@ export default function PickingListClient() {
     setIsLoading(false);
     setLoadingSkuCount(prev => Math.max(0, prev - 1));
 
-  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails]);
+  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails, fetchAndUpdateToken]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -485,8 +486,9 @@ export default function PickingListClient() {
 
         if (newFailCount >= 2) {
             toastAction = (
-                <ToastAction altText="Fetch Latest?" asChild>
-                     <Link href="/settings">Fetch Latest?</Link>
+                <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
+                     <DownloadCloud className="mr-2 h-4 w-4" />
+                     Fetch Latest?
                 </ToastAction>
             )
         }
