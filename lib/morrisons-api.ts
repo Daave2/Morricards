@@ -72,79 +72,50 @@ async function fetchJson<T>(
   {
     debug = false,
     bearer,
-    preferBearer = !!bearer,
   }: {
     debug?: boolean;
     bearer?: string;
-    preferBearer?: boolean;
   } = {}
 ): Promise<T | null> {
-  const baseHeaders: Record<string, string> = {
+  const headers = new Headers({
     Accept: 'application/json',
-    'X-No-Auth': '1',
-  };
+  });
 
-  async function once(withBearer: boolean) {
-    const headers = new Headers(baseHeaders);
-    if (withBearer && bearer) headers.set('Authorization', `Bearer ${bearer}`);
-    return fetch(url, {
-      method: 'GET',
-      headers,
-      credentials: 'omit',
-      mode: 'cors',
-      cache: 'no-store',
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-    });
+  if (bearer) {
+    headers.set('Authorization', `Bearer ${bearer}`);
+  } else {
+    // Some endpoints like PI work without auth, using just the API key in URL.
+    headers.set('X-No-Auth', '1');
   }
 
-  const attempts: boolean[] = preferBearer ? [true, false] : [false, true];
+  const res = await fetch(url, {
+    method: 'GET',
+    headers,
+    credentials: 'omit',
+    mode: 'cors',
+    cache: 'no-store',
+  });
 
-  let lastRes: Response | undefined;
-  for (const withBearer of attempts) {
-    const res = await once(withBearer);
-    lastRes = res;
-    if (res.status === 404) return null;
-    if (res.ok) return (await res.json()) as T;
-    if (res.status !== 401 && res.status !== 403) {
-      const body = debug ? await res.text().catch(() => '') : '';
-      const intendedHeaders = {
-        ...baseHeaders,
-        ...(withBearer && bearer ? { Authorization: 'Bearer <redacted>' } : {}),
-      };
-      throw new Error(
-        `HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(
-          intendedHeaders,
-          null,
-          2
-        )}\nResponse: ${body}`
-      );
-    }
-    if (debug) {
-      console.warn(
-        `[fetchJson] ${url} → ${res.status} with ${withBearer ? 'bearer' : 'no bearer'}; trying ${
-          withBearer ? 'without' : 'with'
-        } bearer…`
-      );
-    }
-  }
-
-  if (lastRes) {
-    const body = debug ? await lastRes.text().catch(() => '') : '';
+  if (res.status === 404) return null;
+  
+  if (!res.ok) {
+    const body = debug ? await res.text().catch(() => '') : '';
     const intendedHeaders = {
-      ...baseHeaders,
-      ...(preferBearer && bearer ? { Authorization: 'Bearer <redacted>' } : {}),
+      Accept: 'application/json',
+      ...(bearer ? { Authorization: 'Bearer <redacted>' } : { 'X-No-Auth': '1' }),
     };
     throw new Error(
-      `HTTP error! status: ${lastRes.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(
+      `HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(
         intendedHeaders,
         null,
         2
       )}\nResponse: ${body}`
     );
   }
-  throw new Error(`Request failed for ${url} (no response)`);
+  
+  return (await res.json()) as T;
 }
+
 
 // ─────────────────────────── endpoint wrappers ────────────────────────────
 // Reusable logic to fetch from the main Product API, now callable from server actions directly.
@@ -157,7 +128,7 @@ export async function fetchProductFromUpstream(
   const url = `${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${API_KEY}`;
   
   try {
-    const product = await fetchJson<Product>(url, { bearer: bearerToken, preferBearer: true });
+    const product = await fetchJson<Product>(url, { bearer: bearerToken });
     if (!product) {
        return { product: null, error: `Product not found for SKU ${sku}` };
     }
@@ -168,33 +139,34 @@ export async function fetchProductFromUpstream(
   }
 }
 
-// Price Integrity: allow bearer if you have one; fallback without.
+// Price Integrity: can work without a bearer token
 async function getPI(locationId: string, sku: string, bearer?: string, debug?: boolean) {
   const url = `${BASE_LOCN}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
     sku
   )}?apikey=${encodeURIComponent(API_KEY)}`;
-  return fetchJson<PriceIntegrity>(url, { debug, bearer, preferBearer: !!bearer });
+  return fetchJson<PriceIntegrity>(url, { debug, bearer });
 }
 
-// Stock: **FIXED** → send bearer when provided; fallback without.
+// Stock: Requires a bearer token.
 async function getStock(locationId: string, sku: string, bearer?: string, debug?: boolean) {
   const url = `${BASE_STOCK}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
     sku
   )}?apikey=${encodeURIComponent(API_KEY)}`;
-  return fetchJson<StockPayload>(url, { debug, bearer, preferBearer: !!bearer });
+  return fetchJson<StockPayload>(url, { debug, bearer });
 }
 
-// Stock History: try with bearer then without (like the official app behavior).
+// Stock History: Requires a bearer token.
 async function getStockHistory(locationId: string, sku: string, bearer?: string, debug?: boolean) {
   const url = `${BASE_STOCK_HISTORY}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
     sku
   )}?apikey=${encodeURIComponent(API_KEY)}`;
-  return fetchJson<StockHistory>(url, { debug, bearer, preferBearer: !!bearer });
+  return fetchJson<StockHistory>(url, { debug, bearer });
 }
 
+// Order Info: Requires a bearer token.
 async function getOrderInfo(locationId: string, sku: string, bearer?: string, debug?: boolean) {
     const url = `${BASE_STOCK_ORDER}?location=${encodeURIComponent(locationId)}&type=StoreStandard&item=${encodeURIComponent(sku)}&orders=[last,next,current]&apikey=${encodeURIComponent(API_KEY)}`;
-    return fetchJson<StockOrder>(url, { debug, bearer, preferBearer: !!bearer });
+    return fetchJson<StockOrder>(url, { debug, bearer });
 }
 
 // ─────────────────────── location formatting helpers ──────────────────────
