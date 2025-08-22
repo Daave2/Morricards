@@ -9,6 +9,7 @@ const LOCAL_STORAGE_KEY_SETTINGS = 'morricards-api-settings';
 const LOCAL_STORAGE_KEY_PRODUCTS = 'morricards-products';
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 const LOCAL_STORAGE_KEY_CUSTOM_BG = 'morricards-custom-background';
+const LOCAL_STORAGE_KEY_RECENT_AI = 'morricards-assistant-recent';
 const DB_NAME = 'smu';
 
 export interface ApiSettings {
@@ -60,6 +61,7 @@ export function useApiSettings() {
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_PRODUCTS);
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_AVAILABILITY);
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_CUSTOM_BG);
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY_RECENT_AI);
 
 
       // Clear IndexedDB stores
@@ -113,7 +115,7 @@ export function useApiSettings() {
       });
       console.error(error);
     }
-  }, [setSettings]);
+  }, []);
 
   return { 
     settings: isMounted ? settings : DEFAULT_SETTINGS, 
