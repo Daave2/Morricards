@@ -365,7 +365,7 @@ export default function PickingListClient() {
             </ToastAction>
         );
 
-        if (newFailCount >= 2) {
+        if (newFailCount >= 2 && settings.debugMode) {
             toastAction = (
                 <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
                      <DownloadCloud className="mr-2 h-4 w-4" />
@@ -377,22 +377,31 @@ export default function PickingListClient() {
         toast({
             variant: 'destructive',
             title: 'Product Not Found',
-            description: newFailCount >= 2 ? "Lookup failed again. Your token may have expired." : errText,
+            description: settings.debugMode && newFailCount >= 2 ? "Lookup failed again. Your token may have expired." : errText,
             action: toastAction
         });
     } else {
         setConsecutiveFails(0); // Reset on success
+        const newProducts = data.map(p => ({ ...p, picked: false }));
         setProducts(prevProducts => {
-            const existing = prevProducts.find(p => p.sku === data[0].sku);
-            if (existing) return prevProducts; // Already added somehow
-            return [...prevProducts, { ...data[0], picked: false }];
+            const updatedExistingSkus = new Set(prevProducts.map(p => p.sku));
+            const uniqueNewProducts = newProducts.filter(p => !updatedExistingSkus.has(p.sku));
+            return [...prevProducts, ...uniqueNewProducts];
         });
+        // Check for individual item errors in debug mode
+        if (settings.debugMode) {
+          newProducts.forEach(p => {
+            if (p.proxyError) {
+              toast({ variant: 'destructive', title: `Error for ${p.sku}`, description: p.proxyError, duration: 10000 });
+            }
+          });
+        }
     }
     
     setIsLoading(false);
     setLoadingSkuCount(prev => Math.max(0, prev - 1));
 
-  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails, fetchAndUpdateToken]);
+  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails, fetchAndUpdateToken, settings.debugMode]);
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -484,7 +493,7 @@ export default function PickingListClient() {
             </ToastAction>
         );
 
-        if (newFailCount >= 2) {
+        if (newFailCount >= 2 && settings.debugMode) {
             toastAction = (
                 <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
                      <DownloadCloud className="mr-2 h-4 w-4" />
@@ -495,7 +504,7 @@ export default function PickingListClient() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: newFailCount >= 2 ? "Lookup failed again. Your token may have expired." : error,
+        description: settings.debugMode && newFailCount >= 2 ? "Lookup failed again. Your token may have expired." : error,
         duration: 15000,
         action: toastAction,
       });
@@ -507,12 +516,21 @@ export default function PickingListClient() {
           description: 'Could not find any products for the given SKUs.',
         });
       } else {
+        const newProducts = data.map(p => ({ ...p, picked: false }));
         setProducts(prevProducts => {
             const updatedExistingSkus = new Set(prevProducts.map(p => p.sku));
-            const uniqueNewProducts = data.filter(p => !updatedExistingSkus.has(p.sku));
-            return [...prevProducts, ...uniqueNewProducts.map(p => ({ ...p, picked: false }))]
+            const uniqueNewProducts = newProducts.filter(p => !updatedExistingSkus.has(p.sku));
+            return [...prevProducts, ...uniqueNewProducts];
         });
         form.setValue('skus', '');
+        // Check for individual item errors in debug mode
+        if (settings.debugMode) {
+          newProducts.forEach(p => {
+            if (p.proxyError) {
+              toast({ variant: 'destructive', title: `Error for ${p.sku}`, description: p.proxyError, duration: 10000 });
+            }
+          });
+        }
       }
     }
     setIsLoading(false);

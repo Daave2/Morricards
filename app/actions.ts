@@ -11,6 +11,7 @@ const FormSchema = z.object({
   debugMode: z.boolean().optional(),
 });
 
+// The error message can now be a detailed string from the API layer
 type ActionResponse = {
   data: FetchMorrisonsDataOutput | null;
   error: string | null;
@@ -42,6 +43,11 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
       bearerToken: bearerToken,
       debugMode: debugMode,
     });
+    // The data itself can contain proxyError for individual items, which the client can use.
+    // We only return a top-level error if the whole fetch fails catastrophically.
+    if (!data || data.length === 0) {
+      return { data: null, error: `No products found for the provided SKUs.` };
+    }
     return { data, error: null };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);

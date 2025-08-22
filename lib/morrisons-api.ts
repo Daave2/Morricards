@@ -83,9 +83,6 @@ async function fetchJson<T>(
 
   if (bearer) {
     headers.set('Authorization', `Bearer ${bearer}`);
-  } else {
-    // Some endpoints like PI work without auth, using just the API key in URL.
-    headers.set('X-No-Auth', '1');
   }
 
   const res = await fetch(url, {
@@ -102,10 +99,10 @@ async function fetchJson<T>(
     const body = debug ? await res.text().catch(() => '') : '';
     const intendedHeaders = {
       Accept: 'application/json',
-      ...(bearer ? { Authorization: 'Bearer <redacted>' } : { 'X-No-Auth': '1' }),
+      ...(bearer ? { Authorization: 'Bearer <redacted>' } : {}),
     };
     throw new Error(
-      `HTTP error! status: ${res.status}\nURL: ${url}\nIntended headers: ${JSON.stringify(
+      `HTTP error! status: ${res.status} for ${res.url}\nIntended headers: ${JSON.stringify(
         intendedHeaders,
         null,
         2
@@ -121,16 +118,17 @@ async function fetchJson<T>(
 // Reusable logic to fetch from the main Product API, now callable from server actions directly.
 export async function fetchProductFromUpstream(
   sku: string,
-  bearerToken?: string
+  bearerToken?: string,
+  debug = false
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
   
   const url = `${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${API_KEY}`;
   
   try {
-    const product = await fetchJson<Product>(url, { bearer: bearerToken });
+    const product = await fetchJson<Product>(url, { bearer: bearerToken, debug });
     if (!product) {
-       return { product: null, error: `Product not found for SKU ${sku}` };
+       return { product: null, error: `Product not found for SKU ${sku} via Product API.` };
     }
     return { product, error: null };
   } catch (error) {
@@ -149,6 +147,7 @@ async function getPI(locationId: string, sku: string, bearer?: string, debug?: b
 
 // Stock: Requires a bearer token.
 async function getStock(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+  if (!bearer) return null; // Don't even try without a token
   const url = `${BASE_STOCK}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
     sku
   )}?apikey=${encodeURIComponent(API_KEY)}`;
@@ -157,6 +156,7 @@ async function getStock(locationId: string, sku: string, bearer?: string, debug?
 
 // Stock History: Requires a bearer token.
 async function getStockHistory(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+  if (!bearer) return null;
   const url = `${BASE_STOCK_HISTORY}/${encodeURIComponent(locationId)}/items/${encodeURIComponent(
     sku
   )}?apikey=${encodeURIComponent(API_KEY)}`;
@@ -165,6 +165,7 @@ async function getStockHistory(locationId: string, sku: string, bearer?: string,
 
 // Order Info: Requires a bearer token.
 async function getOrderInfo(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+    if (!bearer) return null;
     const url = `${BASE_STOCK_ORDER}?location=${encodeURIComponent(locationId)}&type=StoreStandard&item=${encodeURIComponent(sku)}&orders=[last,next,current]&apikey=${encodeURIComponent(API_KEY)}`;
     return fetchJson<StockOrder>(url, { debug, bearer });
 }
@@ -213,10 +214,12 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
         let pi: PriceIntegrity | null = null;
+        let piError: string | null = null;
       
         try {
             pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
         } catch (e) {
+            piError = e instanceof Error ? e.message : String(e);
             if (debugMode) console.warn(`PI check failed for ${scannedSku}, proceeding...`, e);
         }
         
@@ -229,15 +232,31 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
                 stockHistory,
                 orderInfo,
             ] = await Promise.allSettled([
-                fetchProductFromUpstream(internalSku, bearerToken),
+                fetchProductFromUpstream(internalSku, bearerToken, debugMode),
                 getStock(locationId, internalSku, bearerToken, debugMode),
                 getStockHistory(locationId, internalSku, bearerToken, debugMode),
                 getOrderInfo(locationId, internalSku, bearerToken, debugMode),
             ]);
 
             const productDetailsFromProxy = productProxyResult.status === 'fulfilled' ? productProxyResult.value.product : null;
-            const proxyError = productProxyResult.status === 'fulfilled' ? productProxyResult.value.error : (productProxyResult.reason as Error)?.message || String(productProxyResult.reason);
-            if (debugMode && proxyError) console.error(proxyError);
+            
+            const getErrorString = (res: PromiseSettledResult<any>, name: string) => {
+                if (res.status === 'rejected') {
+                    return `${name} Error: ${res.reason instanceof Error ? res.reason.message : String(res.reason)}`;
+                }
+                if (res.status === 'fulfilled' && (res.value as any)?.error) {
+                    return `${name} Error: ${(res.value as any).error}`;
+                }
+                return null;
+            }
+
+            const allErrors: string[] = [
+                piError ? `PI Error: ${piError}` : null,
+                getErrorString(productProxyResult, 'ProductProxy'),
+                getErrorString(stockPayload, 'Stock'),
+                getErrorString(stockHistory, 'StockHistory'),
+                getErrorString(orderInfo, 'OrderInfo'),
+            ].filter((e): e is string => e !== null);
 
 
             const finalProductDetails: Product = {
@@ -246,7 +265,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             };
 
             if (Object.keys(finalProductDetails).length === 0) {
-              throw new Error(`Could not retrieve any product details for SKU ${scannedSku} or internal SKU ${internalSku}. Proxy error: ${proxyError}`);
+              throw new Error(`Could not retrieve any product details for SKU ${scannedSku}. Upstream errors: ${allErrors.join('; ')}`);
             }
             
             const stockPosition = stockPayload.status === 'fulfilled' ? stockPayload.value?.stockPosition?.[0] : undefined;
@@ -305,7 +324,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               lastStockChange: stockHistory.status === 'fulfilled' ? (stockHistory.value || undefined) : undefined,
               deliveryInfo: deliveryInfo,
               allOrders: allOrders ?? null,
-              proxyError
+              proxyError: debugMode && allErrors.length > 0 ? allErrors.join('\n') : null,
             };
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : String(err);
