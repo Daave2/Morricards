@@ -92,7 +92,7 @@ export default function SettingsPage() {
   
   async function handleFetchToken() {
     setIsFetchingToken(true);
-    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/5c7d6426cb1406f0cae7d1f3d90f6bd497533943/gistfile1.txt';
+    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/fede6ee0bcb19abb99baa7e46b9c44c4d3e09b0d/gistfile1.txt';
 
     try {
       const response = await fetch(tokenUrl, { cache: 'no-store' });
