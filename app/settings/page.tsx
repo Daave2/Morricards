@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -241,7 +240,7 @@ export default function SettingsPage() {
                                         <RadioGroupItem value="theme-dark-gradient" className="sr-only" />
                                     </FormControl>
                                     <div className="items-center rounded-md border-2 border-muted p-1 hover:border-accent">
-                                        <div className="h-[96px] w-full rounded-sm" style={{ background: 'linear-gradient(135deg, hsl(230, 25%, 18%), hsl(260, 30%, 12%))' }} />
+                                        <div className="h-[96px] w-full rounded-sm" style={{ background: 'linear-gradient(160deg, hsl(280, 50%, 15%), hsl(240, 60%, 10%), hsl(220, 70%, 8%))' }} />
                                     </div>
                                     <span className="block w-full p-2 text-center font-normal">Dark Gradient</span>
                                 </FormLabel>

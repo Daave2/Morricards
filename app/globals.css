@@ -102,6 +102,29 @@ body {
     --ring: 142 80% 70%;
     --radius: 1rem;
   }
+
+  html.theme-dark-gradient {
+    --background: 240 10% 10%;
+    --foreground: 240 5% 95%;
+    --card: 240 10% 14%;
+    --card-foreground: 240 5% 95%;
+    --popover: 240 10% 10%;
+    --popover-foreground: 240 5% 95%;
+    --primary: 280 70% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 20% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 10% 20%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 180 50% 40%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 10% 25%;
+    --input: 240 10% 25%;
+    --ring: 280 70% 70%;
+    --radius: 1rem;
+  }
 }
 
 /* Base element resets using Tailwind tokens */
@@ -121,7 +144,7 @@ body {
   }
   
   html.theme-dark-gradient body {
-    background: linear-gradient(135deg, hsl(230, 25%, 18%), hsl(260, 30%, 12%));
+    background: linear-gradient(160deg, hsl(280, 50%, 15%), hsl(240, 60%, 10%), hsl(220, 70%, 8%));
   }
 
   .theme-glass .card,
