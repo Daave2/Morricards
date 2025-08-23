@@ -115,7 +115,11 @@ export default function MapPageClient() {
         }).filter((p): p is LocatedProduct => p !== null);
         
         if (append) {
-          setLocatedProducts(prev => [...prev, ...productsWithLocations]);
+          setLocatedProducts(prev => {
+              const existingSkus = new Set(prev.map(p => p.sku));
+              const newProducts = productsWithLocations.filter(p => !existingSkus.has(p.sku));
+              return [...prev, ...newProducts];
+          });
         } else {
           setLocatedProducts(productsWithLocations);
         }
@@ -309,3 +313,5 @@ export default function MapPageClient() {
     </div>
   );
 }
+
+    
