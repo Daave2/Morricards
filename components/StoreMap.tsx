@@ -3,6 +3,7 @@
 
 import { useMemo } from "react";
 import { storeLayout } from "@/lib/map-data";
+import { cn } from "@/lib/utils";
 
 export interface ProductLocation {
   aisle: string;
@@ -10,15 +11,29 @@ export interface ProductLocation {
   side: 'Left' | 'Right';
 }
 
-interface StoreMapProps {
-  productLocation?: ProductLocation | null;
-  highlightedAisle?: string | null;
+interface LocatedProductData {
+    sku: string;
+    location: ProductLocation;
 }
 
-const StoreMap = ({ productLocation, highlightedAisle }: StoreMapProps) => {
+interface StoreMapProps {
+  productLocations?: LocatedProductData[];
+  highlightedAisle?: string | null;
+  hoveredProductSku?: string | null;
+  onPinHover?: (sku: string) => void;
+  onPinLeave?: () => void;
+}
+
+const StoreMap = ({ 
+    productLocations = [], 
+    highlightedAisle, 
+    hoveredProductSku,
+    onPinHover,
+    onPinLeave 
+}: StoreMapProps) => {
     const { meta, aisles, layout } = storeLayout;
 
-    const itemPosition = useMemo(() => {
+    const getItemPosition = (productLocation: ProductLocation | null) => {
         if (!productLocation) return null;
 
         const aisleId = productLocation.aisle.replace(/^0+/, ''); // "01" -> "1"
@@ -46,7 +61,7 @@ const StoreMap = ({ productLocation, highlightedAisle }: StoreMapProps) => {
             x = (x1 < x2) ? x1 + distanceAlongAisle : x1 - distanceAlongAisle;
         }
         
-        const offset = aisleData.aisleWidth / 4; // Reduced offset
+        const offset = aisleData.aisleWidth / 4;
         if(isVertical) {
             x += (productLocation.side === 'Left' ? -offset : offset);
         } else {
@@ -54,17 +69,28 @@ const StoreMap = ({ productLocation, highlightedAisle }: StoreMapProps) => {
         }
 
         return { x, y };
-    }, [productLocation, aisles]);
+    };
+
+    const positionedItems = useMemo(() => {
+        return productLocations
+            .map(p => ({
+                ...p,
+                position: getItemPosition(p.location),
+            }))
+            .filter(p => p.position !== null);
+    }, [productLocations]);
+
 
   return (
     <>
       <style jsx global>{`
         @keyframes flash {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.9); }
         }
         .flashing-indicator {
           animation: flash 1.5s infinite ease-in-out;
+          transform-origin: center;
         }
         .zone rect { 
             stroke: hsl(var(--border) / 0.5); 
@@ -77,6 +103,7 @@ const StoreMap = ({ productLocation, highlightedAisle }: StoreMapProps) => {
             font-size: 14px;
             fill: hsl(var(--muted-foreground)); 
             letter-spacing: .2px; 
+            pointer-events: none;
         }
         
         .zone.highlighted rect {
@@ -95,6 +122,10 @@ const StoreMap = ({ productLocation, highlightedAisle }: StoreMapProps) => {
         .zone[data-type="bev"] rect { fill: hsl(var(--chart-2) / 0.2); }
         .zone[data-type="front"] rect { fill: hsl(var(--accent) / 0.3); }
 
+        .product-pin {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
       `}</style>
       <div className="canvas-wrap p-4 bg-muted/20">
         <div className="board" style={{ maxWidth: `${layout.W}px` }}>
@@ -145,20 +176,25 @@ const StoreMap = ({ productLocation, highlightedAisle }: StoreMapProps) => {
                     </g>
                 )
             })}
+            
+            {positionedItems.map(({ sku, position }) => {
+                const isHovered = hoveredProductSku === sku;
+                return (
+                     <circle
+                        key={sku}
+                        cx={position!.x}
+                        cy={position!.y}
+                        r={isHovered ? 18 : 12}
+                        fill={isHovered ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
+                        stroke="hsl(var(--primary-foreground))"
+                        strokeWidth={isHovered ? 4 : 2}
+                        className={cn("product-pin", isHovered && "flashing-indicator")}
+                        onMouseEnter={() => onPinHover?.(sku)}
+                        onMouseLeave={onPinLeave}
+                    />
+                )
+            })}
 
-            {itemPosition && (
-                <>
-                 <circle
-                    cx={itemPosition.x}
-                    cy={itemPosition.y}
-                    r="15"
-                    fill="hsl(var(--primary))"
-                    stroke="hsl(var(--primary-foreground))"
-                    strokeWidth="3"
-                    className="flashing-indicator"
-                />
-                </>
-            )}
           </svg>
         </div>
       </div>

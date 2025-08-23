@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { SearchHit } from "@/lib/morrisonsSearch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,11 @@ import { cn } from "@/lib/utils";
 type Props = {
   defaultQuery?: string;
   onPick?: (hit: SearchHit) => void;
+  onSearch?: (hits: SearchHit[]) => void;
   onClear?: () => void;
 };
 
-export default function SearchComponent({ defaultQuery = "", onPick, onClear }: Props) {
+export default function SearchComponent({ defaultQuery = "", onPick, onSearch, onClear }: Props) {
   const [q, setQ] = useState(defaultQuery);
   const [pendingQ, setPendingQ] = useState(defaultQuery);
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -38,6 +39,7 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
         setHits([]);
         setLoading(false);
         setErr(null);
+        if (onSearch) onSearch([]);
         return;
       }
       setShowAll(false); // Reset on new search
@@ -53,14 +55,18 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
           if (!res.ok) {
             setErr(json?.error || `HTTP ${res.status}`);
             setHits([]);
+            if (onSearch) onSearch([]);
           } else {
-            setHits(Array.isArray(json?.hits) ? json.hits : []);
+            const foundHits = Array.isArray(json?.hits) ? json.hits : [];
+            setHits(foundHits);
+            if (onSearch) onSearch(foundHits);
           }
         }
       } catch (e: any) {
         if (!cancelled) {
           setErr(String(e?.message ?? e));
           setHits([]);
+          if (onSearch) onSearch([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -70,26 +76,39 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
     return () => {
       cancelled = true;
     };
-  }, [q]);
+  }, [q, onSearch]);
   
-  const handlePick = (hit: SearchHit) => {
+  const handlePick = useCallback((hit: SearchHit) => {
     setQ('');
     setPendingQ('');
     setHits([]);
-    onPick?.(hit);
-  }
+    if (onPick) {
+      onPick(hit);
+    }
+    if (onSearch) {
+      onSearch([]);
+    }
+  }, [onPick, onSearch]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
       setQ('');
       setPendingQ('');
       setHits([]);
       setShowAll(false);
-      onClear?.();
-  }
+      if (onClear) {
+        onClear();
+      }
+      if (onSearch) {
+        onSearch([]);
+      }
+  }, [onClear, onSearch]);
 
   const visibleHits = useMemo(() => {
+    // onSearch callback handles the full list, onPick handles selection.
+    // The component itself will only render if `onPick` is provided.
+    if (!onPick) return [];
     return showAll ? hits : hits.slice(0, 5);
-  }, [hits, showAll]);
+  }, [hits, showAll, onPick]);
 
 
   return (
@@ -153,7 +172,7 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
           ))}
         </div>
       )}
-      {hits.length > 5 && !showAll && (
+      {hits.length > 5 && !showAll && onPick && (
         <Button variant="outline" className="w-full" onClick={() => setShowAll(true)}>
           Show all {hits.length} results
         </Button>

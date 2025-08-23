@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Map, Search, BrainCircuit, Copy, DownloadCloud } from 'lucide-react';
+import { Loader2, Map, Search, BrainCircuit, Copy, DownloadCloud, PackageSearch } from 'lucide-react';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -20,19 +20,19 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { findAisleForProductTool } from '@/ai/flows/aisle-finder-flow';
-import Link from 'next/link';
 import { ToastAction } from '@/components/ui/toast';
+import SearchComponent from '@/components/assistant/Search';
+import type { SearchHit } from '@/lib/morrisonsSearch';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
-const SkuFormSchema = z.object({
-  sku: z.string().min(1, { message: 'SKU or EAN is required.' }),
-  locationId: z.string().min(1, { message: 'Store location ID is required.' }),
-});
 
 const AisleFormSchema = z.object({
   productCategory: z.string().min(2, { message: 'Please enter a product to find.' }),
 });
 
 type Product = FetchMorrisonsDataOutput[0];
+type LocatedProduct = Product & { location: ProductLocation };
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
   if (!location) return null;
@@ -58,82 +58,74 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
 
 
 export default function MapPageClient() {
-  const [isSkuLoading, setIsSkuLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isAisleLoading, setIsAisleLoading] = useState(false);
-  const [productLocation, setProductLocation] = useState<ProductLocation | null>(null);
+  
+  const [locatedProducts, setLocatedProducts] = useState<LocatedProduct[]>([]);
   const [highlightedAisle, setHighlightedAisle] = useState<string | null>(null);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [consecutiveFails, setConsecutiveFails] = useState(0);
+  const [hoveredProductSku, setHoveredProductSku] = useState<string | null>(null);
 
   const { toast } = useToast();
-  const { settings, fetchAndUpdateToken } = useApiSettings();
+  const { settings } = useApiSettings();
   const searchParams = useSearchParams();
-
-  const skuForm = useForm<z.infer<typeof SkuFormSchema>>({
-    resolver: zodResolver(SkuFormSchema),
-    defaultValues: { sku: '', locationId: '218' },
-  });
 
   const aisleForm = useForm<z.infer<typeof AisleFormSchema>>({
     resolver: zodResolver(AisleFormSchema),
     defaultValues: { productCategory: '' },
   });
+  
+  const handleReset = () => {
+      setLocatedProducts([]);
+      setHighlightedAisle(null);
+      setHoveredProductSku(null);
+  }
 
-  const onSkuSubmit = async (values: z.infer<typeof SkuFormSchema>) => {
-    setIsSkuLoading(true);
-    setProductLocation(null);
-    setProduct(null);
-    setHighlightedAisle(null);
-
-    const { data, error } = await getProductData({
-      locationId: values.locationId,
-      skus: [values.sku],
-      bearerToken: settings.bearerToken,
-      debugMode: settings.debugMode,
-    });
-
-
-    if (error || !data || data.length === 0) {
-      setIsSkuLoading(false);
-      const newFailCount = consecutiveFails + 1;
-      setConsecutiveFails(newFailCount);
-       let toastAction;
-      if (newFailCount >= 2) {
-          toastAction = (
-              <ToastAction altText="Fetch Latest?" onClick={fetchAndUpdateToken}>
-                   <DownloadCloud className="mr-2 h-4 w-4" />
-                   Fetch Latest?
-              </ToastAction>
-          )
+  const handleSearch = async (hits: SearchHit[]) => {
+      if (hits.length === 0) {
+          handleReset();
+          return;
       }
-      toast({ 
-        variant: 'destructive', 
-        title: 'Product Not Found', 
-        description: newFailCount >= 2 ? `Lookup failed again. Your token may have expired.` : `Could not find product data for: ${values.sku}`,
-        action: toastAction,
+      setIsLoading(true);
+      handleReset();
+
+      const skusToFetch = hits.map(h => h.retailerProductId).filter((sku): sku is string => !!sku);
+
+      if (skusToFetch.length === 0) {
+          setIsLoading(false);
+          return;
+      }
+
+      toast({ title: 'Locating products...', description: `Fetching details for ${skusToFetch.length} items.`});
+
+      const { data, error } = await getProductData({
+          locationId: settings.debugMode ? '218' : '218', // a default or from settings
+          skus: skusToFetch,
+          bearerToken: settings.bearerToken,
+          debugMode: settings.debugMode,
       });
 
-    } else {
-      setConsecutiveFails(0); // Reset on success
-      const foundProduct = data[0];
-      const parsedLoc = parseLocationString(foundProduct.location.standard);
+      setIsLoading(false);
 
-      if (parsedLoc) {
-        setProductLocation(parsedLoc);
-        setProduct(foundProduct);
-        toast({ title: 'Location Found!', description: `Showing location for ${foundProduct.name}` });
-      } else {
-         toast({ variant: 'destructive', title: 'Location Data Missing', description: `Could not parse location string: "${foundProduct.location.standard}"` });
+      if (error) {
+          toast({ variant: 'destructive', title: 'Error', description: error });
+          return;
       }
-      setIsSkuLoading(false);
-    }
-  };
+
+      if (data) {
+          const productsWithLocations: LocatedProduct[] = data.map(product => {
+              const location = parseLocationString(product.location.standard);
+              return location ? { ...product, location } : null;
+          }).filter((p): p is LocatedProduct => p !== null);
+          
+          setLocatedProducts(productsWithLocations);
+          toast({ title: 'Products Located', description: `Found ${productsWithLocations.length} items on the map.`});
+      }
+  }
+
 
   const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>) => {
     setIsAisleLoading(true);
-    setProductLocation(null);
-    setProduct(null);
-    setHighlightedAisle(null);
+    handleReset();
 
     try {
       const result = await findAisleForProductTool({ productCategory: values.productCategory });
@@ -151,17 +143,12 @@ export default function MapPageClient() {
     }
   };
 
-  useEffect(() => {
-    const sku = searchParams.get('sku');
-    const locationId = searchParams.get('locationId');
-
-    if (sku && locationId) {
-      skuForm.setValue('sku', sku);
-      skuForm.setValue('locationId', locationId);
-      onSkuSubmit({ sku, locationId });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  const productLocations = useMemo(() => {
+    return locatedProducts.map(p => ({
+        sku: p.sku,
+        location: p.location,
+    }))
+  }, [locatedProducts]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,10 +159,12 @@ export default function MapPageClient() {
               <div className="sticky top-20">
                 <Card className="shadow-md">
                    <CardHeader>
-                      <CardTitle>Find a Product</CardTitle>
-                      <CardDescription>Use AI to find an aisle, or enter a product SKU to find its exact spot.</CardDescription>
+                      <CardTitle>Find on Map</CardTitle>
+                      <CardDescription>Use AI to find a general aisle, or search for specific products to see all their locations.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    <SearchComponent onSearch={handleSearch} onClear={handleReset} />
+                    <Separator />
                     <Form {...aisleForm}>
                       <form onSubmit={aisleForm.handleSubmit(onAisleSubmit)} className="space-y-4">
                          <FormField
@@ -205,103 +194,72 @@ export default function MapPageClient() {
                         </Button>
                       </form>
                     </Form>
-                    <Separator />
-                    <Form {...skuForm}>
-                      <form onSubmit={skuForm.handleSubmit(onSkuSubmit)} className="space-y-4">
-                        <FormField
-                          control={skuForm.control}
-                          name="sku"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Find by SKU/EAN</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Enter product number..." {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={skuForm.control}
-                          name="locationId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Store ID</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g., 218" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button
-                          type="submit"
-                          className="w-full"
-                          variant="secondary"
-                          disabled={isSkuLoading}
-                        >
-                          {isSkuLoading ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Search className="mr-2 h-4 w-4" />
-                          )}
-                          Find Exact Location
-                        </Button>
-                      </form>
-                    </Form>
                   </CardContent>
                 </Card>
+                
+                {(isLoading || locatedProducts.length > 0) && (
+                    <Card className="mt-8">
+                        <CardHeader>
+                            <CardTitle>Search Results</CardTitle>
+                            <CardDescription>
+                                {isLoading ? 'Locating products...' : `${locatedProducts.length} items found on the map.`}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ScrollArea className="h-[400px] pr-4 -mr-4">
+                                <div className="space-y-4">
+                                    {isLoading && Array.from({length: 3}).map((_, i) => (
+                                        <div key={i} className="flex items-center gap-4">
+                                            <Skeleton className="w-16 h-16 rounded-md" />
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-48" />
+                                                <Skeleton className="h-3 w-32" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {locatedProducts.map(p => (
+                                        <div 
+                                            key={p.sku} 
+                                            className={cn(
+                                                "p-2 rounded-md flex items-center gap-4 transition-colors cursor-pointer",
+                                                hoveredProductSku === p.sku ? 'bg-accent' : 'hover:bg-accent/50'
+                                            )}
+                                            onMouseEnter={() => setHoveredProductSku(p.sku)}
+                                            onMouseLeave={() => setHoveredProductSku(null)}
+                                        >
+                                            <Image
+                                                src={p.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                                alt={p.name}
+                                                width={50}
+                                                height={50}
+                                                className="rounded-md border object-cover bg-white"
+                                            />
+                                            <div className="flex-grow min-w-0">
+                                                <p className="font-semibold truncate text-sm">{p.name}</p>
+                                                <p className="text-xs text-muted-foreground">{p.location.standard}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                )}
+
+
               </div>
-
-              {isSkuLoading && (
-                  <Card className="shadow-lg animate-pulse">
-                      <CardHeader className="flex flex-row items-start gap-4">
-                          <div className="w-[80px] h-[80px] bg-muted rounded-lg"/>
-                          <div className="space-y-2">
-                              <div className="h-5 w-48 bg-muted rounded-md"/>
-                              <div className="h-4 w-32 bg-muted rounded-md"/>
-                          </div>
-                      </CardHeader>
-                      <CardContent>
-                          <div className="h-10 w-full bg-muted rounded-md"/>
-                      </CardContent>
-                  </Card>
-              )}
-
-              {product && productLocation && (
-                <div className="sticky top-[36rem]">
-                  <Card className="shadow-lg animate-in fade-in-50">
-                    <CardHeader className="flex flex-row items-start gap-4">
-                      <Image
-                        src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                        alt={product.name}
-                        width={80}
-                        height={80}
-                        className="rounded-lg border object-cover"
-                      />
-                      <div>
-                        <CardTitle className="text-lg">{product.name}</CardTitle>
-                        <CardDescription>SKU: {product.sku}</CardDescription>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <Alert>
-                        <Map className="h-4 w-4" />
-                        <AlertTitle>Location</AlertTitle>
-                        <AlertDescription className="font-semibold text-foreground">
-                          {product.location.standard}
-                        </AlertDescription>
-                      </Alert>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
 
             </div>
           </div>
 
           <div className="flex-grow w-full border rounded-lg bg-card shadow-lg overflow-x-auto">
-              <StoreMap productLocation={productLocation} highlightedAisle={highlightedAisle} />
+              <StoreMap 
+                productLocations={productLocations} 
+                highlightedAisle={highlightedAisle} 
+                hoveredProductSku={hoveredProductSku}
+                onPinHover={(sku) => setHoveredProductSku(sku)}
+                onPinLeave={() => setHoveredProductSku(null)}
+              />
           </div>
         </div>
 
