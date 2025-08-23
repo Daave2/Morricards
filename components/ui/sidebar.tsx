@@ -206,10 +206,10 @@ const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             data-mobile="true"
             className={cn(
-                "sheet-content w-[--sidebar-width] border-r bg-background p-0",
-                "theme-glass:border-white/20 theme-glass:bg-black/30 theme-glass:backdrop-blur-xl theme-glass:text-white",
-                "[&>button]:hidden",
-                className
+              "sheet-content w-[--sidebar-width] border-r bg-background p-0",
+              "theme-glass:border-white/20 theme-glass:bg-black/30 theme-glass:backdrop-blur-xl theme-glass:text-white",
+              "[&>button]:hidden",
+              className
             )}
             style={
               {
