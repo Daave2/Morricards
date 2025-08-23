@@ -64,7 +64,6 @@ type ScanMode = 'off' | 'add' | 'pick';
 
 const FormSchema = z.object({
   skus: z.string().optional(),
-  pickSku: z.string().optional(),
 });
 
 const LOCAL_STORAGE_KEY = 'morricards-products';
@@ -131,7 +130,7 @@ export default function PickingListClient() {
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
-  const { settings, fetchAndUpdateToken, setSettings } = useApiSettings();
+  const { settings, fetchAndUpdateToken } = useApiSettings();
   const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
@@ -209,7 +208,6 @@ export default function PickingListClient() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       skus: '',
-      pickSku: '',
     },
   });
 
@@ -220,8 +218,8 @@ export default function PickingListClient() {
   useEffect(() => {
     if (skusFromUrl && locationFromUrl) {
       form.setValue('skus', skusFromUrl);
-      setSettings({ locationId: locationFromUrl });
-      onSubmit({ skus: skusFromUrl, pickSku: '' });
+      settings.locationId = locationFromUrl;
+      onSubmit({ skus: skusFromUrl });
       
       // Clean the URL to avoid re-triggering on refresh
       router.replace('/picking', undefined);
@@ -469,11 +467,11 @@ export default function PickingListClient() {
     }
   };
   
-  const handlePickSubmit = (values: z.infer<typeof FormSchema>) => {
+  const handlePickSubmit = (values: z.infer<typeof FormSchema> & { pickSku?: string }) => {
     const skuToPick = values.pickSku;
     if (skuToPick) {
       handleScanToPick(skuToPick); // Re-use the same logic as scanning
-      form.setValue('pickSku', ''); // Clear the input after submission
+      form.setValue('skus', ''); // Clear the input after submission
     }
   };
 
@@ -615,7 +613,7 @@ export default function PickingListClient() {
     setProducts([]);
     setFilterQuery('');
     setSortConfig('walkSequence-asc');
-    form.reset({skus: '', pickSku: ''});
+    form.reset({skus: ''});
     setIsAddFormOpen(true); // Open form when list is cleared
     toast({
         title: 'List Cleared',
@@ -792,7 +790,7 @@ export default function PickingListClient() {
                                 <span className="w-full border-t" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-background px-2 text-muted-foreground">
+                                <span className="bg-card px-2 text-muted-foreground">
                                 Or
                                 </span>
                             </div>
