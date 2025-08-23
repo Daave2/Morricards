@@ -763,7 +763,7 @@ export default function PickingListClient() {
                 <CollapsibleContent>
                     <CardContent>
                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
                            <FormField
                             control={form.control}
                             name="locationId"
@@ -807,7 +807,7 @@ export default function PickingListClient() {
                                 </FormItem>
                               )}
                             />
-                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            <Button type="button" onClick={form.handleSubmit(onSubmit)} className="w-full" disabled={isLoading}>
                               {isLoading ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               ) : (
