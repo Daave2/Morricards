@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -577,7 +578,7 @@ export default function AssistantPageClient() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
                                   <div className="w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
-                                      <StoreMap productLocation={productLocation} />
+                                      <StoreMap productLocations={productLocation ? [{ sku: product.sku, location: productLocation }] : []} />
                                   </div>
                                 </CollapsibleContent>
                               </Collapsible>
