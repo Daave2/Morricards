@@ -27,6 +27,7 @@ export default function SearchComponent({ defaultQuery = "", onPick, onSearch, o
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const {
     isListening,
@@ -36,6 +37,10 @@ export default function SearchComponent({ defaultQuery = "", onPick, onSearch, o
     error: speechError,
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // simple debounce for typing
   useEffect(() => {
@@ -149,7 +154,7 @@ export default function SearchComponent({ defaultQuery = "", onPick, onSearch, o
           className="pl-10 pr-20"
         />
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-            {browserSupportsSpeechRecognition && (
+            {isMounted && browserSupportsSpeechRecognition && (
              <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
