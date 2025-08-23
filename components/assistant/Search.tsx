@@ -23,6 +23,7 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   // simple debounce for typing
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
         setErr(null);
         return;
       }
+      setShowAll(false); // Reset on new search
       setLoading(true);
       setErr(null);
       try {
@@ -81,10 +83,14 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
       setQ('');
       setPendingQ('');
       setHits([]);
+      setShowAll(false);
       onClear?.();
   }
 
-  const resultCount = useMemo(() => hits.length, [hits]);
+  const visibleHits = useMemo(() => {
+    return showAll ? hits : hits.slice(0, 5);
+  }, [hits, showAll]);
+
 
   return (
     <div className="space-y-4">
@@ -111,9 +117,9 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
         )}
       {err && <div className="text-sm text-destructive">Error: {err}</div>}
       
-      {hits.length > 0 && (
+      {visibleHits.length > 0 && (
           <div className="space-y-4">
-          {hits.map((h, i) => (
+          {visibleHits.map((h, i) => (
              <Card
                 key={`${h.groupType}-${h.retailerProductId}-${h.productId}-${h.title}`}
                 className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-shadow animate-in fade-in-50"
@@ -147,8 +153,11 @@ export default function SearchComponent({ defaultQuery = "", onPick, onClear }: 
           ))}
         </div>
       )}
+      {hits.length > 5 && !showAll && (
+        <Button variant="outline" className="w-full" onClick={() => setShowAll(true)}>
+          Show all {hits.length} results
+        </Button>
+      )}
     </div>
   );
 }
-
-    
