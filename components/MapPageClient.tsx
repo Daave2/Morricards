@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -80,7 +80,7 @@ export default function MapPageClient() {
       setHoveredProductSku(null);
   }
 
-  const handleSearch = async (hits: SearchHit[]) => {
+  const handleSearch = useCallback(async (hits: SearchHit[]) => {
       if (hits.length === 0) {
           handleReset();
           return;
@@ -120,7 +120,7 @@ export default function MapPageClient() {
           setLocatedProducts(productsWithLocations);
           toast({ title: 'Products Located', description: `Found ${productsWithLocations.length} items on the map.`});
       }
-  }
+  }, [settings, toast]);
 
 
   const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>) => {
