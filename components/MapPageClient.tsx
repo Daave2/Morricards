@@ -124,7 +124,7 @@ export default function MapPageClient() {
   }, [settings, toast]);
 
 
-  const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>>) => {
+  const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>) => {
     setIsAisleLoading(true);
     handleReset();
 
