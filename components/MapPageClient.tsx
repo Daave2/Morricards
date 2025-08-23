@@ -63,6 +63,7 @@ export default function MapPageClient() {
   const [isAisleLoading, setIsAisleLoading] = useState(false);
   
   const [locatedProducts, setLocatedProducts] = useState<LocatedProduct[]>([]);
+  const [allHits, setAllHits] = useState<SearchHit[]>([]);
   const [highlightedAisle, setHighlightedAisle] = useState<string | null>(null);
   const [hoveredProductSku, setHoveredProductSku] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -78,52 +79,76 @@ export default function MapPageClient() {
   
   const handleReset = () => {
       setLocatedProducts([]);
+      setAllHits([]);
       setHighlightedAisle(null);
       setHoveredProductSku(null);
       setShowAll(false);
   }
+
+  const fetchAndSetProducts = useCallback(async (skus: string[], append = false) => {
+    if (skus.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
+    toast({ title: 'Locating products...', description: `Fetching details for ${skus.length} items.`});
+
+    const { data, error } = await getProductData({
+        locationId: settings.debugMode ? '218' : '218',
+        skus,
+        bearerToken: settings.bearerToken,
+        debugMode: settings.debugMode,
+    });
+    
+    setIsLoading(false);
+
+    if (error) {
+        toast({ variant: 'destructive', title: 'Error', description: error });
+        return;
+    }
+
+    if (data) {
+        const productsWithLocations: LocatedProduct[] = data.map(product => {
+            const location = parseLocationString(product.location.standard);
+            return location ? { ...product, location } : null;
+        }).filter((p): p is LocatedProduct => p !== null);
+        
+        if (append) {
+          setLocatedProducts(prev => [...prev, ...productsWithLocations]);
+        } else {
+          setLocatedProducts(productsWithLocations);
+        }
+        
+        toast({ title: 'Products Located', description: `Found ${productsWithLocations.length} new items on the map.`});
+    }
+  }, [settings.bearerToken, settings.debugMode, toast]);
+
 
   const handleSearch = useCallback(async (hits: SearchHit[]) => {
       if (hits.length === 0) {
           handleReset();
           return;
       }
-      setIsLoading(true);
       handleReset();
+      setAllHits(hits);
+      
+      const initialHits = hits.slice(0, 5);
+      const skusToFetch = initialHits.map(h => h.retailerProductId).filter((sku): sku is string => !!sku);
+      await fetchAndSetProducts(skusToFetch);
+  }, [fetchAndSetProducts]);
 
-      const skusToFetch = hits.map(h => h.retailerProductId).filter((sku): sku is string => !!sku);
+  const handleShowAll = async () => {
+    if (showAll || allHits.length <= 5) return;
+    
+    setShowAll(true);
+    const remainingHits = allHits.slice(5);
+    const skusToFetch = remainingHits.map(h => h.retailerProductId).filter((sku): sku is string => !!sku);
 
-      if (skusToFetch.length === 0) {
-          setIsLoading(false);
-          return;
-      }
-
-      toast({ title: 'Locating products...', description: `Fetching details for ${skusToFetch.length} items.`});
-
-      const { data, error } = await getProductData({
-          locationId: settings.debugMode ? '218' : '218', // a default or from settings
-          skus: skusToFetch,
-          bearerToken: settings.bearerToken,
-          debugMode: settings.debugMode,
-      });
-
-      setIsLoading(false);
-
-      if (error) {
-          toast({ variant: 'destructive', title: 'Error', description: error });
-          return;
-      }
-
-      if (data) {
-          const productsWithLocations: LocatedProduct[] = data.map(product => {
-              const location = parseLocationString(product.location.standard);
-              return location ? { ...product, location } : null;
-          }).filter((p): p is LocatedProduct => p !== null);
-          
-          setLocatedProducts(productsWithLocations);
-          toast({ title: 'Products Located', description: `Found ${productsWithLocations.length} items on the map.`});
-      }
-  }, [settings, toast]);
+    if (skusToFetch.length > 0) {
+      await fetchAndSetProducts(skusToFetch, true);
+    }
+  };
 
 
   const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>) => {
@@ -152,10 +177,6 @@ export default function MapPageClient() {
         location: p.location,
     }))
   }, [locatedProducts]);
-
-  const visibleProducts = useMemo(() => {
-    return showAll ? locatedProducts : locatedProducts.slice(0, 5);
-  }, [locatedProducts, showAll]);
 
 
   return (
@@ -210,13 +231,13 @@ export default function MapPageClient() {
                         <CardHeader>
                             <CardTitle>Search Results</CardTitle>
                             <CardDescription>
-                                {isLoading ? 'Locating products...' : `${locatedProducts.length} items found on the map.`}
+                                {isLoading ? 'Locating products...' : `${locatedProducts.length} of ${allHits.length} items found on the map.`}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ScrollArea className="h-[400px] pr-4 -mr-4">
                                 <div className="space-y-4">
-                                    {isLoading && Array.from({length: 3}).map((_, i) => (
+                                    {isLoading && locatedProducts.length === 0 && Array.from({length: 3}).map((_, i) => (
                                         <div key={i} className="flex items-center gap-4">
                                             <Skeleton className="w-16 h-16 rounded-md" />
                                             <div className="space-y-2">
@@ -225,7 +246,7 @@ export default function MapPageClient() {
                                             </div>
                                         </div>
                                     ))}
-                                    {visibleProducts.map(p => (
+                                    {locatedProducts.map(p => (
                                         <div 
                                             key={p.sku} 
                                             className={cn(
@@ -248,12 +269,18 @@ export default function MapPageClient() {
                                             </div>
                                         </div>
                                     ))}
+                                    {isLoading && locatedProducts.length > 0 && (
+                                       <div className="flex items-center justify-center py-4">
+                                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                       </div>
+                                    )}
                                 </div>
                             </ScrollArea>
-                            {locatedProducts.length > 5 && !showAll && (
+                            {allHits.length > 5 && !showAll && (
                                 <div className="mt-4">
-                                    <Button variant="outline" className="w-full" onClick={() => setShowAll(true)}>
-                                        Show all {locatedProducts.length} results
+                                    <Button variant="outline" className="w-full" onClick={handleShowAll} disabled={isLoading}>
+                                        {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                        Show all {allHits.length} results
                                     </Button>
                                 </div>
                             )}
