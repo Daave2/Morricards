@@ -89,7 +89,7 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
         <div className="flex items-start gap-3">
             <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
             <div className='flex-grow min-w-0'>
-                <span className="font-bold">{label}:</span> <span className={cn('break-words', valueClassName)}>{value}</span>
+                <span className="font-bold">{label}:</span> <span className={cn('break-all', valueClassName)}>{value}</span>
             </div>
         </div>
     );
@@ -1043,4 +1043,3 @@ export default function AvailabilityPage() {
   );
 }
 
-    
