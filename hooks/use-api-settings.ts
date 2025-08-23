@@ -15,11 +15,13 @@ const DB_NAME = 'smu';
 export interface ApiSettings {
   bearerToken: string;
   debugMode: boolean;
+  locationId: string;
 }
 
 export const DEFAULT_SETTINGS: ApiSettings = {
   bearerToken: 'vAllJuJxckLtjMANPmS1Lps9btvF',
   debugMode: false,
+  locationId: '218',
 };
 
 export function useApiSettings() {
@@ -39,22 +41,18 @@ export function useApiSettings() {
     }
   }, []);
 
-  useEffect(() => {
-    if (isMounted) {
+  const updateSettings = useCallback((newSettings: Partial<ApiSettings>) => {
+    setSettings(prev => {
+        const updated = {...prev, ...newSettings};
         try {
-            const currentSettings = JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS) || '{}');
-            const newSettings = {...currentSettings, ...settings};
-            window.localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(newSettings));
+            window.localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(updated));
         } catch (error) {
             console.error("Failed to save settings to localStorage", error);
         }
-    }
-  }, [settings, isMounted]);
+        return updated;
+    });
+  }, []);
   
-  const updateSettings = (newSettings: Partial<ApiSettings>) => {
-    setSettings(prev => ({...prev, ...newSettings}));
-  }
-
   const clearAllData = useCallback(() => {
     try {
       // Clear local storage items
@@ -100,7 +98,7 @@ export function useApiSettings() {
           throw new Error('Fetched token is empty.');
       }
 
-      setSettings(prev => ({ ...prev, bearerToken: trimmedToken }));
+      updateSettings({ bearerToken: trimmedToken });
       toast({
         title: 'Token Updated',
         description: 'The latest bearer token has been fetched and saved.',
@@ -115,7 +113,7 @@ export function useApiSettings() {
       });
       console.error(error);
     }
-  }, []);
+  }, [updateSettings]);
 
   return { 
     settings: isMounted ? settings : DEFAULT_SETTINGS, 

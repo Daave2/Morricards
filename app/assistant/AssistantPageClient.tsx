@@ -39,7 +39,6 @@ import type { SearchHit } from '@/lib/morrisonsSearch';
 type Product = FetchMorrisonsDataOutput[0];
 
 const FormSchema = z.object({
-  locationId: z.string().min(1, { message: 'Store location ID is required.' }),
   sku: z.string().optional(),
 });
 
@@ -229,7 +228,7 @@ export default function AssistantPageClient() {
 
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
-  const { settings, fetchAndUpdateToken } = useApiSettings();
+  const { settings, fetchAndUpdateToken, setSettings } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
   
   const searchParams = useSearchParams();
@@ -267,7 +266,7 @@ export default function AssistantPageClient() {
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { locationId: '218', sku: '' },
+    defaultValues: { sku: '' },
   });
   
   // Handle dynamic links from URL params
@@ -287,7 +286,7 @@ export default function AssistantPageClient() {
 
     if (skuFromUrl) {
       if (locationFromUrl) {
-        form.setValue('locationId', locationFromUrl);
+        setSettings({ locationId: locationFromUrl });
       }
       fetchProductAndInsights(skuFromUrl);
       // Clean the URL to avoid re-triggering on refresh
@@ -309,10 +308,10 @@ export default function AssistantPageClient() {
     setIsFetchingProduct(true);
     handleReset();
 
-    const locationId = form.getValues('locationId');
+    const { locationId } = settings;
     if (!locationId) {
       playError();
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID in settings.' });
       setIsFetchingProduct(false);
       return;
     }
@@ -469,26 +468,6 @@ export default function AssistantPageClient() {
             <CardDescription>Search for a product by name or SKU/EAN, or scan its barcode to get details and AI-powered insights.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
-            <Form {...form}>
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-                 <FormField
-                  control={form.control}
-                  name="locationId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Store ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 218" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </form>
-            </Form>
-
-            <Separator />
-            
             <div className="space-y-4">
                 <SearchComponent onPick={handleSearchPick} onClear={() => handleReset()} />
                 <Button
@@ -614,7 +593,7 @@ export default function AssistantPageClient() {
                                             <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
                                             <div className='sm:col-span-2'>
                                                 <Button variant="outline" size="sm" className="w-full" asChild>
-                                                <Link href={`/map?sku=${product.sku}&locationId=${form.getValues('locationId')}`}>
+                                                <Link href={`/map?sku=${product.sku}&locationId=${settings.locationId}`}>
                                                     <Map className="mr-2 h-4 w-4" />
                                                     View on Map
                                                 </Link>

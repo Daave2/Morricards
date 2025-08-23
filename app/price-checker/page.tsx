@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import SkuQrCode from '@/components/SkuQrCode';
 
 const FormSchema = z.object({
-  locationId: z.string().min(1, { message: 'Store location ID is required.' }),
+  // No fields needed here anymore
 });
 
 // A log entry can now contain multiple validation results from a single image
@@ -232,11 +232,18 @@ export default function PriceCheckerPage() {
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { locationId: '218' },
+    defaultValues: {},
   });
 
   const handleCapture = async () => {
     if (!videoRef.current || !canvasRef.current) return;
+    
+    const { locationId } = settings;
+    if (!locationId) {
+        toast({ variant: 'destructive', title: 'Store ID Missing', description: 'Please set a store ID in the settings page first.' });
+        return;
+    }
+    
     setIsProcessing(true);
 
     const video = videoRef.current;
@@ -253,7 +260,7 @@ export default function PriceCheckerPage() {
     try {
       const results = await validatePriceTicket({
         imageDataUri,
-        locationId: form.getValues('locationId'),
+        locationId,
         bearerToken: settings.bearerToken,
         debugMode: settings.debugMode,
       });
@@ -382,24 +389,9 @@ export default function PriceCheckerPage() {
              <CardDescription>Use your camera to capture an entire shelf edge and the AI will validate every price ticket it sees.</CardDescription>
            </CardHeader>
           <CardContent className="p-4">
-            <Form {...form}>
-              <form className="flex flex-col sm:flex-row items-end gap-4">
-                <FormField
-                  control={form.control}
-                  name="locationId"
-                  render={({ field }) => (
-                    <FormItem className="w-full sm:w-auto sm:flex-grow">
-                      <FormLabel>Store ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 218" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <Button
                   type="button"
-                  className="w-full sm:w-auto flex-shrink-0"
+                  className="w-full"
                   onClick={() => setIsCameraMode(true)}
                   disabled={isProcessing}
                 >
@@ -410,8 +402,6 @@ export default function PriceCheckerPage() {
                   )}
                   Check a Price Ticket
                 </Button>
-              </form>
-            </Form>
           </CardContent>
         </Card>
         

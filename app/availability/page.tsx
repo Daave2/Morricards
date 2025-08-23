@@ -63,7 +63,6 @@ type Product = FetchMorrisonsDataOutput[0];
 type ReportedItem = Product & { reason: string; comment?: string; reportId: string };
 
 const FormSchema = z.object({
-  locationId: z.string().min(1, { message: 'Store location ID is required.' }),
   sku: z.string().optional(),
 });
 
@@ -270,7 +269,6 @@ export default function AvailabilityPage() {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      locationId: '218',
       sku: '',
     },
   });
@@ -313,10 +311,10 @@ export default function AvailabilityPage() {
         setIsScanMode(false); // Close scanner on scan
     }
     
-    const locationId = form.getValues('locationId');
+    const { locationId } = settings;
     if (!locationId) {
         playError();
-        toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID before scanning.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID in settings before scanning.' });
         if (isSpeedMode) startScannerWithDelay();
         return;
     }
@@ -442,7 +440,7 @@ export default function AvailabilityPage() {
           setIsModalOpen(true);
         }
     }
-  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, isOnline, reportedItems, isSpeedMode, startScannerWithDelay, consecutiveFails, fetchAndUpdateToken]);
+  }, [form, playError, toast, playSuccess, reasonForm, settings.bearerToken, settings.debugMode, settings.locationId, isOnline, reportedItems, isSpeedMode, startScannerWithDelay, consecutiveFails, fetchAndUpdateToken]);
 
   const handleScanSuccess = useCallback(async (text: string) => {
     const sku = text.split(',')[0].trim();
@@ -900,22 +898,6 @@ export default function AvailabilityPage() {
             <CardContent className="p-4 space-y-4">
               <Form {...form}>
                 <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-                    <FormField
-                        control={form.control}
-                        name="locationId"
-                        render={({ field }) => (
-                        <FormItem className="w-full sm:w-[120px] sm:flex-shrink-0">
-                            <FormLabel>Store ID</FormLabel>
-                            <FormControl>
-                            <Input placeholder="e.g., 218" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-
-                    <Separator />
-
                     <div className="space-y-4">
                         <SearchComponent onPick={handleSearchPick} />
                         <Button

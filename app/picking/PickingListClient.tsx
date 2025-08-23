@@ -56,7 +56,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import Link from 'next/link';
 import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
-import { Separator } from '@/components/ui/separator';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
@@ -65,7 +64,6 @@ type ScanMode = 'off' | 'add' | 'pick';
 
 const FormSchema = z.object({
   skus: z.string().optional(),
-  locationId: z.string().min(1, { message: 'Store location ID is required.' }),
   pickSku: z.string().optional(),
 });
 
@@ -133,7 +131,7 @@ export default function PickingListClient() {
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
-  const { settings, fetchAndUpdateToken } = useApiSettings();
+  const { settings, fetchAndUpdateToken, setSettings } = useApiSettings();
   const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
@@ -211,20 +209,19 @@ export default function PickingListClient() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       skus: '',
-      locationId: '218',
       pickSku: '',
     },
   });
 
   const skusFromUrl = searchParams.get('skus');
-  const locationFromUrl = searchParams.get('location');
+  const locationFromUrl = searchParams.get('locationId');
 
   // Handle dynamic links
   useEffect(() => {
     if (skusFromUrl && locationFromUrl) {
       form.setValue('skus', skusFromUrl);
-      form.setValue('locationId', locationFromUrl);
-      onSubmit({ skus: skusFromUrl, locationId: locationFromUrl, pickSku: '' });
+      setSettings({ locationId: locationFromUrl });
+      onSubmit({ skus: skusFromUrl, pickSku: '' });
       
       // Clean the URL to avoid re-triggering on refresh
       router.replace('/picking', undefined);
@@ -327,7 +324,11 @@ export default function PickingListClient() {
         return;
     }
 
-    const locationId = form.getValues('locationId');
+    const { locationId } = settings;
+    if (!locationId) {
+        toast({ variant: 'destructive', title: 'Store ID Missing', description: 'Please set a store ID in the settings page first.' });
+        return;
+    }
     if (!isOnline) {
         playSuccess();
         toast({ 
@@ -403,7 +404,7 @@ export default function PickingListClient() {
     setIsLoading(false);
     setLoadingSkuCount(prev => Math.max(0, prev - 1));
 
-  }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails, fetchAndUpdateToken]);
+  }, [settings, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails, fetchAndUpdateToken]);
 
   const handleScanToAdd = useCallback(async (text: string) => {
     const sku = text.split(',')[0].trim();
@@ -496,8 +497,16 @@ export default function PickingListClient() {
     setIsFetching(true);
     setIsAddFormOpen(false); // Close form on submit
 
+    const { locationId } = settings;
+    if (!locationId) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please set a store ID in settings.' });
+        setIsLoading(false);
+        setIsFetching(false);
+        return;
+    }
+
     const { data, error } = await getProductData({
-      ...values,
+      locationId,
       skus: newSkus,
       bearerToken: settings.bearerToken,
       debugMode: settings.debugMode,
@@ -606,7 +615,7 @@ export default function PickingListClient() {
     setProducts([]);
     setFilterQuery('');
     setSortConfig('walkSequence-asc');
-    form.reset({skus: '', locationId: form.getValues('locationId'), pickSku: ''});
+    form.reset({skus: '', pickSku: ''});
     setIsAddFormOpen(true); // Open form when list is cleared
     toast({
         title: 'List Cleared',
@@ -625,8 +634,8 @@ export default function PickingListClient() {
     }
 
     const skus = products.map(p => p.sku).join(',');
-    const locationId = form.getValues('locationId');
-    const url = `${window.location.origin}/picking?skus=${encodeURIComponent(skus)}&location=${encodeURIComponent(locationId)}`;
+    const locationId = settings.locationId;
+    const url = `${window.location.origin}/picking?skus=${encodeURIComponent(skus)}&locationId=${encodeURIComponent(locationId)}`;
     setExportUrl(url);
 
     QRCode.toDataURL(url, { width: 300, margin: 2 })
@@ -763,20 +772,7 @@ export default function PickingListClient() {
                 <CollapsibleContent>
                     <CardContent>
                       <Form {...form}>
-                        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                           <FormField
-                            control={form.control}
-                            name="locationId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Store Location ID</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="e.g., 218" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                           <div className='space-y-4'>
                             <SearchComponent onPick={handleSearchPick} />
                             <Button
@@ -790,7 +786,18 @@ export default function PickingListClient() {
                                 Or Scan to Add
                             </Button>
                           </div>
-                          <Separator />
+
+                          <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">
+                                Or
+                                </span>
+                            </div>
+                           </div>
+
                           <FormField
                               control={form.control}
                               name="skus"
@@ -799,7 +806,7 @@ export default function PickingListClient() {
                                   <FormLabel>Bulk Add</FormLabel>
                                   <FormControl>
                                     <Textarea
-                                      placeholder="Or paste a list of SKUs/EANs, separated by spaces or commas..."
+                                      placeholder="Paste a list of SKUs/EANs, separated by spaces or commas..."
                                       {...field}
                                     />
                                   </FormControl>
@@ -807,7 +814,7 @@ export default function PickingListClient() {
                                 </FormItem>
                               )}
                             />
-                            <Button type="button" onClick={form.handleSubmit(onSubmit)} className="w-full" disabled={isLoading}>
+                            <Button type="submit" className="w-full" disabled={isLoading}>
                               {isLoading ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               ) : (
@@ -981,7 +988,7 @@ export default function PickingListClient() {
           ) : sortedAndFilteredProducts.length > 0 || loadingSkuCount > 0 ? (
             <div className={`gap-6 ${layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col'}`}>
               {sortedAndFilteredProducts.map((product) => (
-                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker locationId={form.getValues('locationId')} />
+                <ProductCard key={product.sku} product={product} layout={layout} onPick={() => handlePick(product.sku)} isPicker locationId={settings.locationId} />
               ))}
               {isLoading && skeletons}
             </div>
@@ -1008,4 +1015,3 @@ export default function PickingListClient() {
     </div>
   );
 }
-

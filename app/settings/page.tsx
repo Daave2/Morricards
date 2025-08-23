@@ -40,6 +40,7 @@ import { useCustomTheme } from '@/hooks/useCustomTheme';
 const FormSchema = z.object({
   bearerToken: z.string(),
   debugMode: z.boolean(),
+  locationId: z.string().min(1, { message: "Store ID cannot be empty." }),
 });
 
 
@@ -288,6 +289,23 @@ export default function SettingsPage() {
 
                     <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <FormField
+                          control={form.control}
+                          name="locationId"
+                          render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Default Store ID</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter store ID..." {...field} />
+                                </FormControl>
+                                <FormDescription>
+                                This store ID will be used for all product lookups.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
                         <FormField
                         control={form.control}
                         name="bearerToken"

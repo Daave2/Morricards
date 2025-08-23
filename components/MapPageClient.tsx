@@ -69,7 +69,7 @@ export default function MapPageClient() {
   const [showAll, setShowAll] = useState(false);
 
   const { toast } = useToast();
-  const { settings } = useApiSettings();
+  const { settings, setSettings } = useApiSettings();
   const searchParams = useSearchParams();
 
   const aisleForm = useForm<z.infer<typeof AisleFormSchema>>({
@@ -93,9 +93,16 @@ export default function MapPageClient() {
     
     setIsLoading(true);
     toast({ title: 'Locating products...', description: `Fetching details for ${skus.length} items.`});
+    const { locationId } = settings;
+
+    if (!locationId) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please set a store ID in settings.' });
+        setIsLoading(false);
+        return;
+    }
 
     const { data, error } = await getProductData({
-        locationId: settings.debugMode ? '218' : '218',
+        locationId,
         skus,
         bearerToken: settings.bearerToken,
         debugMode: settings.debugMode,
@@ -126,7 +133,7 @@ export default function MapPageClient() {
         
         toast({ title: 'Products Located', description: `Found ${productsWithLocations.length} new items on the map.`});
     }
-  }, [settings.bearerToken, settings.debugMode, toast]);
+  }, [settings, toast]);
 
 
   const handleSearch = useCallback(async (hits: SearchHit[]) => {
@@ -313,5 +320,3 @@ export default function MapPageClient() {
     </div>
   );
 }
-
-    
