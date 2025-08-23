@@ -65,6 +65,7 @@ export default function MapPageClient() {
   const [locatedProducts, setLocatedProducts] = useState<LocatedProduct[]>([]);
   const [highlightedAisle, setHighlightedAisle] = useState<string | null>(null);
   const [hoveredProductSku, setHoveredProductSku] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -79,6 +80,7 @@ export default function MapPageClient() {
       setLocatedProducts([]);
       setHighlightedAisle(null);
       setHoveredProductSku(null);
+      setShowAll(false);
   }
 
   const handleSearch = useCallback(async (hits: SearchHit[]) => {
@@ -151,6 +153,11 @@ export default function MapPageClient() {
     }))
   }, [locatedProducts]);
 
+  const visibleProducts = useMemo(() => {
+    return showAll ? locatedProducts : locatedProducts.slice(0, 5);
+  }, [locatedProducts, showAll]);
+
+
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:py-12">
@@ -218,7 +225,7 @@ export default function MapPageClient() {
                                             </div>
                                         </div>
                                     ))}
-                                    {locatedProducts.map(p => (
+                                    {visibleProducts.map(p => (
                                         <div 
                                             key={p.sku} 
                                             className={cn(
@@ -243,6 +250,13 @@ export default function MapPageClient() {
                                     ))}
                                 </div>
                             </ScrollArea>
+                            {locatedProducts.length > 5 && !showAll && (
+                                <div className="mt-4">
+                                    <Button variant="outline" className="w-full" onClick={() => setShowAll(true)}>
+                                        Show all {locatedProducts.length} results
+                                    </Button>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 )}
