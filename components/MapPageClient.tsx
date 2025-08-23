@@ -191,7 +191,7 @@ export default function MapPageClient() {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <main className="container mx-auto px-4 py-8 md:py-12">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           <div className="w-full lg:w-[350px] flex-shrink-0">
