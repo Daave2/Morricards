@@ -25,6 +25,7 @@ import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const AisleFormSchema = z.object({
@@ -123,7 +124,7 @@ export default function MapPageClient() {
   }, [settings, toast]);
 
 
-  const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>) => {
+  const onAisleSubmit = async (values: z.infer<typeof AisleFormSchema>>) => {
     setIsAisleLoading(true);
     handleReset();
 
