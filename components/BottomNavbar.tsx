@@ -37,9 +37,9 @@ export default function BottomNavbar() {
             href={item.href}
             className={cn(
               'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary',
-              isActive(item.href) ? 'text-primary' : '',
+              isActive(item.href) && 'text-primary',
               'theme-glass:text-white/70 theme-glass:hover:text-white',
-              isActive(item.href) ? 'theme-glass:text-white' : ''
+              isActive(item.href) && 'theme-glass:text-white'
             )}
           >
             <item.icon className="h-5 w-5" />

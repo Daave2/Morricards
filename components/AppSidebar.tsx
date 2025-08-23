@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -44,7 +45,7 @@ export default function AppSidebar() {
         <div className="flex items-center gap-2">
             <Link href="/picking" className="flex items-center gap-2 font-semibold" onClick={handleLinkClick}>
                 <ShoppingBasket className="h-6 w-6 text-primary" />
-                <span className="text-lg">Store Mobile Ultra</span>
+                <span className="text-lg theme-glass:text-white">Store Mobile Ultra</span>
             </Link>
         </div>
       </SidebarHeader>
