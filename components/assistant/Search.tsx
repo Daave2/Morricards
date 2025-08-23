@@ -6,10 +6,12 @@ import type { SearchHit } from "@/lib/morrisonsSearch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Search, Star, X } from "lucide-react";
+import { Loader2, Mic, Search, Star, X } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 type Props = {
   defaultQuery?: string;
@@ -26,11 +28,28 @@ export default function SearchComponent({ defaultQuery = "", onPick, onSearch, o
   const [err, setErr] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
+  const {
+    isListening,
+    transcript,
+    startListening,
+    stopListening,
+    error: speechError,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition();
+
   // simple debounce for typing
   useEffect(() => {
     const id = setTimeout(() => setQ(pendingQ), 400);
     return () => clearTimeout(id);
   }, [pendingQ]);
+
+  // Update search input with speech transcript
+  useEffect(() => {
+    if (transcript) {
+      setPendingQ(transcript);
+    }
+  }, [transcript]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -103,6 +122,14 @@ export default function SearchComponent({ defaultQuery = "", onPick, onSearch, o
       }
   }, [onClear, onSearch]);
 
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  }
+
   const visibleHits = useMemo(() => {
     // onSearch callback handles the full list, onPick handles selection.
     // The component itself will only render if `onPick` is provided.
@@ -119,14 +146,33 @@ export default function SearchComponent({ defaultQuery = "", onPick, onSearch, o
           value={pendingQ}
           onChange={(e) => setPendingQ(e.target.value)}
           placeholder="Search by name, or enter a SKU/EAN..."
-          className="pl-10"
+          className="pl-10 pr-20"
         />
-         {pendingQ && (
-            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={handleClear}>
-                <X className="h-4 w-4" />
-            </Button>
-          )}
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+            {browserSupportsSpeechRecognition && (
+             <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMicClick}>
+                            <Mic className={cn("h-4 w-4", isListening && "text-destructive animate-pulse")} />
+                         </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{isListening ? "Stop Listening" : "Search with Voice"}</p>
+                    </TooltipContent>
+                </Tooltip>
+             </TooltipProvider>
+            )}
+            {pendingQ && (
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClear}>
+                    <X className="h-4 w-4" />
+                </Button>
+            )}
+        </div>
       </div>
+      {isListening && <p className="text-sm text-muted-foreground text-center">Listening...</p>}
+      {speechError && <div className="text-sm text-destructive">{speechError}</div>}
+
 
       {loading && (
         <div className="flex items-center justify-center gap-2 text-muted-foreground py-8">
