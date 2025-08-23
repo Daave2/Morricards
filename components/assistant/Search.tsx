@@ -6,16 +6,18 @@ import type { SearchHit } from "@/lib/morrisonsSearch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Search, Star } from "lucide-react";
+import { Loader2, Search, Star, X } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 type Props = {
   defaultQuery?: string;
   onPick?: (hit: SearchHit) => void;
+  onClear?: () => void;
 };
 
-export default function SearchComponent({ defaultQuery = "", onPick }: Props) {
+export default function SearchComponent({ defaultQuery = "", onPick, onClear }: Props) {
   const [q, setQ] = useState(defaultQuery);
   const [pendingQ, setPendingQ] = useState(defaultQuery);
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -67,6 +69,20 @@ export default function SearchComponent({ defaultQuery = "", onPick }: Props) {
       cancelled = true;
     };
   }, [q]);
+  
+  const handlePick = (hit: SearchHit) => {
+    setQ('');
+    setPendingQ('');
+    setHits([]);
+    onPick?.(hit);
+  }
+
+  const handleClear = () => {
+      setQ('');
+      setPendingQ('');
+      setHits([]);
+      onClear?.();
+  }
 
   const resultCount = useMemo(() => hits.length, [hits]);
 
@@ -77,9 +93,14 @@ export default function SearchComponent({ defaultQuery = "", onPick }: Props) {
         <Input
           value={pendingQ}
           onChange={(e) => setPendingQ(e.target.value)}
-          placeholder="Search for products by name..."
+          placeholder="Search by name, or enter a SKU/EAN..."
           className="pl-10"
         />
+         {pendingQ && (
+            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={handleClear}>
+                <X className="h-4 w-4" />
+            </Button>
+          )}
       </div>
 
       {loading && (
@@ -91,53 +112,37 @@ export default function SearchComponent({ defaultQuery = "", onPick }: Props) {
       {err && <div className="text-sm text-destructive">Error: {err}</div>}
       
       {hits.length > 0 && (
-          <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(200px,1fr))]">
-          {hits.map((h) => (
-            <Card
-              key={`${h.groupType}-${h.retailerProductId}-${h.productId}-${h.title}`}
-              className="flex flex-col overflow-hidden"
+          <div className="space-y-4">
+          {hits.map((h, i) => (
+             <Card
+                key={`${h.groupType}-${h.retailerProductId}-${h.productId}-${h.title}`}
+                className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-shadow animate-in fade-in-50"
+                style={{ animationDelay: `${i * 50}ms` }}
+                onClick={() => handlePick(h)}
             >
-              <CardContent className="p-3 flex flex-col flex-grow">
-                <div className="aspect-square rounded-xl bg-muted/30 grid place-items-center overflow-hidden mb-3">
-                  {h.image ? (
-                    <Image
-                      src={h.image}
-                      alt={h.title}
-                      width={150}
-                      height={150}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">No image</span>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground">{h.brand}</div>
-                <h3 className="font-semibold leading-snug flex-grow">{h.title}</h3>
-                {h.packSize && <div className="text-sm opacity-80">{h.packSize}</div>}
-                
-                <div className="flex justify-between items-center mt-1">
-                    <div className="font-bold text-lg">
-                        {h.price != null ? `£${h.price.toFixed(2)}` : "—"}
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
+                        <Image
+                            src={h.image || 'https://placehold.co/100x100.png'}
+                            alt={h.title}
+                            width={80}
+                            height={80}
+                            className="rounded-md object-cover"
+                            data-ai-hint="product image small"
+                        />
                     </div>
-                    {h.available === false && <Badge variant="destructive">Unavailable</Badge>}
-                </div>
-                
-                {h.rating != null && (
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                        <span>{h.rating.toFixed(1)} ({h.ratingCount ?? 0})</span>
+                    <div className="flex-grow min-w-0">
+                        <p className="font-semibold">{h.title}</p>
+                        <p className="text-sm text-muted-foreground">{h.brand || 'Unknown Brand'}</p>
+                        {(h.price) && (
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <Badge variant='secondary'>
+                                    {`£${h.price.toFixed(2)}`}
+                                </Badge>
+                            </div>
+                        )}
                     </div>
-                )}
-                
-                <Button
-                  onClick={() => onPick?.(h)}
-                  className="mt-3 w-full"
-                  size="sm"
-                  disabled={!h.retailerProductId}
-                >
-                  Select
-                </Button>
-              </CardContent>
+                </CardContent>
             </Card>
           ))}
         </div>
@@ -145,3 +150,5 @@ export default function SearchComponent({ defaultQuery = "", onPick }: Props) {
     </div>
   );
 }
+
+    

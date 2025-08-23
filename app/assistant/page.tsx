@@ -376,12 +376,6 @@ export default function AssistantPageClient() {
     await fetchProductAndInsights(sku);
   };
   
-  const handleManualSubmit = (values: z.infer<typeof FormSchema>) => {
-    if (values.sku) {
-        fetchProductAndInsights(values.sku);
-    }
-  }
-
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
     if (!lowerMessage.includes('not found') && !lowerMessage.includes('no multiformat readers')) {
@@ -416,6 +410,7 @@ export default function AssistantPageClient() {
 
   const handleSearchPick = (hit: SearchHit) => {
     if (hit.retailerProductId) {
+      handleReset(); // Clear current product view before fetching new one
       fetchProductAndInsights(hit.retailerProductId);
     } else {
       toast({
@@ -471,11 +466,11 @@ export default function AssistantPageClient() {
         <Card className="max-w-2xl mx-auto mb-8">
           <CardHeader>
             <CardTitle>AI Product Assistant</CardTitle>
-            <CardDescription>Search for a product by name, or scan its barcode to get details and AI-powered insights.</CardDescription>
+            <CardDescription>Search for a product by name or SKU/EAN, or scan its barcode to get details and AI-powered insights.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleManualSubmit)} className="space-y-4">
+              <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
                  <FormField
                   control={form.control}
                   name="locationId"
@@ -493,37 +488,10 @@ export default function AssistantPageClient() {
             </Form>
 
             <Separator />
-
-            <SearchComponent onPick={handleSearchPick} />
-
-            <Separator />
             
-            <div className="space-y-2">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleManualSubmit)} className="flex gap-2">
-                    <FormField
-                      control={form.control}
-                      name="sku"
-                      render={({ field }) => (
-                        <FormItem className="flex-grow">
-                          <FormLabel className="sr-only">Find by SKU/EAN</FormLabel>
-                           <FormControl>
-                            <Input placeholder="Enter SKU/EAN..." {...field} />
-                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      variant="secondary"
-                      disabled={isFetchingProduct || isGeneratingInsights}
-                    >
-                       <Search className="h-4 w-4" />
-                    </Button>
-                  </form>
-                </Form>
-                 <Button
+            <div className="space-y-4">
+                <SearchComponent onPick={handleSearchPick} onClear={() => handleReset()} />
+                <Button
                   type="button"
                   className="w-full"
                   onClick={() => setIsScanMode(true)}
@@ -534,6 +502,7 @@ export default function AssistantPageClient() {
                   Or Scan Product Barcode
                 </Button>
             </div>
+
           </CardContent>
         </Card>
 
@@ -779,3 +748,5 @@ export default function AssistantPageClient() {
     </div>
   );
 }
+
+    
