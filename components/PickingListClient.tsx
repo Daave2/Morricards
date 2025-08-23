@@ -54,6 +54,8 @@ import { Label } from '@/components/ui/label';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import Link from 'next/link';
+import SearchComponent from '@/components/assistant/Search';
+import type { SearchHit } from '@/lib/morrisonsSearch';
 
 
 type Product = FetchMorrisonsDataOutput[0] & { picked?: boolean; isOffline?: boolean; };
@@ -313,8 +315,7 @@ export default function PickingListClient() {
     }
   }, [handlePick, playInfo, playError, toast, isSpeedMode, startScannerWithDelay]);
 
-  const handleScanToAdd = useCallback(async (text: string) => {
-    const sku = text.split(',')[0].trim();
+  const addSingleProduct = useCallback(async (sku: string) => {
     if (!sku || sku.length < 4) return;
 
     setScanMode('off');
@@ -402,6 +403,24 @@ export default function PickingListClient() {
     setLoadingSkuCount(prev => Math.max(0, prev - 1));
 
   }, [form, settings.bearerToken, settings.debugMode, isOnline, playInfo, playSuccess, playError, toast, consecutiveFails, fetchAndUpdateToken, settings.debugMode]);
+
+  const handleScanToAdd = useCallback(async (text: string) => {
+    const sku = text.split(',')[0].trim();
+    await addSingleProduct(sku);
+  }, [addSingleProduct]);
+
+  const handleSearchPick = useCallback((hit: SearchHit) => {
+    if (hit.retailerProductId) {
+      addSingleProduct(hit.retailerProductId);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Selection Error',
+        description: 'The selected product does not have a valid ID to look up.'
+      });
+    }
+  }, [addSingleProduct, toast]);
+
 
   const handleScanError = (message: string) => {
     const lowerMessage = message.toLowerCase();
@@ -743,38 +762,8 @@ export default function PickingListClient() {
                 <CollapsibleContent>
                     <CardContent>
                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                          <FormField
-                            control={form.control}
-                            name="skus"
-                            render={({ field }) => (
-                              <FormItem>
-                                 <div className="flex justify-between items-center mb-2">
-                                  <FormLabel>Product SKUs / EANs</FormLabel>
-                                </div>
-                                <FormControl>
-                                  <div className="relative">
-                                    <Textarea
-                                      placeholder="Scan barcodes or enter SKUs separated by commas, spaces, or new lines... e.g. 369966011, 5010251674078"
-                                      className="min-h-[120px] resize-y pr-28"
-                                      {...field}
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant='outline'
-                                        className="absolute bottom-3 right-3"
-                                        onClick={() => setScanMode('add')}
-                                      >
-                                        <ScanLine className="mr-2 h-4 w-4" />
-                                        Scan to Add
-                                      </Button>
-                                  </div>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
+                        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                           <FormField
                             control={form.control}
                             name="locationId"
                             render={({ field }) => (
@@ -787,21 +776,19 @@ export default function PickingListClient() {
                               </FormItem>
                             )}
                           />
-                          <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
-                            {isLoading ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Fetching Data...
-                              </>
-                            ) : !isOnline ? (
-                              <>
-                                <WifiOff className="mr-2 h-4 w-4" />
-                                Offline - Cannot Fetch
-                              </>
-                            ) : (
-                              'Get/Add to Picking List'
-                            )}
-                          </Button>
+                          <div className='space-y-4'>
+                            <SearchComponent onPick={handleSearchPick} />
+                            <Button
+                                type="button"
+                                className="w-full"
+                                onClick={() => setScanMode('add')}
+                                disabled={isLoading}
+                                variant='outline'
+                                >
+                                <ScanLine className="mr-2 h-4 w-4" />
+                                Or Scan to Add
+                            </Button>
+                          </div>
                         </form>
                       </Form>
                     </CardContent>
@@ -995,3 +982,5 @@ export default function PickingListClient() {
     </div>
   );
 }
+
+    

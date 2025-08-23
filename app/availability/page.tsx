@@ -55,6 +55,8 @@ import SkuQrCode from '@/components/SkuQrCode';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import type { AvailabilityReason } from '@/lib/idb';
 import Link from 'next/link';
+import SearchComponent from '@/components/assistant/Search';
+import type { SearchHit } from '@/lib/morrisonsSearch';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -449,9 +451,15 @@ export default function AvailabilityPage() {
     }
   }, [processSku]);
 
-  const handleManualSubmit = async (values: z.infer<typeof FormSchema>) => {
-    if (values.sku) {
-      await processSku(values.sku);
+  const handleSearchPick = (hit: SearchHit) => {
+    if (hit.retailerProductId) {
+      processSku(hit.retailerProductId);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Selection Error',
+        description: 'The selected product does not have a valid ID to look up.'
+      })
     }
   }
 
@@ -891,56 +899,37 @@ export default function AvailabilityPage() {
            <Card className="max-w-4xl mx-auto mb-8">
             <CardContent className="p-4 space-y-4">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleManualSubmit)} className="flex flex-col sm:flex-row items-end gap-4">
-                  <FormField
-                    control={form.control}
-                    name="locationId"
-                    render={({ field }) => (
-                      <FormItem className="w-full sm:w-[120px] sm:flex-shrink-0">
-                        <FormLabel>Store ID</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., 218" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="sku"
-                    render={({ field }) => (
-                      <FormItem className="w-full sm:flex-grow">
-                        <FormLabel>SKU / EAN</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter product number to report" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                        <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
-                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                            Find
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                    <FormField
+                        control={form.control}
+                        name="locationId"
+                        render={({ field }) => (
+                        <FormItem className="w-full sm:w-[120px] sm:flex-shrink-0">
+                            <FormLabel>Store ID</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g., 218" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                        <SearchComponent onPick={handleSearchPick} />
+                        <Button
+                        type="button"
+                        className="w-full"
+                        onClick={() => setIsScanMode(true)}
+                        disabled={isLoading}
+                        variant="outline"
+                        >
+                        <ScanLine className="mr-2 h-4 w-4" />
+                        Or Scan Product Barcode
                         </Button>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                            <Button
-                                type="button"
-                                className="w-full sm:w-auto flex-shrink-0"
-                                variant='outline'
-                                onClick={handleScanButtonClick}
-                                disabled={isLoading}
-                            >
-                                <ScanLine className="mr-2 h-4 w-4" />
-                                Scan
-                            </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                            <p>Scan an item's barcode to check its data and report an issue.</p>
-                            </TooltipContent>
-                        </Tooltip>
                     </div>
+
                 </form>
               </Form>
               <div className="flex items-center space-x-2 justify-center pt-2">
@@ -1053,3 +1042,5 @@ export default function AvailabilityPage() {
     </>
   );
 }
+
+    
