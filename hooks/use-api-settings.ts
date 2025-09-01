@@ -84,7 +84,7 @@ export function useApiSettings() {
   }, []);
 
   const fetchAndUpdateToken = useCallback(async () => {
-    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/fede6ee0bcb19abb99baa7e46b9c44c4d3e09b0d/gistfile1.txt';
+    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/';
     toast({ title: 'Fetching latest token...' });
     try {
       const response = await fetch(tokenUrl, { cache: 'no-store' });
