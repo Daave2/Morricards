@@ -64,6 +64,7 @@ type ScanMode = 'off' | 'add' | 'pick';
 
 const FormSchema = z.object({
   skus: z.string().optional(),
+  pickSku: z.string().optional(),
 });
 
 const LOCAL_STORAGE_KEY = 'morricards-products';
@@ -123,7 +124,7 @@ export default function PickingListClient() {
   const [scanMode, setScanMode] = useState<ScanMode>('off');
   const [isSpeedMode, setIsSpeedMode] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(true);
   const [exportUrl, setExportUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [consecutiveFails, setConsecutiveFails] = useState(0);
@@ -168,8 +169,8 @@ export default function PickingListClient() {
         const parsedProducts = JSON.parse(savedProducts);
         setProducts(parsedProducts);
         // Set initial state of add form based on whether there are products
-        if (parsedProducts.length === 0) {
-            setIsAddFormOpen(true);
+        if (parsedProducts.length > 0) {
+            setIsAddFormOpen(false);
         }
       } else {
         // If no saved products, list is blank, so open the form
@@ -208,6 +209,7 @@ export default function PickingListClient() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       skus: '',
+      pickSku: '',
     },
   });
 
@@ -467,11 +469,11 @@ export default function PickingListClient() {
     }
   };
   
-  const handlePickSubmit = (values: z.infer<typeof FormSchema> & { pickSku?: string }) => {
+  const handlePickSubmit = (values: z.infer<typeof FormSchema>) => {
     const skuToPick = values.pickSku;
     if (skuToPick) {
       handleScanToPick(skuToPick); // Re-use the same logic as scanning
-      form.setValue('skus', ''); // Clear the input after submission
+      form.setValue('pickSku', ''); // Clear the input after submission
     }
   };
 
