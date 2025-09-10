@@ -8,8 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Loader2, X, AlertTriangle, CheckCircle2, Bot, Camera, Trash2, Filter } from 'lucide-react';
@@ -229,11 +227,6 @@ export default function PriceCheckerPage() {
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCameraMode]);
-
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {},
-  });
 
   const handleCapture = async () => {
     if (!videoRef.current || !canvasRef.current) return;

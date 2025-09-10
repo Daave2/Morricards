@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -17,7 +18,7 @@ export const navItems = [
     { href: '/picking', label: 'Picking List', icon: Home },
     { href: '/availability', label: 'Availability Report', icon: ListChecks },
     { href: '/assistant', label: 'AI Product Assistant', icon: Bot },
-    { href: '/price-checker', label: 'AI Price Checker', icon: ScanLine },
+    { href: '/price-checker', label: 'Validator', icon: ScanLine },
     { href: '/map', label: 'Store Map', icon: Map },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];

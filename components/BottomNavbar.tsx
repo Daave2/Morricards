@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Home, ListChecks, Bot, Map, ScanLine, Settings } from 'lucide-react';
@@ -10,7 +11,7 @@ const navItems = [
   { href: '/picking', label: 'Picking', icon: Home },
   { href: '/availability', label: 'Availability', icon: ListChecks },
   { href: '/assistant', label: 'Assistant', icon: Bot },
-  { href: '/price-checker', label: 'Price Check', icon: ScanLine },
+  { href: '/price-checker', label: 'Validator', icon: ScanLine },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
