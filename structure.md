@@ -1,4 +1,3 @@
-
 # Application Structure Guide
 
 This document outlines the structure of the Next.js application to provide context for AI-driven development.
@@ -58,10 +57,19 @@ Contains shared libraries, data, and utility functions.
 - **`lib/map-data.ts`**: Contains the static JSON data defining the store layout for the `StoreMap` component.
 - **`lib/utils.ts`**: Standard utility functions, including `cn` for merging Tailwind classes.
 
-## 3. Key Interactions
+## 3. Key Interactions & Patterns
 
 - **Data Fetching**: Client components (`*Client.tsx`) call Server Actions defined in `app/actions.ts`. These actions then use the `lib/morrisons-api.ts` client to fetch data.
 - **AI Flows**: Client components directly import and call the server-side Genkit flow functions from `/ai/flows/*.ts`. These are exposed as async functions that can be invoked from the client.
 - **Settings**: All pages that need the Store ID or API tokens use the `useApiSettings` hook to get the current values. They do not manage this state locally.
 - **Offline**: When the app is offline (detected by `useNetworkSync`), actions like adding a product to the picking list or reporting an availability issue are queued in IndexedDB via `lib/offlineQueue.ts`. The `useNetworkSync` hook automatically flushes this queue when the app comes back online.
 - **Styling**: All styling is done via Tailwind CSS and ShadCN UI components. Themes are defined in `app/globals.css` and applied in the root `layout.tsx`.
+
+## 4. Key Examples (Golden Paths)
+
+To ensure consistency, refer to these files as the standard for common tasks.
+
+-   **Creating a New Page**: Follow the pattern in `app/picking/page.tsx` (for the Suspense wrapper) and `app/picking/PickingListClient.tsx` (for the interactive client logic).
+-   **Creating an AI Flow**: Use `ai/flows/product-insights-flow.ts` as the template. It demonstrates proper use of Zod schemas, structured outputs, and a clear prompt.
+-   **Defining a Component**: `components/product-card.tsx` is a good example of a complex, data-driven component with conditional rendering and user interactions.
+-   **Handling Forms**: The forms in `app/picking/PickingListClient.tsx` and `app/settings/page.tsx` demonstrate the use of `react-hook-form` with Zod for validation.
