@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import SkuQrCode from '@/components/SkuQrCode';
+import { priceTicketOcrFlow } from '@/ai/flows/price-validator-flow';
+
 
 const FormSchema = z.object({
   // No fields needed here anymore
@@ -231,7 +233,7 @@ export default function PriceCheckerPage() {
   const handleCapture = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     
-    const { locationId } = settings;
+    const { locationId, bearerToken, debugMode } = settings;
     if (!locationId) {
         toast({ variant: 'destructive', title: 'Store ID Missing', description: 'Please set a store ID in the settings page first.' });
         return;
@@ -248,53 +250,68 @@ export default function PriceCheckerPage() {
     const imageDataUri = canvas.toDataURL('image/jpeg', 0.9);
 
     setIsCameraMode(false);
-    toast({ title: 'Processing Image', description: 'AI is analyzing all price tickets...' });
+    toast({ title: 'Reading Image with AI...', description: 'Identifying all price tickets on the shelf.' });
 
     try {
-      const results = await validatePriceTicket({
-        imageDataUri,
-        locationId,
-        bearerToken: settings.bearerToken,
-        debugMode: settings.debugMode,
-      });
+      const ocrResults = await priceTicketOcrFlow({ imageDataUri });
+
+      if (!ocrResults || ocrResults.length === 0) {
+        playError();
+        toast({ variant: 'destructive', title: 'No Tickets Found', description: 'The AI could not read any price tickets in the image.' });
+        setIsProcessing(false);
+        return;
+      }
       
+      playSuccess();
+      toast({ title: `Found ${ocrResults.length} tickets`, description: 'Validating each one against the system...' });
+
       const newLogEntry: LogEntry = {
         id: crypto.randomUUID(),
         imageDataUri,
         timestamp: new Date().toISOString(),
-        results: results,
+        // Create placeholder results
+        results: ocrResults.map(ocrData => ({
+          isCorrect: false, // Default state
+          mismatchReason: 'Validating...',
+          ocrData: ocrData,
+          product: null,
+        })),
       };
-      
+
       setValidationLog(prev => [newLogEntry, ...prev]);
 
-      const correctCount = results.filter(r => r.isCorrect).length;
-      const errorCount = results.length - correctCount;
+      // Now, validate each ticket individually
+      const validationPromises = ocrResults.map(ocrData =>
+        validatePriceTicket({ ocrData, locationId, bearerToken, debugMode })
+      );
+
+      const allValidationResults = await Promise.all(validationPromises);
+      
+      setValidationLog(prev => prev.map(entry => 
+        entry.id === newLogEntry.id ? { ...entry, results: allValidationResults } : entry
+      ));
+      
+      const correctCount = allValidationResults.filter(r => r.isCorrect).length;
+      const errorCount = allValidationResults.length - correctCount;
 
       if (errorCount > 0) {
         playError();
         toast({
           variant: 'destructive',
           title: 'Validation Complete',
-          description: `Found ${results.length} tickets. ${errorCount} have mismatches.`,
+          description: `${errorCount} of ${allValidationResults.length} tickets have mismatches.`,
         });
-      } else if (results.length > 0) {
+      } else {
         playSuccess();
         toast({
           title: 'All Prices Correct!',
-          description: `Checked ${results.length} tickets and all match the system.`,
+          description: `Checked ${allValidationResults.length} tickets and all match the system.`,
           icon: <CheckCircle2 className="text-primary" />
-        });
-      } else {
-        playError();
-        toast({
-            variant: 'destructive',
-            title: 'No Tickets Found',
-            description: results[0]?.mismatchReason || 'The AI could not find any price tickets in the image.',
         });
       }
 
     } catch (e) {
-      console.error("Validation flow failed", e);
+      console.error("Validation process failed", e);
       playError();
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
       toast({ variant: 'destructive', title: 'AI Error', description: `Could not validate the price ticket. ${errorMessage}` });
@@ -325,6 +342,8 @@ export default function PriceCheckerPage() {
     }
 
     const filterFn = (result: PriceTicketValidationOutput) => {
+        if (result.mismatchReason === 'Validating...') return false; // Exclude loading items from filters
+
         switch (activeFilter) {
             case 'correct':
                 return result.isCorrect;
@@ -452,25 +471,38 @@ export default function PriceCheckerPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {entry.results.map((result, index) => (
-                           <Card key={index} className={result.isCorrect ? 'bg-green-50/50 dark:bg-green-900/20' : 'bg-red-50/50 dark:bg-red-900/20 border-destructive'}>
-                             <CardContent className="p-4 flex flex-col gap-4 items-start">
-                               <div className="flex justify-between items-start gap-2 w-full">
-                                  <h3 className="font-bold text-lg flex-grow min-w-0 break-words">{result.product?.name || result.ocrData?.productName || 'Unknown Product'}</h3>
-                                  <Badge variant={result.isCorrect ? 'default' : 'destructive'} className="flex-shrink-0">
-                                    {result.isCorrect ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
-                                    {result.isCorrect ? 'Correct' : 'Mismatch'}
-                                  </Badge>
-                               </div>
-                               
-                               <PriceTicketDisplay result={result} />
-                             </CardContent>
-                           </Card>
-                        ))}
+                        {entry.results.map((result, index) => {
+                           const isLoading = result.mismatchReason === 'Validating...';
+                           return (
+                               <Card key={index} className={cn(
+                                   isLoading ? 'bg-muted/50' :
+                                   result.isCorrect ? 'bg-green-50/50 dark:bg-green-900/20' : 'bg-red-50/50 dark:bg-red-900/20 border-destructive'
+                                )}>
+                                 <CardContent className="p-4 flex flex-col gap-4 items-start">
+                                   <div className="flex justify-between items-start gap-2 w-full">
+                                      <h3 className="font-bold text-lg flex-grow min-w-0 break-words">{result.ocrData?.productName || 'Unknown Product'}</h3>
+                                      {isLoading ? (
+                                        <Badge variant="secondary" className="flex-shrink-0">
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Validating...
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant={result.isCorrect ? 'default' : 'destructive'} className="flex-shrink-0">
+                                            {result.isCorrect ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
+                                            {result.isCorrect ? 'Correct' : 'Mismatch'}
+                                        </Badge>
+                                      )}
+                                   </div>
+                                   
+                                   {!isLoading && <PriceTicketDisplay result={result} />}
+                                 </CardContent>
+                               </Card>
+                           );
+                        })}
                     </CardContent>
                 </Card>
               ))}
-                {filteredLog.length === 0 && (
+                {filteredLog.length === 0 && !isProcessing && (
                     <div className="text-center p-8 text-muted-foreground">
                         <Filter className="h-8 w-8 mx-auto mb-2" />
                         <p>No results match this filter.</p>

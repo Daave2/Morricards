@@ -1,18 +1,19 @@
 
 'use server';
 /**
- * @fileOverview An AI flow for validating multiple price tickets from a single image against system data.
+ * @fileOverview An AI flow for validating a single price ticket's OCR data against system data.
  *
- * - validatePriceTicket - Captures data from a price ticket image and validates it against the Morrisons API.
+ * - priceTicketOcrFlow - An AI flow that performs OCR on an image to find all price tickets.
+ * - validatePriceTicket - A flow that takes OCR data for one ticket and validates it against the Morrisons API.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
-import { PriceTicketValidationInputSchema, PriceTicketValidationOutputSchema, OcrDataSchema, type PriceTicketValidationInput, type PriceTicketValidationOutput } from './price-validator-types';
+import { PriceTicketValidationInputSchema, PriceTicketValidationOutputSchema, OcrDataSchema, type PriceTicketValidationOutput } from './price-validator-types';
 
 
-const priceTicketPrompt = ai.definePrompt({
+const priceTicketOcrPrompt = ai.definePrompt({
   name: 'priceTicketOcrPrompt',
   input: { schema: z.object({ imageDataUri: z.string() }) },
   // The crucial change: output is now an array of OCR data objects.
@@ -32,130 +33,136 @@ Return an array, with a separate JSON object for each price ticket you identifie
 Image: {{media url=imageDataUri}}`,
 });
 
-// The flow now returns an array of validation results.
-export async function validatePriceTicket(input: PriceTicketValidationInput): Promise<PriceTicketValidationOutput[]> {
-  const { imageDataUri, locationId, bearerToken, debugMode } = input;
 
-  // 1. OCR the image to get an array of ticket data
-  const { output: ocrResults } = await priceTicketPrompt({ imageDataUri });
-  
-  if (!ocrResults || ocrResults.length === 0) {
-    return [{
+// This flow now only performs the OCR step.
+export async function priceTicketOcrFlow(input: { imageDataUri: string }): Promise<z.infer<typeof OcrDataSchema>[]> {
+    const { output } = await priceTicketOcrPrompt(input);
+    return output || [];
+}
+
+const SingleTicketValidationInputSchema = z.object({
+  ocrData: OcrDataSchema,
+  locationId: z.string(),
+  bearerToken: z.string().optional(),
+  debugMode: z.boolean().optional(),
+});
+
+
+// This flow now validates a single OCR result.
+export async function validatePriceTicket(input: z.infer<typeof SingleTicketValidationInputSchema>): Promise<PriceTicketValidationOutput> {
+  const { ocrData, locationId, bearerToken, debugMode } = input;
+
+  if (!ocrData || !ocrData.eanOrSku) {
+    return {
       isCorrect: false,
-      mismatchReason: "Could not read any valid price tickets from the image.",
-      ocrData: null,
+      mismatchReason: "Could not read a valid EAN or SKU from this ticket.",
+      ocrData: ocrData,
       product: null,
-    }];
+    };
   }
+  
+  let productData: FetchMorrisonsDataOutput[0] | null = null;
+  try {
+    const apiResult = await fetchMorrisonsData({
+      skus: [ocrData.eanOrSku],
+      locationId,
+      bearerToken,
+      debugMode,
+    });
 
-  // Helper function to validate a single OCR result against the API
-  const validateSingleTicket = async (ocrData: z.infer<typeof OcrDataSchema>): Promise<PriceTicketValidationOutput> => {
-      if (!ocrData || !ocrData.eanOrSku) {
+    if (apiResult && apiResult.length > 0) {
+      productData = apiResult[0];
+    } else {
         return {
           isCorrect: false,
-          mismatchReason: "Could not read a valid EAN or SKU from this ticket.",
-          ocrData: ocrData,
-          product: null,
-        };
-      }
-      
-      let productData: FetchMorrisonsDataOutput[0] | null = null;
-      try {
-        const apiResult = await fetchMorrisonsData({
-          skus: [ocrData.eanOrSku],
-          locationId,
-          bearerToken,
-          debugMode,
-        });
-
-        if (apiResult && apiResult.length > 0) {
-          productData = apiResult[0];
-        } else {
-            return {
-              isCorrect: false,
-              mismatchReason: `Product with EAN/SKU ${ocrData.eanOrSku} not found in the system.`,
-              ocrData,
-              product: null,
-            };
-        }
-      } catch (e) {
-        const error = e instanceof Error ? e.message : String(e);
-        return {
-          isCorrect: false,
-          mismatchReason: `API Error: ${error}`,
+          mismatchReason: `Product with EAN/SKU ${ocrData.eanOrSku} not found in the system.`,
           ocrData,
           product: null,
         };
-      }
-      
-      const ticketPromoString = ocrData.promotionalOffer;
-      const ticketRegularPriceString = ocrData.mainPrice;
+    }
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    return {
+      isCorrect: false,
+      mismatchReason: `API Error: ${error}`,
+      ocrData,
+      product: null,
+    };
+  }
+  
+  const ticketPromoString = ocrData.promotionalOffer;
+  const ticketRegularPriceString = ocrData.mainPrice;
 
-      const systemPromoString = productData.price.promotional;
-      const systemRegularPriceString = productData.price.regular ? `£${productData.price.regular.toFixed(2)}` : null;
-      
-      const normalize = (price: string | null | undefined): string | null => {
-          if (!price) return null;
-          return price.replace(/\s*for\s*/, 'for') // "2 for £5.00" -> "2for£5.00"
-                       .replace(/[£\s]/g, '')     // "2for£5.00" -> "2for5.00"
-                       .replace(/\.00$/, '')      // "5.00" -> "5"
-                       .toLowerCase();
-      };
-      
-      const normalizedTicketPromo = normalize(ticketPromoString);
-      const normalizedSystemPromo = normalize(systemPromoString);
+  const systemPromoString = productData.price.promotional;
+  const systemRegularPriceString = productData.price.regular ? `£${productData.price.regular.toFixed(2)}` : null;
+  
+  const normalize = (price: string | null | undefined): string | null => {
+      if (!price) return null;
+      return price.replace(/\s*for\s*/, 'for') // "2 for £5.00" -> "2for£5.00"
+                   .replace(/[£\s]/g, '')     // "2for£5.00" -> "2for5.00"
+                   .replace(/\.00$/, '')      // "5.00" -> "5"
+                   .toLowerCase();
+  };
+  
+  const normalizedTicketPromo = normalize(ticketPromoString);
+  const normalizedSystemPromo = normalize(systemPromoString);
 
-      if (normalizedTicketPromo && normalizedSystemPromo) {
-        if (normalizedTicketPromo === normalizedSystemPromo) {
-          return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
-        } else {
-          return {
-            isCorrect: false,
-            mismatchReason: `Ticket promo "${ticketPromoString}" does not match system promo "${systemPromoString}".`,
-            ocrData,
-            product: productData,
-          };
-        }
-      }
-
-      if (normalizedTicketPromo && !normalizedSystemPromo) {
-        return {
-          isCorrect: false,
-          mismatchReason: `Ticket shows promo "${ticketPromoString}" but system has no promo.`,
-          ocrData,
-          product: productData,
-        };
-      }
-
-      if (!normalizedTicketPromo && normalizedSystemPromo) {
-        return {
-          isCorrect: false,
-          mismatchReason: `System expects promo "${systemPromoString}" but ticket shows none.`,
-          ocrData,
-          product: productData,
-        };
-      }
-
-      // If we are here, there are no promos involved. Check regular price.
-      const normalizedTicketRegular = normalize(ticketRegularPriceString);
-      const normalizedSystemRegular = normalize(systemRegularPriceString);
-
-      if (normalizedTicketRegular === normalizedSystemRegular) {
-        return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
-      }
-
-      // Default mismatch for regular prices
+  if (normalizedTicketPromo && normalizedSystemPromo) {
+    if (normalizedTicketPromo === normalizedSystemPromo) {
+      return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
+    } else {
       return {
         isCorrect: false,
-        mismatchReason: `Ticket price "${ticketRegularPriceString}" does not match system price "${systemRegularPriceString}".`,
+        mismatchReason: `Ticket promo "${ticketPromoString}" does not match system promo "${systemPromoString}".`,
         ocrData,
         product: productData,
       };
-  };
+    }
+  }
 
-  // 2. Process all OCR results in parallel.
-  const validationPromises = ocrResults.map(validateSingleTicket);
-  const results = await Promise.all(validationPromises);
-  
-  return results;
+  if (normalizedTicketPromo && !normalizedSystemPromo) {
+    return {
+      isCorrect: false,
+      mismatchReason: `Ticket shows promo "${ticketPromoString}" but system has no promo.`,
+      ocrData,
+      product: productData,
+    };
+  }
+
+  if (!normalizedTicketPromo && normalizedSystemPromo) {
+    return {
+      isCorrect: false,
+      mismatchReason: `System expects promo "${systemPromoString}" but ticket shows none.`,
+      ocrData,
+      product: productData,
+    };
+  }
+
+  // If we are here, there are no promos involved. Check regular price.
+  const normalizedTicketRegular = normalize(ticketRegularPriceString);
+  const normalizedSystemRegular = normalize(systemRegularPriceString);
+
+  if (normalizedTicketRegular === normalizedSystemRegular) {
+    return { isCorrect: true, mismatchReason: null, ocrData, product: productData };
+  }
+
+  // Check for illegal pricing (ticket price > system price)
+  const ticketPriceNum = ticketRegularPriceString ? parseFloat(ticketRegularPriceString.replace('£', '')) : null;
+  const systemPriceNum = productData.price.regular;
+  if (ticketPriceNum && systemPriceNum && ticketPriceNum > systemPriceNum) {
+      return {
+          isCorrect: false,
+          mismatchReason: `Illegal price: Ticket price "${ticketRegularPriceString}" is higher than system price "${systemRegularPriceString}".`,
+          ocrData,
+          product: productData,
+      };
+  }
+
+  // Default mismatch for regular prices
+  return {
+    isCorrect: false,
+    mismatchReason: `Ticket price "${ticketRegularPriceString}" does not match system price "${systemRegularPriceString}".`,
+    ocrData,
+    product: productData,
+  };
 }
