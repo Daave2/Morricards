@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -256,12 +257,14 @@ const ChatInterface = ({ product, locationId }: { product: Product, locationId: 
     };
 
     return (
-        <div className="mt-6 border-t pt-6">
-             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
-                Chat with Assistant
-             </h3>
-            <div className="rounded-lg border bg-card p-4 space-y-4">
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-primary" />
+                    Chat with Assistant
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
                 <ScrollArea className="h-64 pr-4" ref={scrollAreaRef}>
                     <div className="space-y-4">
                         {messages.map((msg, index) => (
@@ -295,20 +298,19 @@ const ChatInterface = ({ product, locationId }: { product: Product, locationId: 
                         )}
                     </div>
                 </ScrollArea>
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t pt-4">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t pt-4 mt-4">
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask a question..."
                         disabled={isLoading}
-                        className="input"
                     />
                     <Button type="submit" disabled={isLoading || !input.trim()}>
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send />}
                     </Button>
                 </form>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     )
 }
 
