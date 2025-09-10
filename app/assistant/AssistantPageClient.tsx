@@ -261,7 +261,7 @@ const ChatInterface = ({ product, locationId }: { product: Product, locationId: 
                 <Bot className="h-5 w-5 text-primary" />
                 Chat with Assistant
              </h3>
-            <div className="rounded-lg border bg-card/90 p-4 space-y-4">
+            <div className="rounded-lg border bg-card p-4 space-y-4">
                 <ScrollArea className="h-64 pr-4" ref={scrollAreaRef}>
                     <div className="space-y-4">
                         {messages.map((msg, index) => (
@@ -295,12 +295,13 @@ const ChatInterface = ({ product, locationId }: { product: Product, locationId: 
                         )}
                     </div>
                 </ScrollArea>
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t pt-4">
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask a question..."
                         disabled={isLoading}
+                        className="input"
                     />
                     <Button type="submit" disabled={isLoading || !input.trim()}>
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send />}
