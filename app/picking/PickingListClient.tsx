@@ -131,7 +131,7 @@ export default function PickingListClient() {
   
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
-  const { settings, fetchAndUpdateToken } = useApiSettings();
+  const { settings, setSettings, fetchAndUpdateToken } = useApiSettings();
   const { isOnline, syncedItems } = useNetworkSync();
 
   const productsRef = useRef(products);
@@ -220,7 +220,7 @@ export default function PickingListClient() {
   useEffect(() => {
     if (skusFromUrl && locationFromUrl) {
       form.setValue('skus', skusFromUrl);
-      settings.locationId = locationFromUrl;
+      setSettings({ locationId: locationFromUrl });
       onSubmit({ skus: skusFromUrl });
       
       // Clean the URL to avoid re-triggering on refresh
