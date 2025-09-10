@@ -11,7 +11,6 @@ This document tracks the pending tasks and future ideas for the Store Mobile Ult
 
 ## Future Ideas
 
--   Add a "chat with product" feature on the AI Assistant page.
 -   Implement end-to-end tests for critical user flows.
 -   Explore generating shelf plans or planograms visually.
 -   Add user authentication to save lists across devices.
