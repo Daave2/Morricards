@@ -27,7 +27,7 @@ Full Product Data:
 `;
 
 export async function productChatFlow(input: ProductChatInput): Promise<ProductChatOutput> {
-  const { productData, messages } = input;
+  const { productData, messages, locationId } = input;
 
   const prompt = ai.definePrompt({
     name: 'productChatPrompt',
@@ -36,6 +36,7 @@ export async function productChatFlow(input: ProductChatInput): Promise<ProductC
     input: {
       schema: z.object({
         productData: z.custom<FetchMorrisonsDataOutput[0]>(),
+        locationId: z.string().optional(),
       }),
     },
     output: { schema: z.object({ response: z.string() }) },
@@ -50,6 +51,7 @@ export async function productChatFlow(input: ProductChatInput): Promise<ProductC
 
   const llmResponse = await prompt({
     productData,
+    locationId,
   });
   
   const output = llmResponse.output || { response: "I'm sorry, I couldn't generate a response." };

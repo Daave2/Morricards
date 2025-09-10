@@ -13,13 +13,13 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { productInsightsFlow, ProductInsightsOutput } from '@/ai/flows/product-insights-flow';
 import Image from 'next/image';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ocrFlow } from '@/ai/flows/ocr-flow';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
@@ -34,6 +34,9 @@ import { ToastAction } from '@/components/ui/toast';
 import { useSearchParams, useRouter } from 'next/navigation';
 import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
+import { productChatFlow } from '@/ai/flows/product-chat-flow';
+import type { ChatMessage } from '@/ai/flows/product-chat-types';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -212,6 +215,101 @@ const InsightSection = ({ title, content, icon, children, variant }: { title: st
     </div>
   );
 };
+
+
+const ChatInterface = ({ product, locationId }: { product: Product, locationId: string }) => {
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if(scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    }, [messages]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || isLoading) return;
+
+        const newUserMessage: ChatMessage = { role: 'user', content: input };
+        setMessages(prev => [...prev, newUserMessage]);
+        setInput('');
+        setIsLoading(true);
+
+        try {
+            const result = await productChatFlow({
+                productData: product,
+                messages: [...messages, newUserMessage],
+                locationId,
+            });
+            const newModelMessage: ChatMessage = { role: 'model', content: result.response };
+            setMessages(prev => [...prev, newModelMessage]);
+        } catch (error) {
+            console.error("Chat flow failed:", error);
+            const errorMessage: ChatMessage = { role: 'model', content: "Sorry, I ran into an error. Please try again." };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="mt-6 border-t pt-6">
+             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                Chat with Assistant
+             </h3>
+            <div className="rounded-lg border bg-card/90 p-4 space-y-4">
+                <ScrollArea className="h-64 pr-4" ref={scrollAreaRef}>
+                    <div className="space-y-4">
+                        {messages.map((msg, index) => (
+                            <div key={index} className={cn("flex items-start gap-3", msg.role === 'user' ? 'justify-end' : '')}>
+                                {msg.role === 'model' && (
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarFallback><Bot /></AvatarFallback>
+                                    </Avatar>
+                                )}
+                                <div
+                                    className={cn(
+                                        "rounded-lg px-4 py-2 text-sm max-w-xs prose prose-sm",
+                                        msg.role === 'user'
+                                            ? "bg-primary text-primary-foreground"
+                                            : "bg-muted"
+                                    )}
+                                >
+                                   {msg.content}
+                                </div>
+                            </div>
+                        ))}
+                         {isLoading && (
+                            <div className="flex items-start gap-3">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback><Bot /></AvatarFallback>
+                                </Avatar>
+                                <div className="rounded-lg px-4 py-2 text-sm bg-muted flex items-center">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                    <Input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Ask a question..."
+                        disabled={isLoading}
+                    />
+                    <Button type="submit" disabled={isLoading || !input.trim()}>
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send />}
+                    </Button>
+                </form>
+            </div>
+        </div>
+    )
+}
 
 export default function AssistantPageClient() {
   const [isScanMode, setIsScanMode] = useState(false);
@@ -653,6 +751,7 @@ export default function AssistantPageClient() {
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
+                        <ChatInterface product={product} locationId={settings.locationId} />
                        </div>
                     )}
 
