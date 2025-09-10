@@ -13,5 +13,4 @@ This document tracks the pending tasks and future ideas for the Store Mobile Ult
 
 -   Implement end-to-end tests for critical user flows.
 -   Explore generating shelf plans or planograms visually.
--   Add user authentication to save lists across devices.
 -   Create an `ISSUES.md` log for persistent bugs, detailing symptoms and attempted fixes.
