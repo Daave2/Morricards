@@ -58,12 +58,14 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}}: { title:
     const displayRegular = isSystemSide ? (systemData?.price.regular ? `£${systemData.price.regular.toFixed(2)}` : null) : data?.mainPrice;
     const displayProductName = isSystemSide ? systemData?.name : data?.productName;
     const displaySubName = isSystemSide ? systemData?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; ') : data?.productSubName;
-    const displaySku = isSystemSide ? systemData?.sku : data?.eanOrSku;
     const displayUnitPrice = isSystemSide ? null : data?.unitPrice; // Unit price is only on OCR
+
+    // Determine the correct SKU to display for the QR code
+    const displaySku = systemData?.sku || data?.eanOrSku;
 
     const priceParts = displayRegular?.replace('£', '').split('.') || ['N/A'];
     const priceContent = (
-        <p className="text-4xl sm:text-5xl font-extrabold text-black dark:text-white leading-none">
+        <p className="text-4xl sm:text-5xl font-extrabold text-foreground leading-none">
             <span className="text-2xl sm:text-3xl align-top -mr-1">£</span>
             {priceParts[0]}
             <span className="text-3xl sm:text-4xl align-top">.{priceParts[1] || '00'}</span>
@@ -74,7 +76,7 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}}: { title:
         <div className="border-2 border-dashed rounded-lg p-3 sm:p-4 space-y-3 flex-1 bg-background/60 font-sans w-full max-w-sm">
             <p className="text-sm font-bold text-muted-foreground text-center mb-2">{title}</p>
             <div className={cn("p-1 rounded text-center", isMismatch.name && "bg-destructive/20 ring-2 ring-destructive")}>
-                <p className="font-semibold text-base sm:text-lg leading-tight">{displayProductName || 'N/A'}</p>
+                <p className="font-semibold text-base sm:text-lg leading-tight text-foreground">{displayProductName || 'N/A'}</p>
                 {displaySubName && <p className="text-xs sm:text-sm text-muted-foreground">{displaySubName}</p>}
                  {displayPromo && (
                     <div className="mt-2 flex justify-center">
@@ -93,10 +95,10 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}}: { title:
                     ) : (
                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted/50 rounded flex items-center justify-center text-muted-foreground text-xs">QR</div>
                     )}
-                    <p className="font-mono text-[10px] sm:text-xs text-center break-all">{displaySku || 'N/A'}</p>
+                    <p className="font-mono text-[10px] sm:text-xs text-center break-all text-foreground">{displaySku || 'N/A'}</p>
                 </div>
                 <div className={cn("p-1 rounded flex-1 text-right", isMismatch.price && "bg-destructive/20 ring-2 ring-destructive")}>
-                    {displayRegular ? priceContent : <p className="text-4xl sm:text-5xl font-extrabold text-black dark:text-white leading-none">N/A</p>}
+                    {displayRegular ? priceContent : <p className="text-4xl sm:text-5xl font-extrabold text-foreground leading-none">N/A</p>}
                 </div>
             </div>
         </div>
@@ -126,7 +128,7 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
     
     return (
         <div className="mt-4 space-y-4">
-             <MismatchAlert />
+             {!isCorrect && <MismatchAlert />}
              <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch">
                  <PriceTicketMockup
                     title="As Seen on Ticket"
