@@ -51,15 +51,15 @@ const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
 
 
 const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}}: { title: string, data?: OcrData | null, systemData?: PriceTicketValidationOutput['product'] | null, isMismatch?: Record<string, boolean>}) => {
-    const { productName, mainPrice, promotionalOffer, eanOrSku, productSubName, unitPrice } = data || {};
+    // Determine the correct data source based on the title
+    const isSystemSide = title.includes('System');
     
-    // Determine the prices from the correct source
-    const displayPromo = title.includes('System') ? systemData?.price.promotional : promotionalOffer;
-    const displayRegular = title.includes('System') ? (systemData?.price.regular ? `£${systemData.price.regular.toFixed(2)}` : null) : mainPrice;
-
-    const displayProductName = title.includes('System') ? systemData?.name : productName;
-    const displaySubName = title.includes('System') ? systemData?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; ') : productSubName;
-    const displaySku = title.includes('System') ? systemData?.sku : eanOrSku;
+    const displayPromo = isSystemSide ? systemData?.price.promotional : data?.promotionalOffer;
+    const displayRegular = isSystemSide ? (systemData?.price.regular ? `£${systemData.price.regular.toFixed(2)}` : null) : data?.mainPrice;
+    const displayProductName = isSystemSide ? systemData?.name : data?.productName;
+    const displaySubName = isSystemSide ? systemData?.productDetails?.packs?.map((p: { packQuantity?: number; packNumber?: string; }) => `${p.packQuantity}x ${p.packNumber}`).join('; ') : data?.productSubName;
+    const displaySku = isSystemSide ? systemData?.sku : data?.eanOrSku;
+    const displayUnitPrice = isSystemSide ? null : data?.unitPrice; // Unit price is only on OCR
 
     const priceParts = displayRegular?.replace('£', '').split('.') || ['N/A'];
     const priceContent = (
@@ -85,7 +85,7 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}}: { title:
             
             <div className="flex items-end justify-between gap-2 sm:gap-4 pt-3">
                 <div className="flex-shrink-0 space-y-2">
-                    {unitPrice && <p className="text-xs sm:text-sm font-semibold">{unitPrice} per kg</p>}
+                    {displayUnitPrice && <p className="text-xs sm:text-sm font-semibold">{displayUnitPrice}</p>}
                     {displaySku ? (
                          <div className="flex justify-center w-16 h-16 sm:w-20 sm:h-20">
                             <SkuQrCode sku={displaySku} size={80} />
