@@ -50,7 +50,7 @@ type FilterType = 'all' | 'correct' | 'illegal' | 'discrepancy' | 'other';
 const LOCAL_STORAGE_KEY_VALIDATION = 'morricards-price-validation-log';
 
 
-const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = false }: { title: string, data?: OcrData | null, systemData?: PriceTicketValidationOutput['product'] | null, isMismatch?: Record<string, boolean>, showQr?: boolean }) => {
+const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}}: { title: string, data?: OcrData | null, systemData?: PriceTicketValidationOutput['product'] | null, isMismatch?: Record<string, boolean>}) => {
     const { productName, mainPrice, promotionalOffer, eanOrSku, productSubName, unitPrice } = data || {};
     
     // Determine the prices from the correct source
@@ -86,7 +86,7 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = 
             <div className="flex items-end justify-between gap-2 sm:gap-4 pt-3">
                 <div className="flex-shrink-0 space-y-2">
                     {unitPrice && <p className="text-xs sm:text-sm font-semibold">{unitPrice} per kg</p>}
-                    {showQr && displaySku ? (
+                    {displaySku ? (
                          <div className="flex justify-center w-16 h-16 sm:w-20 sm:h-20">
                             <SkuQrCode sku={displaySku} size={80} />
                         </div>
@@ -105,14 +105,14 @@ const PriceTicketMockup = ({ title, data, systemData, isMismatch = {}, showQr = 
 
 
 const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput }) => {
-    const { ocrData, product } = result;
+    const { ocrData, product, isCorrect } = result;
     
     const nameMismatch = ocrData?.productName?.toLowerCase() !== product?.name?.toLowerCase();
     const priceMismatch = !!result.mismatchReason?.toLowerCase().includes('price');
     const skuMismatch = ocrData?.eanOrSku !== product?.sku;
 
     const MismatchAlert = () => {
-        if (result.isCorrect || !result.mismatchReason) return null;
+        if (isCorrect || !result.mismatchReason) return null;
         return (
             <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -136,7 +136,6 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
                  <PriceTicketMockup
                     title="As Per System"
                     systemData={product}
-                    showQr={true}
                  />
              </div>
         </div>
