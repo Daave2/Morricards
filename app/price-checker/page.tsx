@@ -108,41 +108,25 @@ const PriceTicketDisplay = ({ result }: { result: PriceTicketValidationOutput })
     const { ocrData, product } = result;
     
     const nameMismatch = ocrData?.productName?.toLowerCase() !== product?.name?.toLowerCase();
-    // This price check is complex and handled by the flow, but we can highlight if the mismatch reason mentions price
     const priceMismatch = !!result.mismatchReason?.toLowerCase().includes('price');
     const skuMismatch = ocrData?.eanOrSku !== product?.sku;
 
-
-    if (result.isCorrect) {
+    const MismatchAlert = () => {
+        if (result.isCorrect || !result.mismatchReason) return null;
         return (
-            <div className="p-2 rounded-md grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground">TICKET DATA (OCR)</p>
-                  <p><strong>Name:</strong> {result.ocrData?.productName || 'N/A'}</p>
-                  <p><strong>Price:</strong> {result.ocrData?.mainPrice || 'N/A'}</p>
-                   {result.ocrData?.promotionalOffer && <p><strong>Offer:</strong> {result.ocrData.promotionalOffer}</p>}
-                  <p><strong>SKU/EAN:</strong> {result.ocrData?.eanOrSku || 'N/A'}</p>
-                </div>
-                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground">SYSTEM DATA (API)</p>
-                   <p><strong>Name:</strong> {result.product?.name || 'N/A'}</p>
-                   <p><strong>Price:</strong> {result.product?.price?.regular ? `£${result.product.price.regular.toFixed(2)}` : 'N/A'}</p>
-                   {result.product?.price?.promotional && <p><strong>Offer:</strong> {result.product.price.promotional}</p>}
-                   <p><strong>SKU:</strong> {result.product?.sku || 'N/A'}</p>
-                </div>
-              </div>
-        )
-    }
-
-    return (
-        <div className="mt-4 space-y-4">
-             <Alert variant="destructive">
+            <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Validation Failed</AlertTitle>
                 <AlertDescription>
-                    {result.mismatchReason || 'An unknown validation error occurred.'}
+                    {result.mismatchReason}
                 </AlertDescription>
-             </Alert>
+            </Alert>
+        );
+    }
+    
+    return (
+        <div className="mt-4 space-y-4">
+             <MismatchAlert />
              <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch">
                  <PriceTicketMockup
                     title="As Seen on Ticket"
