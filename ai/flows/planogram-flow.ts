@@ -31,11 +31,21 @@ export const ProductOnPlanSchema = z.object({
 });
 export type ProductOnPlan = z.infer<typeof ProductOnPlanSchema>;
 
+const ComparisonResultSchema = z.object({
+    status: z.enum(['Correct', 'Misplaced', 'Missing', 'Extra']),
+    productName: z.string(),
+    sku: z.string().nullable(),
+    expectedShelf: z.number().nullable(),
+    expectedPosition: z.number().nullable(),
+    actualShelf: z.number().nullable(),
+    actualPosition: z.number().nullable(),
+});
+
 const PlanogramOutputSchema = z.object({
-  planogramProducts: z.array(ProductOnPlanSchema).describe("List of products as they should appear on the planogram."),
-  shelfProducts: z.array(ProductOnPlanSchema).describe("List of products as they are currently on the shelf, based on shelf-edge labels."),
+  comparisonResults: z.array(ComparisonResultSchema).describe("A consolidated list of all items with their compliance status."),
 });
 export type PlanogramOutput = z.infer<typeof PlanogramOutputSchema>;
+
 
 const planogramPrompt = ai.definePrompt({
     name: 'planogramPrompt',
@@ -46,11 +56,17 @@ const planogramPrompt = ai.definePrompt({
 2.  A photo of the actual shelf.
 
 Your tasks are:
-1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost). Create a list for 'planogramProducts'.
+1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost).
 
-2.  **Analyze the Shelf Photo**: Your task is to identify products by reading their **shelf-edge price tickets**. For each ticket you identify on the shelf, extract the product name. Then, try to find the corresponding SKU from the 'planogramProducts' list you just generated. Determine the shelf and position for each identified ticket. Create a list for 'shelfProducts'. If you cannot reliably determine a SKU for a shelf item, it's okay to leave it as null.
+2.  **Analyze the Shelf Photo**: Identify every product on the shelf by reading their **shelf-edge price tickets**. For each ticket you identify, extract the product name and determine its shelf and position.
 
-3.  Return both lists.
+3.  **Compare and Consolidate**: Compare the list from the planogram to the list from the shelf. You must intelligently match products even if the names are slightly different (e.g., 'GU Hot Choc Puds 2x80G' on the planogram and 'GU Hot Chocolate Puddings' on the shelf are the same). The SKU is the best unique identifier if available. Generate a single 'comparisonResults' list with a status for each item:
+    - **Correct**: The product is on the correct shelf and position.
+    - **Misplaced**: The product is on the shelf, but on the wrong shelf or in the wrong position.
+    - **Missing**: The product is on the planogram but cannot be found on the shelf.
+    - **Extra**: The product is on the shelf but is not on the planogram.
+
+4. For each item in your result, provide the product name, SKU, expected location (if any), and actual location (if any).
 
 Planogram Image:
 {{media url=planogramImageDataUri}}

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
-import { planogramFlow, type PlanogramOutput, type ProductOnPlan } from '@/ai/flows/planogram-flow';
+import { planogramFlow, type PlanogramOutput } from '@/ai/flows/planogram-flow';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -99,52 +99,14 @@ const toDataUri = (file: File): Promise<string> => {
 
 
 const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
-    const { planogramProducts, shelfProducts } = results;
+    const { comparisonResults } = results;
 
-    const normalizeSku = (sku: string | null | undefined): string | null => {
-        if (!sku) return null;
-        return String(sku).trim();
-    }
-    
-    // Create maps for efficient lookup
-    const planMap = new Map(planogramProducts.map(p => [normalizeSku(p.sku), p]));
-    const shelfMap = new Map(shelfProducts.map(p => [normalizeSku(p.sku), p]));
+    const correctItems = comparisonResults.filter(r => r.status === 'Correct');
+    const misplacedItems = comparisonResults.filter(r => r.status === 'Misplaced');
+    const missingItems = comparisonResults.filter(r => r.status === 'Missing');
+    const extraItems = comparisonResults.filter(r => r.status === 'Extra');
 
-    const allSkus = new Set([...planMap.keys(), ...shelfMap.keys()].filter(Boolean));
-
-    const correctItems: ProductOnPlan[] = [];
-    const misplacedItems: { plan: ProductOnPlan, shelf: ProductOnPlan }[] = [];
-    const missingItems: ProductOnPlan[] = [];
-    const extraItems: ProductOnPlan[] = [];
-
-    // Categorize each SKU
-    for (const sku of allSkus) {
-        const planItem = planMap.get(sku);
-        const shelfItem = shelfMap.get(sku);
-
-        if (planItem && shelfItem) {
-            if (planItem.shelf === shelfItem.shelf && planItem.position === shelfItem.position) {
-                correctItems.push(planItem);
-            } else {
-                misplacedItems.push({ plan: planItem, shelf: shelfItem });
-            }
-        } else if (planItem && !shelfItem) {
-            missingItems.push(planItem);
-        } else if (!planItem && shelfItem) {
-            extraItems.push(shelfItem);
-        }
-    }
-    
-    // Handle items without a reliable SKU as potential extras/missing for manual review
-    shelfProducts.forEach(p => {
-        if (!normalizeSku(p.sku)) extraItems.push(p);
-    });
-    planogramProducts.forEach(p => {
-        if (!normalizeSku(p.sku)) missingItems.push(p);
-    });
-
-
-    const renderTable = (items: ProductOnPlan[], title: string, variant: 'correct' | 'missing' | 'extra') => {
+    const renderTable = (items: typeof comparisonResults, title: string, variant: 'correct' | 'missing' | 'extra') => {
         if (items.length === 0) return null;
         
         let icon;
@@ -176,8 +138,8 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                                 <TableRow key={index}>
                                     <TableCell className="font-medium">{item.productName}</TableCell>
                                     <TableCell>{item.sku || 'N/A'}</TableCell>
-                                    <TableCell className="text-center">{item.shelf}</TableCell>
-                                    <TableCell className="text-center">{item.position}</TableCell>
+                                    <TableCell className="text-center">{item.actualShelf ?? item.expectedShelf ?? 'N/A'}</TableCell>
+                                    <TableCell className="text-center">{item.actualPosition ?? item.expectedPosition ?? 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -187,7 +149,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
         );
     }
     
-    const renderMisplacedTable = (items: { plan: ProductOnPlan, shelf: ProductOnPlan }[], title: string) => {
+    const renderMisplacedTable = (items: typeof comparisonResults, title: string) => {
         if (items.length === 0) return null;
 
         return (
@@ -208,10 +170,10 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.plan.productName}</TableCell>
-                                    <TableCell>{item.plan.sku || 'N/A'}</TableCell>
-                                    <TableCell>S:{item.plan.shelf}, P:{item.plan.position}</TableCell>
-                                    <TableCell>S:{item.shelf.shelf}, P:{item.shelf.position}</TableCell>
+                                    <TableCell className="font-medium">{item.productName}</TableCell>
+                                    <TableCell>{item.sku || 'N/A'}</TableCell>
+                                    <TableCell>S:{item.expectedShelf}, P:{item.expectedPosition}</TableCell>
+                                    <TableCell>S:{item.actualShelf}, P:{item.actualPosition}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
