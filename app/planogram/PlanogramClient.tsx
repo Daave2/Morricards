@@ -100,21 +100,42 @@ const toDataUri = (file: File): Promise<string> => {
 
 const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
     const { planogramProducts, shelfProducts } = results;
-    const planSkus = new Set(planogramProducts.map(p => p.sku));
-    const shelfSkus = new Set(shelfProducts.map(p => p.sku));
+
+    const normalizeSku = (sku: string | null | undefined): string | null => {
+        if (!sku) return null;
+        return sku.trim();
+    }
+
+    const planSkus = new Set(planogramProducts.map(p => normalizeSku(p.sku)).filter(Boolean));
+    const shelfSkus = new Set(shelfProducts.map(p => normalizeSku(p.sku)).filter(Boolean));
 
     const correctItems = planogramProducts.filter(p => {
-        const shelfItem = shelfProducts.find(s => s.sku === p.sku);
+        const pSku = normalizeSku(p.sku);
+        if (!pSku) return false;
+        const shelfItem = shelfProducts.find(s => normalizeSku(s.sku) === pSku);
         return shelfItem && shelfItem.shelf === p.shelf && shelfItem.position === p.position;
     });
 
     const misplacedItems = planogramProducts.filter(p => {
-        const shelfItem = shelfProducts.find(s => s.sku === p.sku);
-        return shelfItem && (shelfItem.shelf !== p.shelf || shelfItem.position !== p.position);
+        const pSku = normalizeSku(p.sku);
+        if (!pSku) return false;
+        const shelfItem = shelfProducts.find(s => normalizeSku(s.sku) === pSku);
+        // It's misplaced if it exists on the shelf but is not in the "correctItems" list
+        return shelfItem && !correctItems.some(c => normalizeSku(c.sku) === pSku);
+    });
+    
+    const missingItems = planogramProducts.filter(p => {
+        const pSku = normalizeSku(p.sku);
+        if (!pSku) return true; // Count items with no SKU on planogram as "missing" for review
+        return !shelfSkus.has(pSku);
     });
 
-    const missingItems = planogramProducts.filter(p => !shelfSkus.has(p.sku));
-    const extraItems = shelfProducts.filter(p => !planSkus.has(p.sku));
+    const extraItems = shelfProducts.filter(p => {
+        const sSku = normalizeSku(p.sku);
+        if (!sSku) return true; // Count items with no SKU on shelf as "extra" for review
+        return !planSkus.has(sSku);
+    });
+
 
     const renderTable = (items: typeof planogramProducts, title: string, variant: 'correct' | 'misplaced' | 'missing' | 'extra') => {
         if (items.length === 0) return null;
