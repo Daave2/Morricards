@@ -5,10 +5,15 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, FileImage, Bot } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
+import { planogramFlow, type PlanogramOutput } from '@/ai/flows/planogram-flow';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
-const ImageUpload = ({ title, onImageSelect, selectedImage }: { title: string; onImageSelect: (file: File) => void; selectedImage: File | null }) => {
+
+const ImageUpload = ({ title, onImageSelect, selectedImage, disabled }: { title: string; onImageSelect: (file: File) => void; selectedImage: File | null, disabled?: boolean }) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +39,7 @@ const ImageUpload = ({ title, onImageSelect, selectedImage }: { title: string; o
   const handleDragEnter = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    if (disabled) return;
     setIsDragging(true);
   };
 
@@ -44,7 +50,7 @@ const ImageUpload = ({ title, onImageSelect, selectedImage }: { title: string; o
   };
 
   return (
-    <Card>
+    <Card className={cn(disabled && 'bg-muted/50')}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
@@ -54,9 +60,9 @@ const ImageUpload = ({ title, onImageSelect, selectedImage }: { title: string; o
           onDragOver={handleDragOver}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
-          className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-accent transition-colors ${
+          className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg  bg-card transition-colors ${
             isDragging ? 'border-primary' : 'border-border'
-          }`}
+          } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-accent'}`}
         >
           {selectedImage ? (
             <Image
@@ -74,18 +80,107 @@ const ImageUpload = ({ title, onImageSelect, selectedImage }: { title: string; o
               <p className="text-xs text-muted-foreground">PNG, JPG or WEBP</p>
             </div>
           )}
-          <input id="dropzone-file" type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+          <input id={`dropzone-file-${title}`} type="file" className="hidden" onChange={handleFileChange} accept="image/*" disabled={disabled} />
         </label>
       </CardContent>
     </Card>
   );
 };
 
+// Helper function to convert a file to a Base64 Data URI
+const toDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+
+const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
+    const { planogramProducts, shelfProducts } = results;
+    const planSkus = new Set(planogramProducts.map(p => p.sku));
+    const shelfSkus = new Set(shelfProducts.map(p => p.sku));
+
+    const correctItems = planogramProducts.filter(p => {
+        const shelfItem = shelfProducts.find(s => s.sku === p.sku);
+        return shelfItem && shelfItem.shelf === p.shelf && shelfItem.position === p.position;
+    });
+
+    const misplacedItems = planogramProducts.filter(p => {
+        const shelfItem = shelfProducts.find(s => s.sku === p.sku);
+        return shelfItem && (shelfItem.shelf !== p.shelf || shelfItem.position !== p.position);
+    });
+
+    const missingItems = planogramProducts.filter(p => !shelfSkus.has(p.sku));
+    const extraItems = shelfProducts.filter(p => !planSkus.has(p.sku));
+
+    const renderTable = (items: typeof planogramProducts, title: string, variant: 'correct' | 'misplaced' | 'missing' | 'extra') => {
+        if (items.length === 0) return null;
+        
+        let icon;
+        let badgeVariant: "default" | "destructive" | "secondary" | "outline" = "secondary";
+        
+        switch(variant) {
+            case 'correct': icon = <Check className="h-5 w-5 text-green-500" />; badgeVariant = "default"; break;
+            case 'misplaced': icon = <ArrowRightLeft className="h-5 w-5 text-yellow-500" />; badgeVariant = "secondary"; break;
+            case 'missing': icon = <X className="h-5 w-5 text-red-500" />; badgeVariant = "destructive"; break;
+            case 'extra': icon = <AlertTriangle className="h-5 w-5 text-orange-500" />; badgeVariant = "outline"; break;
+        }
+
+        return (
+            <div>
+                 <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
+                    {icon} {title} <Badge variant={badgeVariant}>{items.length}</Badge>
+                </h3>
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Product</TableHead>
+                                <TableHead>SKU</TableHead>
+                                <TableHead className="text-center">Shelf</TableHead>
+                                <TableHead className="text-center">Position</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {items.map((item, index) => (
+                                <TableRow key={index}>
+                                    <TableCell className="font-medium">{item.productName}</TableCell>
+                                    <TableCell>{item.sku || 'N/A'}</TableCell>
+                                    <TableCell className="text-center">{item.shelf}</TableCell>
+                                    <TableCell className="text-center">{item.position}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+        );
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Validation Results</CardTitle>
+                <CardDescription>Comparison of the planogram against the physical shelf.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {renderTable(correctItems, "Correctly Placed", "correct")}
+                {renderTable(misplacedItems, "Misplaced Items", "misplaced")}
+                {renderTable(missingItems, "Missing from Shelf", "missing")}
+                {renderTable(extraItems, "Extra on Shelf (Not on Plan)", "extra")}
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function PlanogramClient() {
   const [planogramImage, setPlanogramImage] = useState<File | null>(null);
   const [shelfImage, setShelfImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState<PlanogramOutput | null>(null);
   const { toast } = useToast();
 
   const handleValidation = async () => {
@@ -99,22 +194,37 @@ export default function PlanogramClient() {
     }
 
     setIsLoading(true);
+    setResults(null);
     toast({ title: 'Starting Validation...', description: 'The AI is analyzing the images.' });
+    
+    try {
+        const planogramImageDataUri = await toDataUri(planogramImage);
+        const shelfImageDataUri = await toDataUri(shelfImage);
 
-    // Here we will call the AI flow in the future.
-    // For now, we'll just simulate a delay.
-    await new Promise(resolve => setTimeout(resolve, 2000));
+        const flowResult = await planogramFlow({ planogramImageDataUri, shelfImageDataUri });
+        setResults(flowResult);
 
-    toast({
-      title: 'Validation Complete (Simulated)',
-      description: 'This is where the results would be displayed.',
-    });
+        toast({
+            title: 'Validation Complete',
+            description: 'The results are displayed below.',
+        });
+
+    } catch (error) {
+         toast({
+            variant: 'destructive',
+            title: 'Validation Failed',
+            description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}`,
+        });
+        console.error(error);
+    }
+
+
     setIsLoading(false);
   };
 
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
-      <div className="space-y-8 max-w-4xl mx-auto">
+      <div className="space-y-8 max-w-6xl mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>AI Planogram Validator</CardTitle>
@@ -125,8 +235,8 @@ export default function PlanogramClient() {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ImageUpload title="1. Upload Planogram" onImageSelect={setPlanogramImage} selectedImage={planogramImage} />
-          <ImageUpload title="2. Upload Shelf Photo" onImageSelect={setShelfImage} selectedImage={shelfImage} />
+          <ImageUpload title="1. Upload Planogram" onImageSelect={setPlanogramImage} selectedImage={planogramImage} disabled={isLoading} />
+          <ImageUpload title="2. Upload Shelf Photo" onImageSelect={setShelfImage} selectedImage={shelfImage} disabled={isLoading} />
         </div>
 
         <Button
@@ -143,7 +253,14 @@ export default function PlanogramClient() {
           Find Differences
         </Button>
 
-        {/* Results will be displayed here in a future step */}
+        {isLoading && (
+            <div className="text-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                <p className="text-muted-foreground">AI is analyzing the images, this may take a moment...</p>
+            </div>
+        )}
+
+        {results && <ResultsDisplay results={results} />}
       </div>
     </main>
   );
