@@ -138,23 +138,23 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Product</TableHead>
-                                {showQr && <TableHead>QR</TableHead>}
-                                <TableHead className="text-center">Shelf</TableHead>
-                                <TableHead className="text-center">Position</TableHead>
+                                <TableHead className="text-xs">Product</TableHead>
+                                {showQr && <TableHead className="text-xs">QR</TableHead>}
+                                <TableHead className="text-center text-xs">Shelf</TableHead>
+                                <TableHead className="text-center text-xs">Position</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell className="font-medium min-w-[200px]">{item.productName} ({item.sku || 'N/A'})</TableCell>
+                                    <TableCell className="font-medium min-w-[200px] text-xs">{item.productName} ({item.sku || 'N/A'})</TableCell>
                                     {showQr && (
                                         <TableCell>
                                             {item.sku && <SkuQrCode sku={item.sku} size={128} />}
                                         </TableCell>
                                     )}
-                                    <TableCell className="text-center">{item.actualShelf ?? item.expectedShelf ?? 'N/A'}</TableCell>
-                                    <TableCell className="text-center">{item.actualPosition ?? item.expectedPosition ?? 'N/A'}</TableCell>
+                                    <TableCell className="text-center text-xs">{item.actualShelf ?? item.expectedShelf ?? 'N/A'}</TableCell>
+                                    <TableCell className="text-center text-xs">{item.actualPosition ?? item.expectedPosition ?? 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -176,21 +176,21 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Product</TableHead>
-                                <TableHead>QR</TableHead>
-                                <TableHead>Expected</TableHead>
-                                <TableHead>Actual</TableHead>
+                                <TableHead className="text-xs">Product</TableHead>
+                                <TableHead className="text-xs">QR</TableHead>
+                                <TableHead className="text-xs">Expected</TableHead>
+                                <TableHead className="text-xs">Actual</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell className="font-medium min-w-[200px]">{item.productName} ({item.sku || 'N/A'})</TableCell>
+                                    <TableCell className="font-medium min-w-[200px] text-xs">{item.productName} ({item.sku || 'N/A'})</TableCell>
                                     <TableCell>
                                         {item.sku && <SkuQrCode sku={item.sku} size={128} />}
                                     </TableCell>
-                                    <TableCell>S:{item.expectedShelf}, P:{item.expectedPosition}</TableCell>
-                                    <TableCell>S:{item.actualShelf}, P:{item.actualPosition}</TableCell>
+                                    <TableCell className="text-xs">S:{item.expectedShelf}, P:{item.expectedPosition}</TableCell>
+                                    <TableCell className="text-xs">S:{item.actualShelf}, P:{item.actualPosition}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -409,5 +409,3 @@ export default function PlanogramClient() {
     </>
   );
 }
-
-    
