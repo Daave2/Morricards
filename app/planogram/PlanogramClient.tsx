@@ -149,7 +149,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                                 <TableRow key={index}>
                                     <TableCell className="font-medium min-w-[200px] text-xs">{item.productName} ({item.sku || 'N/A'})</TableCell>
                                     {showQr && (
-                                        <TableCell>
+                                        <TableCell className="p-1">
                                             {item.sku && <SkuQrCode sku={item.sku} size={128} />}
                                         </TableCell>
                                     )}
@@ -186,7 +186,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                             {items.map((item, index) => (
                                 <TableRow key={index}>
                                     <TableCell className="font-medium min-w-[200px] text-xs">{item.productName} ({item.sku || 'N/A'})</TableCell>
-                                    <TableCell>
+                                    <TableCell className="p-1">
                                         {item.sku && <SkuQrCode sku={item.sku} size={128} />}
                                     </TableCell>
                                     <TableCell className="text-xs">S:{item.expectedShelf}, P:{item.expectedPosition}</TableCell>
