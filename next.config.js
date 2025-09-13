@@ -36,6 +36,7 @@ const nextConfig = {
         // This is needed for the cookie clearing action in settings
         allowedForwardedHosts: ['localhost'],
         allowedOrigins: ['localhost:3000'],
+        bodySizeLimit: '4.5mb',
       },
     },
 };

@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { Home, ListChecks, Bot, Map, ScanLine, Settings } from 'lucide-react';
+import { Home, ListChecks, Bot, Map, ScanLine, Settings, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -12,6 +11,7 @@ const navItems = [
   { href: '/availability', label: 'Availability', icon: ListChecks },
   { href: '/assistant', label: 'Assistant', icon: Bot },
   { href: '/price-checker', label: 'Validator', icon: ScanLine },
+  { href: '/planogram', label: 'Planogram', icon: CheckSquare },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -31,7 +31,7 @@ export default function BottomNavbar() {
         "fixed bottom-0 left-0 right-0 z-40 border-t bg-background md:hidden",
         "theme-glass:border-white/20 theme-glass:bg-black/10 theme-glass:backdrop-blur-xl"
     )}>
-      <div className="grid h-16 grid-cols-5 items-center justify-center text-xs">
+      <div className="grid h-16 grid-cols-6 items-center justify-center text-xs">
         {navItems.map((item) => (
           <Link
             key={item.href}
