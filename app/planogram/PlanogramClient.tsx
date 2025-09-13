@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera, List } from 'lucide-react';
 import Image from 'next/image';
 import { planogramFlow } from '@/ai/flows/planogram-flow';
 import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-types';
@@ -94,7 +94,8 @@ const ImageUpload = ({ title, onImageSelect, onCameraClick, selectedImage, disab
 };
 
 // Helper function to convert a file to a Base64 Data URI
-const toDataUri = (file: File): Promise<string> => {
+const toDataUri = (file: File | null): Promise<string | null> => {
+    if (!file) return Promise.resolve(null);
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -111,8 +112,9 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
     const misplacedItems = comparisonResults.filter(r => r.status === 'Misplaced');
     const missingItems = comparisonResults.filter(r => r.status === 'Missing');
     const extraItems = comparisonResults.filter(r => r.status === 'Extra');
+    const listedItems = comparisonResults.filter(r => r.status === 'Listed');
 
-    const renderTable = (items: ComparisonResult[], title: string, variant: 'correct' | 'missing' | 'extra') => {
+    const renderTable = (items: ComparisonResult[], title: string, variant: 'correct' | 'missing' | 'extra' | 'listed') => {
         if (items.length === 0) return null;
         
         let icon;
@@ -122,6 +124,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
             case 'correct': icon = <Check className="h-5 w-5 text-green-500" />; badgeVariant = "default"; break;
             case 'missing': icon = <X className="h-5 w-5 text-red-500" />; badgeVariant = "destructive"; break;
             case 'extra': icon = <AlertTriangle className="h-5 w-5 text-orange-500" />; badgeVariant = "outline"; break;
+            case 'listed': icon = <List className="h-5 w-5 text-primary" />; badgeVariant = "secondary"; break;
         }
 
         const showQr = variant !== 'correct';
@@ -197,13 +200,18 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
         )
     }
 
+    const isComparison = missingItems.length > 0 || extraItems.length > 0 || correctItems.length > 0 || misplacedItems.length > 0;
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Validation Results</CardTitle>
-                <CardDescription>Comparison of the planogram against the physical shelf.</CardDescription>
+                <CardTitle>Analysis Results</CardTitle>
+                <CardDescription>
+                    {isComparison ? "Comparison of the planogram against the physical shelf." : "Items extracted from the planogram."}
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+                {renderTable(listedItems, "Items on Planogram", "listed")}
                 {renderTable(correctItems, "Correctly Placed", "correct")}
                 {renderMisplacedTable(misplacedItems, "Misplaced Items")}
                 {renderTable(missingItems, "Missing from Shelf", "missing")}
@@ -299,35 +307,35 @@ export default function PlanogramClient() {
   };
 
   const handleValidation = async () => {
-    if (!planogramImage || !shelfImage) {
+    if (!planogramImage) {
       toast({
         variant: 'destructive',
-        title: 'Missing Images',
-        description: 'Please upload both a planogram and a shelf image.',
+        title: 'Missing Planogram',
+        description: 'Please upload a planogram image to begin analysis.',
       });
       return;
     }
 
     setIsLoading(true);
     setResults(null);
-    toast({ title: 'Starting Validation...', description: 'The AI is analyzing the images.' });
+    toast({ title: 'Starting Analysis...', description: 'The AI is analyzing the images.' });
     
     try {
         const planogramImageDataUri = await toDataUri(planogramImage);
         const shelfImageDataUri = await toDataUri(shelfImage);
 
-        const flowResult = await planogramFlow({ planogramImageDataUri, shelfImageDataUri });
+        const flowResult = await planogramFlow({ planogramImageDataUri: planogramImageDataUri!, shelfImageDataUri });
         setResults(flowResult);
 
         toast({
-            title: 'Validation Complete',
+            title: 'Analysis Complete',
             description: 'The results are displayed below.',
         });
 
     } catch (error) {
          toast({
             variant: 'destructive',
-            title: 'Validation Failed',
+            title: 'Analysis Failed',
             description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}`,
         });
         console.error(error);
@@ -336,6 +344,8 @@ export default function PlanogramClient() {
 
     setIsLoading(false);
   };
+
+  const buttonText = shelfImage ? 'Find Differences' : 'Analyze Planogram';
 
   return (
     <>
@@ -362,19 +372,19 @@ export default function PlanogramClient() {
           <CardHeader>
             <CardTitle>AI Planogram Validator</CardTitle>
             <CardDescription>
-              Upload an image of the planogram and a photo of the corresponding shelf. The AI will analyze them to find any differences.
+              Upload an image of the planogram. Optionally, add a photo of the shelf to find differences.
             </CardDescription>
           </CardHeader>
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <ImageUpload title="1. Upload Planogram" onImageSelect={setPlanogramImage} onCameraClick={() => handleOpenCamera('planogram')} selectedImage={planogramImage} disabled={isLoading} />
-          <ImageUpload title="2. Upload Shelf Photo" onImageSelect={setShelfImage} onCameraClick={() => handleOpenCamera('shelf')} selectedImage={shelfImage} disabled={isLoading} />
+          <ImageUpload title="2. Upload Shelf Photo (Optional)" onImageSelect={setShelfImage} onCameraClick={() => handleOpenCamera('shelf')} selectedImage={shelfImage} disabled={isLoading} />
         </div>
 
         <Button
           onClick={handleValidation}
-          disabled={isLoading || !planogramImage || !shelfImage}
+          disabled={isLoading || !planogramImage}
           className="w-full"
           size="lg"
         >
@@ -383,13 +393,13 @@ export default function PlanogramClient() {
           ) : (
             <Bot className="mr-2 h-4 w-4" />
           )}
-          Find Differences
+          {buttonText}
         </Button>
 
         {isLoading && (
             <div className="text-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">AI is analyzing the images, this may take a moment...</p>
+                <p className="text-muted-foreground">AI is analyzing, this may take a moment...</p>
             </div>
         )}
 

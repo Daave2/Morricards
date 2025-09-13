@@ -14,9 +14,14 @@ const planogramPrompt = ai.definePrompt({
     name: 'planogramPrompt',
     input: { schema: PlanogramInputSchema },
     output: { schema: PlanogramOutputSchema },
-    prompt: `You are an expert at retail planogram compliance. You will be given two images:
-1.  The official planogram showing what *should* be on the shelf.
-2.  A photo of the actual shelf.
+    prompt: `You are an expert at retail planogram compliance and analysis. You will be given one or two images.
+
+{{#if shelfImageDataUri}}
+## Two-Image Comparison Task
+
+You have been given two images:
+1.  **The Planogram**: An official document showing what *should* be on the shelf.
+2.  **The Shelf Photo**: A photo of the actual shelf.
 
 Your tasks are:
 1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost).
@@ -36,6 +41,22 @@ Planogram Image:
 
 Shelf Image:
 {{media url=shelfImageDataUri}}
+
+{{else}}
+## Single Planogram Analysis Task
+
+You have been given a single image of a planogram. Your task is to extract product information from it.
+
+Your tasks are:
+1.  **Check for Circled Items**: First, determine if any items on the planogram have been circled or otherwise highlighted by a user.
+2.  **Extract Products**:
+    - **If items are circled**: Identify *only* the products that are circled.
+    - **If NO items are circled**: Identify *all* products on the entire planogram.
+3.  **Generate Results**: For each product you identify, extract its name and SKU. Return this as a 'comparisonResults' list. For every item, set the 'status' field to **'Listed'**.
+
+Planogram Image:
+{{media url=planogramImageDataUri}}
+{{/if}}
 `,
 });
 

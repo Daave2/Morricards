@@ -12,8 +12,9 @@ export const PlanogramInputSchema = z.object({
     ),
   shelfImageDataUri: z
     .string()
+    .nullable()
     .describe(
-      "A photo of the physical shelf, as a data URI."
+      "A photo of the physical shelf, as a data URI. Can be null for single-image analysis."
     ),
 });
 export type PlanogramInput = z.infer<typeof PlanogramInputSchema>;
@@ -27,7 +28,7 @@ export const ProductOnPlanSchema = z.object({
 export type ProductOnPlan = z.infer<typeof ProductOnPlanSchema>;
 
 export const ComparisonResultSchema = z.object({
-    status: z.enum(['Correct', 'Misplaced', 'Missing', 'Extra']),
+    status: z.enum(['Correct', 'Misplaced', 'Missing', 'Extra', 'Listed']),
     productName: z.string(),
     sku: z.string().nullable(),
     expectedShelf: z.number().nullable(),
