@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
-import { planogramFlow, type PlanogramOutput } from '@/ai/flows/planogram-flow';
+import { planogramFlow } from '@/ai/flows/planogram-flow';
+import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -106,7 +107,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
     const missingItems = comparisonResults.filter(r => r.status === 'Missing');
     const extraItems = comparisonResults.filter(r => r.status === 'Extra');
 
-    const renderTable = (items: typeof comparisonResults, title: string, variant: 'correct' | 'missing' | 'extra') => {
+    const renderTable = (items: ComparisonResult[], title: string, variant: 'correct' | 'missing' | 'extra') => {
         if (items.length === 0) return null;
         
         let icon;
@@ -149,7 +150,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
         );
     }
     
-    const renderMisplacedTable = (items: typeof comparisonResults, title: string) => {
+    const renderMisplacedTable = (items: ComparisonResult[], title: string) => {
         if (items.length === 0) return null;
 
         return (
