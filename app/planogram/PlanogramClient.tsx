@@ -12,6 +12,7 @@ import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-typ
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import SkuQrCode from '@/components/SkuQrCode';
 
 
 const ImageUpload = ({ title, onImageSelect, selectedImage, disabled }: { title: string; onImageSelect: (file: File) => void; selectedImage: File | null, disabled?: boolean }) => {
@@ -119,6 +120,8 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
             case 'extra': icon = <AlertTriangle className="h-5 w-5 text-orange-500" />; badgeVariant = "outline"; break;
         }
 
+        const showQr = variant !== 'correct';
+
         return (
             <div>
                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
@@ -129,7 +132,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Product</TableHead>
-                                <TableHead>SKU</TableHead>
+                                {showQr && <TableHead>QR</TableHead>}
                                 <TableHead className="text-center">Shelf</TableHead>
                                 <TableHead className="text-center">Position</TableHead>
                             </TableRow>
@@ -137,8 +140,12 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.productName}</TableCell>
-                                    <TableCell>{item.sku || 'N/A'}</TableCell>
+                                    <TableCell className="font-medium">{item.productName} ({item.sku || 'N/A'})</TableCell>
+                                    {showQr && (
+                                        <TableCell>
+                                            {item.sku && <SkuQrCode sku={item.sku} size={64} />}
+                                        </TableCell>
+                                    )}
                                     <TableCell className="text-center">{item.actualShelf ?? item.expectedShelf ?? 'N/A'}</TableCell>
                                     <TableCell className="text-center">{item.actualPosition ?? item.expectedPosition ?? 'N/A'}</TableCell>
                                 </TableRow>
@@ -163,7 +170,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Product</TableHead>
-                                <TableHead>SKU</TableHead>
+                                <TableHead>QR</TableHead>
                                 <TableHead>Expected</TableHead>
                                 <TableHead>Actual</TableHead>
                             </TableRow>
@@ -171,8 +178,10 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.productName}</TableCell>
-                                    <TableCell>{item.sku || 'N/A'}</TableCell>
+                                    <TableCell className="font-medium">{item.productName} ({item.sku || 'N/A'})</TableCell>
+                                    <TableCell>
+                                        {item.sku && <SkuQrCode sku={item.sku} size={64} />}
+                                    </TableCell>
                                     <TableCell>S:{item.expectedShelf}, P:{item.expectedPosition}</TableCell>
                                     <TableCell>S:{item.actualShelf}, P:{item.actualPosition}</TableCell>
                                 </TableRow>
