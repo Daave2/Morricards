@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera } from 'lucide-react';
 import Image from 'next/image';
 import { planogramFlow } from '@/ai/flows/planogram-flow';
 import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-types';
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import SkuQrCode from '@/components/SkuQrCode';
 
 
-const ImageUpload = ({ title, onImageSelect, selectedImage, disabled }: { title: string; onImageSelect: (file: File) => void; selectedImage: File | null, disabled?: boolean }) => {
+const ImageUpload = ({ title, onImageSelect, onCameraClick, selectedImage, disabled }: { title:string, onImageSelect: (file: File) => void, onCameraClick: () => void, selectedImage: File | null, disabled?: boolean }) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +56,7 @@ const ImageUpload = ({ title, onImageSelect, selectedImage, disabled }: { title:
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className='space-y-4'>
         <label
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -84,6 +84,10 @@ const ImageUpload = ({ title, onImageSelect, selectedImage, disabled }: { title:
           )}
           <input id={`dropzone-file-${title}`} type="file" className="hidden" onChange={handleFileChange} accept="image/*" disabled={disabled} />
         </label>
+        <Button variant="outline" className="w-full" onClick={onCameraClick} disabled={disabled}>
+            <Camera className="mr-2 h-4 w-4" />
+            Use Camera
+        </Button>
       </CardContent>
     </Card>
   );
@@ -214,7 +218,85 @@ export default function PlanogramClient() {
   const [shelfImage, setShelfImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<PlanogramOutput | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<'planogram' | 'shelf' | null>(null);
+  
   const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  
+  const startCamera = async () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+        }
+      } catch (err) {
+        console.error("Error accessing camera: ", err);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Error',
+          description: 'Could not access the camera. Please check permissions.',
+        });
+        setIsCameraOpen(false);
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    streamRef.current = null;
+  };
+  
+  useEffect(() => {
+    if (isCameraOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCameraOpen]);
+  
+  const handleOpenCamera = (target: 'planogram' | 'shelf') => {
+    setCameraTarget(target);
+    setIsCameraOpen(true);
+  }
+
+  const handleCapture = async () => {
+    if (!videoRef.current || !canvasRef.current || !cameraTarget) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(blob => {
+        if (blob) {
+            const file = new File([blob], `${cameraTarget}-capture.jpg`, { type: 'image/jpeg' });
+            if (cameraTarget === 'planogram') {
+                setPlanogramImage(file);
+            } else {
+                setShelfImage(file);
+            }
+            toast({ title: 'Image Captured' });
+        }
+    }, 'image/jpeg', 0.9);
+
+    setIsCameraOpen(false);
+  };
 
   const handleValidation = async () => {
     if (!planogramImage || !shelfImage) {
@@ -256,6 +338,24 @@ export default function PlanogramClient() {
   };
 
   return (
+    <>
+    {isCameraOpen && (
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <video ref={videoRef} autoPlay playsInline className="w-full max-w-4xl h-auto rounded-lg border aspect-video object-cover" />
+            <canvas ref={canvasRef} className="hidden" />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-11/12 max-w-2xl h-1/2 border-4 border-dashed border-white/50 rounded-xl" />
+            </div>
+            <div className="mt-6 flex gap-4">
+                <Button size="lg" onClick={handleCapture} className="h-16 w-16 rounded-full">
+                    <Camera className="h-8 w-8" />
+                </Button>
+            </div>
+             <Button variant="ghost" size="icon" onClick={() => setIsCameraOpen(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+              <X className="h-6 w-6" />
+            </Button>
+        </div>
+    )}
     <main className="container mx-auto px-4 py-8 md:py-12">
       <div className="space-y-8 max-w-6xl mx-auto">
         <Card>
@@ -268,8 +368,8 @@ export default function PlanogramClient() {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ImageUpload title="1. Upload Planogram" onImageSelect={setPlanogramImage} selectedImage={planogramImage} disabled={isLoading} />
-          <ImageUpload title="2. Upload Shelf Photo" onImageSelect={setShelfImage} selectedImage={shelfImage} disabled={isLoading} />
+          <ImageUpload title="1. Upload Planogram" onImageSelect={setPlanogramImage} onCameraClick={() => handleOpenCamera('planogram')} selectedImage={planogramImage} disabled={isLoading} />
+          <ImageUpload title="2. Upload Shelf Photo" onImageSelect={setShelfImage} onCameraClick={() => handleOpenCamera('shelf')} selectedImage={shelfImage} disabled={isLoading} />
         </div>
 
         <Button
@@ -296,5 +396,6 @@ export default function PlanogramClient() {
         {results && <ResultsDisplay results={results} />}
       </div>
     </main>
+    </>
   );
 }
