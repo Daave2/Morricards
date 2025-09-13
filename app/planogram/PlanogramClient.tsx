@@ -150,7 +150,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                                     <TableCell className="font-medium min-w-[200px]">{item.productName} ({item.sku || 'N/A'})</TableCell>
                                     {showQr && (
                                         <TableCell>
-                                            {item.sku && <SkuQrCode sku={item.sku} size={64} />}
+                                            {item.sku && <SkuQrCode sku={item.sku} size={128} />}
                                         </TableCell>
                                     )}
                                     <TableCell className="text-center">{item.actualShelf ?? item.expectedShelf ?? 'N/A'}</TableCell>
@@ -187,7 +187,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                                 <TableRow key={index}>
                                     <TableCell className="font-medium min-w-[200px]">{item.productName} ({item.sku || 'N/A'})</TableCell>
                                     <TableCell>
-                                        {item.sku && <SkuQrCode sku={item.sku} size={64} />}
+                                        {item.sku && <SkuQrCode sku={item.sku} size={128} />}
                                     </TableCell>
                                     <TableCell>S:{item.expectedShelf}, P:{item.expectedPosition}</TableCell>
                                     <TableCell>S:{item.actualShelf}, P:{item.actualPosition}</TableCell>
