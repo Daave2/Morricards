@@ -42,11 +42,13 @@ const planogramPrompt = ai.definePrompt({
     output: { schema: PlanogramOutputSchema },
     prompt: `You are an expert at retail planogram compliance. You will be given two images:
 1.  The official planogram showing what *should* be on the shelf.
-2.  A photo of the actual shelf.
+2.  A photo of the actual shelf, showing product packaging.
 
 Your tasks are:
 1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost). Create a list for 'planogramProducts'.
-2.  **Analyze the Shelf Photo**: Identify every product on the physical shelf. For each, extract its name, SKU, which shelf it's on, and its position. Create a list for 'shelfProducts'.
+
+2.  **Analyze the Shelf Photo**: Identify every product on the physical shelf by its **name on the packaging**. For each product you identify, determine its shelf and position. Then, try to find the corresponding SKU from the 'planogramProducts' list you just generated. If you cannot reliably determine a SKU for a shelf item, it's okay to leave it as null. Create a list for 'shelfProducts'.
+
 3.  Return both lists.
 
 Planogram Image:
