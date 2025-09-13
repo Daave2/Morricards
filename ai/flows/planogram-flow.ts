@@ -23,16 +23,17 @@ const PlanogramInputSchema = z.object({
 });
 export type PlanogramInput = z.infer<typeof PlanogramInputSchema>;
 
-const ProductOnPlan = z.object({
+export const ProductOnPlanSchema = z.object({
     sku: z.string().nullable(),
     productName: z.string(),
     shelf: z.number().describe("The shelf number, counting from the top (1 is the top shelf)."),
     position: z.number().describe("The position on the shelf, from left to right (1 is a leftmost)."),
 });
+export type ProductOnPlan = z.infer<typeof ProductOnPlanSchema>;
 
 const PlanogramOutputSchema = z.object({
-  planogramProducts: z.array(ProductOnPlan).describe("List of products as they should appear on the planogram."),
-  shelfProducts: z.array(ProductOnPlan).describe("List of products as they are currently on the shelf, based on shelf-edge labels."),
+  planogramProducts: z.array(ProductOnPlanSchema).describe("List of products as they should appear on the planogram."),
+  shelfProducts: z.array(ProductOnPlanSchema).describe("List of products as they are currently on the shelf, based on shelf-edge labels."),
 });
 export type PlanogramOutput = z.infer<typeof PlanogramOutputSchema>;
 
