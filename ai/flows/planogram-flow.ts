@@ -27,7 +27,7 @@ const ProductOnPlan = z.object({
     sku: z.string().nullable(),
     productName: z.string(),
     shelf: z.number().describe("The shelf number, counting from the top (1 is the top shelf)."),
-    position: z.number().describe("The position on the shelf, from left to right (1 is leftmost)."),
+    position: z.number().describe("The position on the shelf, from left to right (1 is a leftmost)."),
 });
 
 const PlanogramOutputSchema = z.object({
@@ -59,23 +59,6 @@ Shelf Image:
 
 
 export async function planogramFlow(input: PlanogramInput): Promise<PlanogramOutput> {
-  // In a real implementation, we would call the prompt:
-  // const { output } = await planogramPrompt(input);
-  // return output!;
-
-  // For now, return mock data to simulate the AI's response.
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  return {
-    planogramProducts: [
-      { sku: '12345', productName: 'Example Product A (Plan)', shelf: 1, position: 1 },
-      { sku: '67890', productName: 'Example Product B (Plan)', shelf: 1, position: 2 },
-      { sku: '11223', productName: 'Example Product C (Plan)', shelf: 2, position: 1 },
-    ],
-    shelfProducts: [
-      { sku: '12345', productName: 'Example Product A (Shelf)', shelf: 1, position: 1 },
-      { sku: '99999', productName: 'WRONG Product D (Shelf)', shelf: 1, position: 2 },
-      { sku: '11223', productName: 'Example Product C (Shelf)', shelf: 2, position: 2 }, // Wrong position
-    ],
-  };
+  const { output } = await planogramPrompt(input);
+  return output!;
 }
