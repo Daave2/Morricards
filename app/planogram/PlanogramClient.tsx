@@ -134,7 +134,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
                     {icon} {title} <Badge variant={badgeVariant}>{items.length}</Badge>
                 </h3>
-                <div className="border rounded-lg">
+                <div className="border rounded-lg overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -147,7 +147,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.productName} ({item.sku || 'N/A'})</TableCell>
+                                    <TableCell className="font-medium min-w-[200px]">{item.productName} ({item.sku || 'N/A'})</TableCell>
                                     {showQr && (
                                         <TableCell>
                                             {item.sku && <SkuQrCode sku={item.sku} size={64} />}
@@ -172,7 +172,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
                     <ArrowRightLeft className="h-5 w-5 text-yellow-500" /> {title} <Badge variant="secondary">{items.length}</Badge>
                 </h3>
-                <div className="border rounded-lg">
+                <div className="border rounded-lg overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -185,7 +185,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.productName} ({item.sku || 'N/A'})</TableCell>
+                                    <TableCell className="font-medium min-w-[200px]">{item.productName} ({item.sku || 'N/A'})</TableCell>
                                     <TableCell>
                                         {item.sku && <SkuQrCode sku={item.sku} size={64} />}
                                     </TableCell>
