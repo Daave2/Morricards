@@ -81,6 +81,8 @@ const ReasonSchema = z.object({
 
 
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
+const LOCAL_STORAGE_KEY_RECENT_AVAILABILITY = 'morricards-availability-recent';
+
 
 const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
     if (value === undefined || value === null || value === '') return null;
@@ -231,6 +233,7 @@ const StatusIndicator = ({ isFetching }: { isFetching: boolean }) => {
 
 export default function AvailabilityPage() {
   const [reportedItems, setReportedItems] = useState<ReportedItem[]>([]);
+  const [recentItems, setRecentItems] = useState<ReportedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
@@ -285,8 +288,12 @@ export default function AvailabilityPage() {
       if (savedItems) {
         setReportedItems(JSON.parse(savedItems));
       }
+      const savedRecentItems = localStorage.getItem(LOCAL_STORAGE_KEY_RECENT_AVAILABILITY);
+       if (savedRecentItems) {
+        setRecentItems(JSON.parse(savedRecentItems));
+      }
     } catch (error) {
-      console.error("Failed to load reported items from local storage", error);
+      console.error("Failed to load items from local storage", error);
     }
   }, []);
 
@@ -297,6 +304,16 @@ export default function AvailabilityPage() {
       console.error("Failed to save reported items to local storage", error);
     }
   }, [reportedItems]);
+
+  const updateRecentItems = (newItem: ReportedItem) => {
+    setRecentItems(prev => {
+      const withoutOld = prev.filter(item => item.sku !== newItem.sku);
+      const newRecent = [newItem, ...withoutOld].slice(0, 5);
+      localStorage.setItem(LOCAL_STORAGE_KEY_RECENT_AVAILABILITY, JSON.stringify(newRecent));
+      return newRecent;
+    });
+  };
+
 
   const processSku = useCallback(async (sku: string) => {
     if (!sku || sku.trim().length < 4) {
@@ -410,6 +427,7 @@ export default function AvailabilityPage() {
                 comment: `Added in Speed Mode`,
             };
             setReportedItems(prev => [newReportedItem, ...prev]);
+            updateRecentItems(newReportedItem);
 
             if (defaultReason === 'Early Sellout' && product.stockQuantity >= 10) {
                  toast({
@@ -515,6 +533,7 @@ export default function AvailabilityPage() {
   }
 
   const handleReasonSubmit = (values: z.infer<typeof ReasonSchema>) => {
+      let reportedItem: ReportedItem | null = null;
       if (editingItem) {
         // We are editing an existing item
         const updatedItem: ReportedItem = {
@@ -522,6 +541,7 @@ export default function AvailabilityPage() {
             reason: values.reason,
             comment: values.comment,
         };
+        reportedItem = updatedItem;
         setReportedItems(prev => prev.map(item => item.reportId === editingItem.reportId ? updatedItem : item));
         toast({ title: 'Item Updated', description: `${editingItem.name} has been updated.` });
 
@@ -533,10 +553,14 @@ export default function AvailabilityPage() {
             reason: values.reason,
             comment: values.comment,
         };
+        reportedItem = newReportedItem;
         setReportedItems(prev => [newReportedItem, ...prev]);
         toast({ title: 'Item Reported', description: `${scannedProduct.name} has been added to the report list.` });
       }
       
+      if (reportedItem) {
+        updateRecentItems(reportedItem);
+      }
       handleModalOpenChange(false);
   }
   
@@ -545,6 +569,19 @@ export default function AvailabilityPage() {
       setScannedProduct(null);
       reasonForm.reset({ reason: item.reason, comment: item.comment || '' });
       setIsModalOpen(true);
+  }
+
+  const handleRecentItemClick = (item: ReportedItem) => {
+     if (reportedItems.some(i => i.sku === item.sku)) {
+        toast({
+            variant: 'destructive',
+            title: 'Item Already Reported',
+            description: `${item.name} is already on the report list.`
+        });
+        return;
+    }
+    setReportedItems(prev => [item, ...prev]);
+    toast({ title: 'Item Added', description: `${item.name} re-added to the report list.` });
   }
 
   const handleUndoDelete = useCallback(() => {
@@ -925,8 +962,14 @@ export default function AvailabilityPage() {
           </Card>
         </div>
 
+        {isLoading && reportedItems.length === 0 && (
+           <div className="text-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Looking up product...</p>
+          </div>
+        )}
 
-          {reportedItems.length > 0 && 
+          {reportedItems.length > 0 ? (
               <Card>
                   <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
@@ -1017,7 +1060,49 @@ export default function AvailabilityPage() {
                     </div>
                   </CardContent>
               </Card>
-          }
+          ) : recentItems.length > 0 && !isLoading ? (
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-xl font-semibold mb-4">Recently Reported</h2>
+              <div className="space-y-4">
+                {recentItems.map((item, i) => (
+                  <Card
+                    key={item.reportId}
+                    className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-shadow animate-in fade-in-50"
+                    style={{ animationDelay: `${i * 100}ms` }}
+                    onClick={() => handleRecentItemClick(item)}
+                  >
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
+                          <Image
+                            src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
+                            alt={item.name}
+                            width={80}
+                            height={80}
+                            className="rounded-md object-cover"
+                            data-ai-hint="product image small"
+                          />
+                      </div>
+                      <div className="flex-grow min-w-0">
+                        <p className="font-semibold">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
+                        <div className="mt-2 flex items-baseline gap-2">
+                            <Badge variant={item.reason === 'Other' ? 'secondary' : 'default'}>{item.reason}</Badge>
+                            <p className="text-xs text-muted-foreground">Stock: {item.stockQuantity}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+           ) : !isLoading && (
+              <Card>
+                <CardContent className="p-12 text-center">
+                    <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">Search or scan a product to add it to the availability report.</p>
+                </CardContent>
+            </Card>
+           )}
         </TooltipProvider>
       </main>
     </div>
@@ -1025,3 +1110,4 @@ export default function AvailabilityPage() {
   );
 }
 
+    
