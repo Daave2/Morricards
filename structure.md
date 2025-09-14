@@ -31,15 +31,15 @@ This is the central hub for all AI-related functionality, powered by Genkit.
 
 - **`ai/genkit.ts`**: Initializes and configures the global Genkit instance.
 - **`ai/flows/*`**: Contains all the individual Genkit flows.
-  - `*-flow.ts`: Defines a specific AI capability, such as `product-insights-flow.ts` or `price-validator-flow.ts`. These files define the prompts, tools, and input/output schemas (using Zod).
-  - `*-types.ts`: Shared Zod schemas and TypeScript types for a flow's inputs and outputs.
+  - `*-flow.ts`: Defines a specific AI capability, such as `product-insights-flow.ts` or `planogram-flow.ts`. These files define the prompts, tools, and import their input/output schemas.
+  - `*-types.ts`: Shared Zod schemas and TypeScript types for a flow's inputs and outputs (e.g., `planogram-types.ts`).
 
 ### `/components`
 This directory holds all reusable React components.
 
 - **`components/ui`**: Contains the standard, un-styled UI primitives from ShadCN (e.g., `button.tsx`, `card.tsx`).
 - **`components/*.tsx`**: Higher-level, application-specific components (e.g., `AppLayout.tsx`, `ProductCard.tsx`, `StoreMap.tsx`).
-- **`components/assistant`**: Components specifically used within the AI Assistant page.
+- **`components/assistant`**: Components specifically used within the AI Assistant page, such as the `SearchComponent`.
 
 ### `/hooks`
 Custom React Hooks used across the application to encapsulate client-side logic.
@@ -61,15 +61,17 @@ Contains shared libraries, data, and utility functions.
 
 - **Data Fetching**: Client components (`*Client.tsx`) call Server Actions defined in `app/actions.ts`. These actions then use the `lib/morrisons-api.ts` client to fetch data.
 - **AI Flows**: Client components directly import and call the server-side Genkit flow functions from `/ai/flows/*.ts`. These are exposed as async functions that can be invoked from the client.
+  - **Product Chat**: `app/assistant/AssistantPageClient.tsx` contains a `ChatInterface` component that calls the `productChatFlow` to create a conversational experience.
+  - **Planogram Validation**: `app/planogram/PlanogramClient.tsx` calls `planogramFlow`. This flow is a key example of complex AI logic, performing a full comparison of two images (planogram vs. shelf) or extracting items from a single planogram image. The results are returned as a single, consolidated list with a status for each item.
 - **Settings**: All pages that need the Store ID or API tokens use the `useApiSettings` hook to get the current values. They do not manage this state locally.
 - **Offline**: When the app is offline (detected by `useNetworkSync`), actions like adding a product to the picking list or reporting an availability issue are queued in IndexedDB via `lib/offlineQueue.ts`. The `useNetworkSync` hook automatically flushes this queue when the app comes back online.
-- **Styling**: All styling is done via Tailwind CSS and ShadCN UI components. Themes are defined in `app/globals.css` and applied in the root `layout.tsx`.
+- **Styling**: All styling is done via Tailwind CSS and ShadCN UI components. Themes are defined in `app/globals.css` and applied in the root `layout.tsx`. The bottom navigation bar was recently refactored into a "More" menu pattern in `components/BottomNavbar.tsx` for better mobile UX.
 
 ## 4. Key Examples (Golden Paths)
 
 To ensure consistency, refer to these files as the standard for common tasks.
 
 -   **Creating a New Page**: Follow the pattern in `app/picking/page.tsx` (for the Suspense wrapper) and `app/picking/PickingListClient.tsx` (for the interactive client logic).
--   **Creating an AI Flow**: Use `ai/flows/product-insights-flow.ts` as the template. It demonstrates proper use of Zod schemas, structured outputs, and a clear prompt.
--   **Defining a Component**: `components/product-card.tsx` is a good example of a complex, data-driven component with conditional rendering and user interactions.
+-   **Creating an AI Flow**: Use `ai/flows/product-insights-flow.ts` and its corresponding `*-types.ts` file as a template. `ai/flows/planogram-flow.ts` is a good example of a more complex, multi-input flow.
+-   **Defining a Component**: `components/product-card.tsx` is a good example of a complex, data-driven component. The results display in `app/planogram/PlanogramClient.tsx` is a good example of rendering a list of cards for a responsive mobile layout.
 -   **Handling Forms**: The forms in `app/picking/PickingListClient.tsx` and `app/settings/page.tsx` demonstrate the use of `react-hook-form` with Zod for validation.

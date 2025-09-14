@@ -4,6 +4,8 @@ This document tracks the major versions and completed features for the Store Mob
 
 ## v0.6 - AI Guidance & Documentation (Current)
 -   Implemented an interactive AI chat feature on the Product Assistant page.
+-   Updated planogram validator to handle single-image analysis (listing items from a planogram) and use a more robust card-based layout for results.
+-   Refactored the bottom navigation for a cleaner mobile experience.
 -   Added `structure.md` to document the application architecture for AI assistants.
 -   Updated `README.md` to guide assistants to use the new documentation files.
 
