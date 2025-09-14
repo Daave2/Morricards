@@ -5,13 +5,17 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera, List } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera, List, PoundSterling } from 'lucide-react';
 import Image from 'next/image';
 import { planogramFlow } from '@/ai/flows/planogram-flow';
 import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import SkuQrCode from '@/components/SkuQrCode';
+import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
+import { getProductData } from '@/app/actions';
+import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import { useApiSettings } from '@/hooks/use-api-settings';
 
 
 const ImageUpload = ({ title, onImageSelect, onCameraClick, selectedImage, disabled }: { title:string, onImageSelect: (file: File) => void, onCameraClick: () => void, selectedImage: File | null, disabled?: boolean }) => {
@@ -103,8 +107,47 @@ const toDataUri = (file: File | null): Promise<string | null> => {
     });
 };
 
+type FullProductInfo = FetchMorrisonsDataOutput[0];
 
-const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
+const ProductDetailModal = ({ product, open, onOpenChange }: { product: FullProductInfo | null; open: boolean; onOpenChange: (open: boolean) => void }) => {
+    if (!product) return null;
+
+    const imageUrl = product.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/400x400.png';
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{product.name}</DialogTitle>
+                    <DialogDescription>SKU: {product.sku}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <div className="flex justify-center">
+                        <Image src={imageUrl} alt={product.name} width={150} height={150} className="rounded-lg border object-cover" />
+                    </div>
+                    <div className="flex justify-center">
+                         <SkuQrCode sku={product.sku} size={150} />
+                    </div>
+                    <Card>
+                        <CardContent className="p-4 space-y-2 text-sm">
+                             <div className="flex items-center gap-3">
+                                <PoundSterling className="h-5 w-5 text-primary" />
+                                <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
+                            </div>
+                            {product.price.promotional && (
+                                <div className="pl-8">
+                                    <Badge variant="destructive">{product.price.promotional}</Badge>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+const ResultsDisplay = ({ results, onShowDetails }: { results: PlanogramOutput; onShowDetails: (item: ComparisonResult) => void }) => {
     const { comparisonResults } = results;
 
     const correctItems = comparisonResults.filter(r => r.status === 'Correct');
@@ -127,8 +170,6 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
             case 'listed': icon = <List className="h-5 w-5 text-primary" />; badgeVariant = "secondary"; break;
         }
 
-        const showQr = variant !== 'correct';
-
         return (
             <div>
                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
@@ -136,7 +177,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                 </h3>
                 <div className="space-y-3">
                     {items.map((item, index) => (
-                        <Card key={index} className="flex flex-col sm:flex-row items-start gap-4 p-3">
+                        <Card key={index} className="flex flex-col sm:flex-row items-start gap-4 p-3 cursor-pointer hover:bg-accent/50" onClick={() => onShowDetails(item)}>
                             <div className="flex-grow">
                                 <p className="font-semibold text-sm">{item.productName}</p>
                                 <p className="text-xs text-muted-foreground">SKU: {item.sku || 'N/A'}</p>
@@ -145,17 +186,12 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                                         <p>Expected: <span className="font-medium">Shelf {item.expectedShelf}, Pos {item.expectedPosition}</span></p>
                                         <p>Actual: <span className="font-medium text-destructive">Shelf {item.actualShelf}, Pos {item.actualPosition}</span></p>
                                     </div>
-                                ) : (
+                                ) : (item.actualShelf || item.expectedShelf) ? (
                                     <div className="text-xs mt-2">
                                         Location: <span className="font-medium">Shelf {item.actualShelf ?? item.expectedShelf}, Pos {item.actualPosition ?? item.expectedPosition}</span>
                                     </div>
-                                )}
+                                ) : null}
                             </div>
-                            {showQr && item.sku && (
-                                <div className="flex-shrink-0">
-                                    <SkuQrCode sku={item.sku} size={100} />
-                                </div>
-                            )}
                         </Card>
                     ))}
                 </div>
@@ -170,7 +206,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
             <CardHeader>
                 <CardTitle>Analysis Results</CardTitle>
                 <CardDescription>
-                    {isComparison ? "Comparison of the planogram against the physical shelf." : "Items extracted from the planogram."}
+                    {isComparison ? "Comparison of the planogram against the physical shelf. Click any item for details." : "Items extracted from the planogram. Click any item for details."}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -191,8 +227,11 @@ export default function PlanogramClient() {
   const [results, setResults] = useState<PlanogramOutput | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraTarget, setCameraTarget] = useState<'planogram' | 'shelf' | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<FullProductInfo | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const { toast } = useToast();
+  const { settings } = useApiSettings();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -307,6 +346,29 @@ export default function PlanogramClient() {
 
     setIsLoading(false);
   };
+  
+  const handleShowDetails = async (item: ComparisonResult) => {
+    const sku = item.sku || item.ean;
+    if (!sku) {
+        toast({ variant: 'destructive', title: 'No SKU/EAN', description: 'This item does not have an identifier to look up.' });
+        return;
+    }
+    
+    toast({ title: 'Fetching Product Details...' });
+    const { data, error } = await getProductData({
+        locationId: settings.locationId,
+        skus: [sku],
+        bearerToken: settings.bearerToken,
+        debugMode: settings.debugMode,
+    });
+
+    if (error || !data || data.length === 0) {
+        toast({ variant: 'destructive', title: 'Product Not Found', description: `Could not fetch details for ${sku}.` });
+    } else {
+        setSelectedProduct(data[0]);
+        setIsModalOpen(true);
+    }
+  }
 
   const buttonText = shelfImage ? 'Find Differences' : 'Analyze Planogram';
 
@@ -329,6 +391,9 @@ export default function PlanogramClient() {
             </Button>
         </div>
     )}
+
+    <ProductDetailModal product={selectedProduct} open={isModalOpen} onOpenChange={setIsModalOpen} />
+
     <main className="container mx-auto px-4 py-8 md:py-12">
       <div className="space-y-8 max-w-6xl mx-auto">
         <Card>
@@ -366,7 +431,7 @@ export default function PlanogramClient() {
             </div>
         )}
 
-        {results && <ResultsDisplay results={results} />}
+        {results && <ResultsDisplay results={results} onShowDetails={handleShowDetails} />}
       </div>
     </main>
     </>

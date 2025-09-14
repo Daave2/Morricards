@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow for validating a shelf's layout against a planogram.
@@ -24,17 +25,17 @@ You have been given two images:
 2.  **The Shelf Photo**: A photo of the actual shelf.
 
 Your tasks are:
-1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost).
+1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU, and EAN (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost).
 
-2.  **Analyze the Shelf Photo**: Identify every product on the shelf by reading their **shelf-edge price tickets**. For each ticket you identify, extract the product name and determine its shelf and position.
+2.  **Analyze the Shelf Photo**: Identify every product on the shelf by reading their **shelf-edge price tickets**. For each ticket you identify, extract the product name, SKU, and EAN, and determine its shelf and position.
 
-3.  **Compare and Consolidate**: Compare the list from the planogram to the list from the shelf. You must intelligently match products even if the names are slightly different (e.g., 'GU Hot Choc Puds 2x80G' on the planogram and 'GU Hot Chocolate Puddings' on the shelf are the same). The SKU is the best unique identifier if available. Generate a single 'comparisonResults' list with a status for each item:
+3.  **Compare and Consolidate**: Compare the list from the planogram to the list from the shelf. You must intelligently match products even if the names are slightly different (e.g., 'GU Hot Choc Puds 2x80G' on the planogram and 'GU Hot Chocolate Puddings' on the shelf are the same). The SKU or EAN is the best unique identifier. Generate a single 'comparisonResults' list with a status for each item:
     - **Correct**: The product is on the correct shelf and position.
     - **Misplaced**: The product is on the shelf, but on the wrong shelf or in the wrong position.
     - **Missing**: The product is on the planogram but cannot be found on the shelf.
     - **Extra**: The product is on the shelf but is not on the planogram.
 
-4. For each item in your result, provide the product name, SKU, expected location (if any), and actual location (if any).
+4. For each item in your result, provide the product name, SKU, EAN (if available), expected location (if any), and actual location (if any).
 
 Planogram Image:
 {{media url=planogramImageDataUri}}
@@ -52,7 +53,7 @@ Your tasks are:
 2.  **Extract Products**:
     - **If items are circled**: Identify *only* the products that are circled.
     - **If NO items are circled**: Identify *all* products on the entire planogram.
-3.  **Generate Results**: For each product you identify, extract its name and SKU. Return this as a 'comparisonResults' list. For every item, set the 'status' field to **'Listed'**.
+3.  **Generate Results**: For each product you identify, extract its name, SKU, and EAN. Return this as a 'comparisonResults' list. For every item, set the 'status' field to **'Listed'**.
 
 Planogram Image:
 {{media url=planogramImageDataUri}}

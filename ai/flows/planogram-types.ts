@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Shared types for the planogram validation flow.
  */
@@ -31,6 +32,7 @@ export const ComparisonResultSchema = z.object({
     status: z.enum(['Correct', 'Misplaced', 'Missing', 'Extra', 'Listed']),
     productName: z.string(),
     sku: z.string().nullable(),
+    ean: z.string().nullable().describe("The EAN barcode number, if available."),
     expectedShelf: z.number().nullable(),
     expectedPosition: z.number().nullable(),
     actualShelf: z.number().nullable(),
