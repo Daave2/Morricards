@@ -9,7 +9,6 @@ import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Cam
 import Image from 'next/image';
 import { planogramFlow } from '@/ai/flows/planogram-flow';
 import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import SkuQrCode from '@/components/SkuQrCode';
@@ -114,7 +113,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
     const extraItems = comparisonResults.filter(r => r.status === 'Extra');
     const listedItems = comparisonResults.filter(r => r.status === 'Listed');
 
-    const renderTable = (items: ComparisonResult[], title: string, variant: 'correct' | 'missing' | 'extra' | 'listed') => {
+    const renderResultList = (items: ComparisonResult[], title: string, variant: 'correct' | 'missing' | 'extra' | 'listed' | 'misplaced') => {
         if (items.length === 0) return null;
         
         let icon;
@@ -122,6 +121,7 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
         
         switch(variant) {
             case 'correct': icon = <Check className="h-5 w-5 text-green-500" />; badgeVariant = "default"; break;
+            case 'misplaced': icon = <ArrowRightLeft className="h-5 w-5 text-yellow-500" />; badgeVariant = "secondary"; break;
             case 'missing': icon = <X className="h-5 w-5 text-red-500" />; badgeVariant = "destructive"; break;
             case 'extra': icon = <AlertTriangle className="h-5 w-5 text-orange-500" />; badgeVariant = "outline"; break;
             case 'listed': icon = <List className="h-5 w-5 text-primary" />; badgeVariant = "secondary"; break;
@@ -134,72 +134,35 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
                     {icon} {title} <Badge variant={badgeVariant}>{items.length}</Badge>
                 </h3>
-                <div className="border rounded-lg overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-xs">Product</TableHead>
-                                {showQr && <TableHead className="text-xs">QR</TableHead>}
-                                <TableHead className="text-center text-xs">Shelf</TableHead>
-                                <TableHead className="text-center text-xs">Position</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {items.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium min-w-[200px] text-xs">{item.productName} ({item.sku || 'N/A'})</TableCell>
-                                    {showQr && (
-                                        <TableCell className="p-1">
-                                            {item.sku && <SkuQrCode sku={item.sku} size={128} />}
-                                        </TableCell>
-                                    )}
-                                    <TableCell className="text-center text-xs">{item.actualShelf ?? item.expectedShelf ?? 'N/A'}</TableCell>
-                                    <TableCell className="text-center text-xs">{item.actualPosition ?? item.expectedPosition ?? 'N/A'}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                <div className="space-y-3">
+                    {items.map((item, index) => (
+                        <Card key={index} className="flex flex-col sm:flex-row items-start gap-4 p-3">
+                            <div className="flex-grow">
+                                <p className="font-semibold text-sm">{item.productName}</p>
+                                <p className="text-xs text-muted-foreground">SKU: {item.sku || 'N/A'}</p>
+                                {variant === 'misplaced' ? (
+                                    <div className="text-xs mt-2">
+                                        <p>Expected: <span className="font-medium">Shelf {item.expectedShelf}, Pos {item.expectedPosition}</span></p>
+                                        <p>Actual: <span className="font-medium text-destructive">Shelf {item.actualShelf}, Pos {item.actualPosition}</span></p>
+                                    </div>
+                                ) : (
+                                    <div className="text-xs mt-2">
+                                        Location: <span className="font-medium">Shelf {item.actualShelf ?? item.expectedShelf}, Pos {item.actualPosition ?? item.expectedPosition}</span>
+                                    </div>
+                                )}
+                            </div>
+                            {showQr && item.sku && (
+                                <div className="flex-shrink-0">
+                                    <SkuQrCode sku={item.sku} size={100} />
+                                </div>
+                            )}
+                        </Card>
+                    ))}
                 </div>
             </div>
         );
     }
     
-    const renderMisplacedTable = (items: ComparisonResult[], title: string) => {
-        if (items.length === 0) return null;
-
-        return (
-             <div>
-                 <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
-                    <ArrowRightLeft className="h-5 w-5 text-yellow-500" /> {title} <Badge variant="secondary">{items.length}</Badge>
-                </h3>
-                <div className="border rounded-lg overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-xs">Product</TableHead>
-                                <TableHead className="text-xs">QR</TableHead>
-                                <TableHead className="text-xs">Expected</TableHead>
-                                <TableHead className="text-xs">Actual</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {items.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium min-w-[200px] text-xs">{item.productName} ({item.sku || 'N/A'})</TableCell>
-                                    <TableCell className="p-1">
-                                        {item.sku && <SkuQrCode sku={item.sku} size={128} />}
-                                    </TableCell>
-                                    <TableCell className="text-xs">S:{item.expectedShelf}, P:{item.expectedPosition}</TableCell>
-                                    <TableCell className="text-xs">S:{item.actualShelf}, P:{item.actualPosition}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-        )
-    }
-
     const isComparison = missingItems.length > 0 || extraItems.length > 0 || correctItems.length > 0 || misplacedItems.length > 0;
 
     return (
@@ -211,11 +174,11 @@ const ResultsDisplay = ({ results }: { results: PlanogramOutput }) => {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {renderTable(listedItems, "Items on Planogram", "listed")}
-                {renderTable(correctItems, "Correctly Placed", "correct")}
-                {renderMisplacedTable(misplacedItems, "Misplaced Items")}
-                {renderTable(missingItems, "Missing from Shelf", "missing")}
-                {renderTable(extraItems, "Extra on Shelf (Not on Plan)", "extra")}
+                {renderResultList(listedItems, "Items on Planogram", "listed")}
+                {renderResultList(correctItems, "Correctly Placed", "correct")}
+                {renderResultList(misplacedItems, "Misplaced Items", "misplaced")}
+                {renderResultList(missingItems, "Missing from Shelf", "missing")}
+                {renderResultList(extraItems, "Extra on Shelf (Not on Plan)", "extra")}
             </CardContent>
         </Card>
     )
