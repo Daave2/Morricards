@@ -680,12 +680,12 @@ export default function AssistantPageClient() {
                                 <AccordionContent className="pt-4 text-sm text-muted-foreground">
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
+                                            <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.primaryEan13 || product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                                             <DataRow icon={<Info />} label="Status" value={product.status} />
-                                            <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers?.[0]} />
+                                            <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails?.legacyItemNumbers?.[0]} />
                                             <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
-                                            <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
-                                            <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
+                                            <DataRow icon={<Crown />} label="Brand" value={product.productDetails?.brand} />
+                                            <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails?.countryOfOrigin} />
                                             <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
                                             <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
                                             <div className='sm:col-span-2'>
@@ -702,7 +702,7 @@ export default function AssistantPageClient() {
                                             <SkuQrCode sku={product.sku} />
                                         </div>
 
-                                        <Accordion type="single" collapsible className="w-full text-xs">
+                                        {product.productDetails && <Accordion type="single" collapsible className="w-full text-xs">
                                             <AccordionItem value="stock">
                                                 <AccordionTrigger className='py-2 font-semibold'>Stock & Logistics</AccordionTrigger>
                                                 <AccordionContent className="space-y-3 pt-2">
@@ -795,9 +795,9 @@ export default function AssistantPageClient() {
                                                     </AccordionContent>
                                                 </AccordionItem>
                                             )}
-                                        </Accordion>
-                                        {product.productDetails.productMarketing && <Separator className="my-4" />}
-                                        {product.productDetails.productMarketing && (
+                                        </Accordion>}
+                                        {product.productDetails?.productMarketing && <Separator className="my-4" />}
+                                        {product.productDetails?.productMarketing && (
                                         <div className='italic text-xs bg-muted/50 p-3 rounded-md'>
                                             {product.productDetails.productMarketing}
                                         </div>
