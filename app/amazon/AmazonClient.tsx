@@ -163,10 +163,11 @@ export default function AmazonClient() {
         // Step 3: Call the main analysis prompt with the image AND the fetched data.
         const analysis = await pickingAnalysisFlow({
             imageDataUri: imageDataUri!,
-            productsData: productsData
+            // The definitive fix: sanitize the data before sending it back to the server action.
+            productsData: JSON.parse(JSON.stringify(productsData))
         });
 
-        // This is the crucial sanitization step to prevent serialization errors.
+        // This sanitization is also crucial to prevent serialization errors on the client.
         const cleanAnalysis = JSON.parse(JSON.stringify(analysis));
 
         if (!cleanAnalysis.products || cleanAnalysis.products.length === 0) {
