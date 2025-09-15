@@ -181,7 +181,7 @@ export default function AmazonClient() {
             productData: p.sku ? JSON.parse(JSON.stringify(productDataMap.get(p.sku) || null)) : undefined,
         }));
         
-        setAnalysisResults(enrichedResults);
+        setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
         toast({ title: 'Analysis Complete!', description: `AI has provided suggestions for ${enrichedResults.length} items.` });
 
     } catch (error) {
@@ -302,3 +302,5 @@ export default function AmazonClient() {
     </main>
   );
 }
+
+    

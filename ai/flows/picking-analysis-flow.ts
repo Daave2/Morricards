@@ -71,7 +71,12 @@ Image: {{media url=imageDataUri}}`
 export async function pickingAnalysisFlow(input: PickingAnalysisInput): Promise<PickingAnalysisOutput> {
   
   // The client now orchestrates fetching. This flow just does the final analysis.
-  const { output } = await pickingAnalysisPrompt(input);
+  const { output } = await pickingAnalysisPrompt({
+      ...input,
+      productsData: JSON.parse(JSON.stringify(input.productsData)),
+  });
 
   return output || { products: [] };
 }
+
+    
