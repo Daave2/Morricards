@@ -160,11 +160,17 @@ export default function AmazonClient() {
         
         toast({ title: 'Data Fetched', description: 'AI is now generating suggestions...' });
         
+        // **DEBUGGING STEP**: Log the data structure before sending it to the server action.
+        try {
+            console.error("DEBUG: productsData being sent to pickingAnalysisFlow", JSON.stringify(productsData, null, 2));
+        } catch (e) {
+            console.error("DEBUG: FAILED TO STRINGIFY productsData. This is the source of the error. The object is not a plain object.", e);
+        }
+        
         // Step 3: Call the main analysis prompt with the image AND the fetched data.
-        // Crucially, sanitize the data being passed back to the server function.
         const analysis = await pickingAnalysisFlow({
             imageDataUri: imageDataUri!,
-            productsData: JSON.parse(JSON.stringify(productsData))
+            productsData: productsData
         });
 
         if (!analysis.products || analysis.products.length === 0) {
@@ -177,7 +183,7 @@ export default function AmazonClient() {
         const productDataMap = new Map(productsData.map(p => [p.sku, p]));
         const enrichedResults = analysis.products.map((p: AnalyzedProduct) => ({
             ...p,
-            productData: p.sku ? JSON.parse(JSON.stringify(productDataMap.get(p.sku))) : undefined,
+            productData: p.sku ? productDataMap.get(p.sku) : undefined,
         }));
         
         setAnalysisResults(enrichedResults);
