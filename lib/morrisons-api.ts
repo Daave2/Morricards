@@ -127,38 +127,33 @@ async function fetchJson<T>(
 
 
 // ─────────────────────────── endpoint wrappers ────────────────────────────
-// NEW: Uses our Next.js proxy to avoid CORS issues and hide the API key.
-export async function fetchProductFromUpstream(
+async function getProductFromUpstream(
   sku: string,
   bearerToken?: string,
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
   
-  // This needs to be an absolute URL when called from the server (Genkit flow)
-  const baseUrl = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000') : '';
-  const url = `${baseUrl}${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
+  // This is a server-side only function, so we build the full URL
+  const productApiUrl = `https://api.morrisons.com/product/v1/items/${encodeURIComponent(sku)}?apikey=${API_KEY}`;
   
   try {
-    const res = await fetch(url, {
-        headers: {
-            ...(bearerToken ? { 'Authorization': `Bearer ${bearerToken}` } : {})
-        },
-        cache: 'no-store',
-    });
+    const headers = new Headers();
+    if (bearerToken) {
+      headers.set('Authorization', `Bearer ${bearerToken}`);
+    }
+      
+    const res = await fetch(productApiUrl, { headers });
 
     if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
-        return { product: null, error: `Product API Error ${res.status}: ${errData.error || errData.details || res.statusText}` };
+        const errorBody = await res.text();
+        return { product: null, error: `Product API Error ${res.status}: ${errorBody}` };
     }
 
     const product = await res.json();
-    if (!product) {
-       return { product: null, error: `Product not found for SKU ${sku} via Product API.` };
-    }
     return { product, error: null };
 
   } catch (error) {
-    const errorMessage = `Error in fetchProductFromUpstream for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
+    const errorMessage = `Error in getProductFromUpstream for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
     return { product: null, error: errorMessage };
   }
 }
@@ -244,6 +239,25 @@ function extractLocationBits(pi: PriceIntegrity | null): { std: string; secondar
 export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promise<FetchMorrisonsDataOutput> {
   const { locationId, skus, bearerToken, debugMode } = input;
 
+  // When called from the client, use the proxy. When from the server, call the upstream directly.
+  const fetchProductFunction = typeof window === 'undefined' ? getProductFromUpstream : async (sku: string, bearer?: string) => {
+      try {
+        const res = await fetch(`${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`, {
+          headers: { ...(bearer ? { 'Authorization': `Bearer ${bearer}` } : {}) },
+          cache: 'no-store',
+        });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
+            return { product: null, error: `Product API Error ${res.status}: ${errData.error || errData.details || res.statusText}` };
+        }
+        const product = await res.json();
+        return { product, error: null };
+      } catch (e) {
+          return { product: null, error: `Error in client-side fetch: ${e instanceof Error ? e.message : String(e)}` };
+      }
+  };
+
+
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
         let cumulativeError = '';
@@ -266,14 +280,14 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             let mainSku = piProduct?.itemNumber?.toString() || scannedSku;
 
             // 3. Fetch the full, rich product data from our Next.js proxy using the main SKU.
-            const { product: mainProduct, error: productError } = await fetchProductFromUpstream(mainSku, bearerToken);
+            const { product: mainProduct, error: productError } = await fetchProductFunction(mainSku, bearerToken);
             if (productError) cumulativeError += `Product Proxy Error: ${productError}\n`;
             rawData.productProxy = mainProduct;
             
             // 4. If the main fetch failed but PI gave us a different SKU (pack vs each), try the original scanned SKU as a fallback.
             let fallbackProduct: Product | null = null;
             if (productError && mainSku !== scannedSku) {
-                const { product } = await fetchProductFromUpstream(scannedSku, bearerToken);
+                const { product } = await fetchProductFunction(scannedSku, bearerToken);
                 fallbackProduct = product;
             }
             
