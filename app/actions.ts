@@ -43,14 +43,21 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
       bearerToken: bearerToken,
       debugMode: debugMode,
     });
-    // The data itself can contain proxyError for individual items, which the client can use.
-    // We only return a top-level error if the whole fetch fails catastrophically.
+    
     if (!data || data.length === 0) {
       return { data: null, error: `No products found for the provided SKUs.` };
     }
-    // Convert data to a plain JSON object to prevent serialization errors
-    const serializableData = JSON.parse(JSON.stringify(data));
-    return { data: serializableData, error: null };
+
+    // Attempt to serialize and deserialize to ensure it's a plain object.
+    // This will throw an error if the data is not serializable, which we can catch.
+    try {
+      const serializableData = JSON.parse(JSON.stringify(data));
+      return { data: serializableData, error: null };
+    } catch (serializationError) {
+        console.error('Serialization Error in getProductData:', serializationError);
+        return { data: null, error: 'Failed to serialize product data. The data object contains non-plain objects that cannot be passed to the client. Please check the server logs for details.' };
+    }
+
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('Failed to fetch Morrisons data:', e);
