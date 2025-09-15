@@ -13,7 +13,6 @@ import { useApiSettings } from '@/hooks/use-api-settings';
 import { cn } from '@/lib/utils';
 import { pickingAnalysisFlow } from '@/ai/flows/picking-analysis-flow';
 import type { AnalyzedProduct } from '@/ai/flows/picking-analysis-types';
-import ProductCard from '@/components/product-card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const ImageUpload = ({ onImageSelect, selectedImage, disabled }: { onImageSelect: (file: File) => void, selectedImage: File | null, disabled?: boolean }) => {
@@ -128,18 +127,22 @@ export default function AmazonClient() {
     try {
         const imageDataUri = await toDataUri(listImage);
         
-        // Step 1: AI extracts SKUs from the image
-        const analysis = await pickingAnalysisFlow({ imageDataUri: imageDataUri! });
+        // This now represents the full, combined call.
+        const analysis = await pickingAnalysisFlow({ 
+            imageDataUri: imageDataUri!,
+            // The client-side orchestration is now handled inside the flow itself for simplicity here.
+            // In a more complex app, we might do the two-step fetch here, but for now this is fine.
+        });
 
         if (!analysis.products || analysis.products.length === 0) {
-            toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI could not identify any products in the image.' });
+            toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI could not identify any products or provide suggestions.' });
             setIsLoading(false);
             return;
         }
 
-        toast({ title: 'Products Identified', description: `Found ${analysis.products.length} items. Fetching details...` });
+        toast({ title: 'Products Analyzed', description: `Found suggestions for ${analysis.products.length} items. Fetching details...` });
 
-        // Step 2: Fetch detailed product data for all identified SKUs
+        // Step 2: Fetch detailed product data for all identified SKUs to enrich the UI
         const skus = analysis.products.map(p => p.sku).filter((s): s is string => !!s);
         const { data: productData, error } = await getProductData({
             locationId: settings.locationId,
