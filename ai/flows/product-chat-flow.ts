@@ -51,8 +51,11 @@ export async function productChatFlow(input: ProductChatInput): Promise<ProductC
     ]
   });
 
+  // Sanitize the complex product data object before passing it to the prompt.
+  const sanitizedProductData = JSON.parse(JSON.stringify(productData));
+
   const llmResponse = await prompt({
-    productData,
+    productData: sanitizedProductData,
     locationId,
   });
   

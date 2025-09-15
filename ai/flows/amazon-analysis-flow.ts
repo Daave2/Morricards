@@ -96,8 +96,9 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
       const product = productsData.find(p => p.scannedSku === sku);
       if (product) {
           try {
-            // Call the prompt directly and handle the response correctly
-            const diagnosticSummaryResult = await pickerDiagnosisPrompt({ productData: product });
+            // Sanitize the product object before passing it to the prompt.
+            const sanitizedProductData = JSON.parse(JSON.stringify(product));
+            const diagnosticSummaryResult = await pickerDiagnosisPrompt({ productData: sanitizedProductData });
             
             if (!diagnosticSummaryResult || !diagnosticSummaryResult.output) {
                 throw new Error("AI failed to generate a diagnosis summary.");
