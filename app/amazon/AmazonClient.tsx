@@ -1,20 +1,19 @@
-
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Bot, PackageSearch, Lightbulb, MapPin, Boxes, PoundSterling, AlertTriangle } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, PackageSearch, Lightbulb, Info, ThumbsUp } from 'lucide-react';
 import Image from 'next/image';
 import { getProductData } from '@/app/actions';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { cn } from '@/lib/utils';
-import { pickingAnalysisFlow } from '@/ai/flows/picking-analysis-flow';
-import type { AnalyzedProduct } from '@/ai/flows/picking-analysis-types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ocrPrompt } from '@/ai/flows/picking-analysis-flow';
+import { productInsightsFlow, type ProductInsightsOutput } from '@/ai/flows/product-insights-flow';
+import { AlertTriangle } from 'lucide-react';
 
 const ImageUpload = ({ onImageSelect, selectedImage, disabled }: { onImageSelect: (file: File) => void, selectedImage: File | null, disabled?: boolean }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -99,8 +98,10 @@ const toDataUri = (file: File | null): Promise<string | null> => {
     });
 };
 
-type EnrichedAnalysis = AnalyzedProduct & {
-    productData?: FetchMorrisonsDataOutput[0];
+type EnrichedAnalysis = {
+    product: FetchMorrisonsDataOutput[0];
+    insights: ProductInsightsOutput | null;
+    error?: string | null;
 };
 
 export default function AmazonClient() {
@@ -140,7 +141,7 @@ export default function AmazonClient() {
 
         toast({ title: 'Products Identified', description: `Found ${skus.length} SKUs. Fetching product details...` });
         
-        // Step 2: Fetch detailed product data using the extracted SKUs.
+        // Step 2: Fetch detailed product data for all SKUs at once.
         const { data: productsData, error: productError } = await getProductData({
             locationId: settings.locationId,
             skus,
@@ -151,38 +152,33 @@ export default function AmazonClient() {
         if (productError) {
              toast({ variant: 'destructive', title: 'Data Fetch Failed', description: productError });
         }
-
-        if (!productsData || productsData.length === 0) {
-            toast({ variant: 'destructive', title: 'Analysis Failed', description: 'Could not fetch data for any of the identified SKUs.' });
-            setIsLoading(false);
-            return;
-        }
         
-        toast({ title: 'Data Fetched', description: 'AI is now generating suggestions...' });
+        const productMap = new Map(productsData?.map(p => [p.sku, p]));
         
-        // Step 3: Call the main analysis prompt with the image AND the fetched data.
-        const analysis = await pickingAnalysisFlow({
-            imageDataUri: imageDataUri!,
-            productsData: productsData
+        toast({ title: 'Data Fetched', description: 'AI is now generating insights for each product...' });
+        
+        // Step 3: For each SKU, generate insights using the fetched data.
+        const insightPromises = skus.map(async (sku) => {
+            const product = productMap.get(sku);
+            if (!product) {
+                return { product: { sku, name: `Product not found for SKU ${sku}` } as any, insights: null, error: `Could not fetch data for SKU ${sku}` };
+            }
+            try {
+                const insights = await productInsightsFlow({ productData: product });
+                return { product, insights, error: null };
+            } catch (e) {
+                return { product, insights: null, error: e instanceof Error ? e.message : String(e) };
+            }
         });
 
-        if (!analysis.products || analysis.products.length === 0) {
-            toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI could not provide any suggestions for the identified products.' });
-            setIsLoading(false);
-            return;
-        }
+        const results = await Promise.all(insightPromises);
 
-        // Step 4: Enrich the analysis with the fetched data for UI display
-        const productDataMap = new Map(productsData.map(p => [p.sku, p]));
-        const enrichedResults = analysis.products.map((p: AnalyzedProduct) => ({
-            ...p,
-            productData: p.sku ? productDataMap.get(p.sku) : undefined,
-        }));
-        
         // **CRUCIAL FINAL SANITIZATION**
         // This guarantees that only plain objects are passed to the state.
-        setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
-        toast({ title: 'Analysis Complete!', description: `AI has provided suggestions for ${enrichedResults.length} items.` });
+        const sanitizedResults = JSON.parse(JSON.stringify(results));
+        
+        setAnalysisResults(sanitizedResults);
+        toast({ title: 'Analysis Complete!', description: `AI has provided insights for ${sanitizedResults.length} items.` });
 
     } catch (error) {
          toast({
@@ -203,7 +199,7 @@ export default function AmazonClient() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><PackageSearch /> Amazon Picker Assistant</CardTitle>
             <CardDescription>
-              Stuck on a pick? Upload a screenshot of your Amazon picking list. The AI will analyze it and provide suggestions to help you find the items.
+              Stuck on a pick? Upload a screenshot of your Amazon picking list. The AI will analyze it and provide insights to help you find the items.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -234,65 +230,48 @@ export default function AmazonClient() {
         {analysisResults.length > 0 && (
             <div className='space-y-6'>
                 {analysisResults.map((item, index) => (
-                    <Card key={item.sku || index}>
+                    <Card key={item.product.sku || index}>
                         <CardHeader>
-                            {item.productData && !item.productData.proxyError ? (
-                                <CardTitle>{item.productData.name}</CardTitle>
-                            ) : (
-                                <CardTitle>{item.productName || 'Unknown Product'}</CardTitle>
-                            )}
-                            <CardDescription>SKU: {item.sku || 'Not Found'}</CardDescription>
+                            <CardTitle>{item.product.name || 'Unknown Product'}</CardTitle>
+                            <CardDescription>SKU: {item.product.sku || 'Not Found'}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {item.productData && !item.productData.proxyError ? (
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    <div className="space-y-4">
-                                         <div className="p-4 border rounded-lg">
-                                            <div className="flex items-center gap-3 text-sm">
-                                                <Boxes className="h-5 w-5 text-primary" />
-                                                <span>Stock: <strong>{item.productData.stockQuantity}</strong></span>
-                                            </div>
-                                            <div className="flex items-start gap-3 text-sm mt-2">
-                                                <MapPin className="h-5 w-5 text-primary mt-0.5" />
-                                                <div className="flex-grow">
-                                                    <span>Location: <strong>{item.productData.location.standard || 'None'}</strong></span>
-                                                    {item.productData.location.secondary && (
-                                                        <div className="text-xs text-muted-foreground">
-                                                            Secondary: {item.productData.location.secondary}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                             <div className="flex items-center gap-3 text-sm mt-2">
-                                                <PoundSterling className="h-5 w-5 text-primary" />
-                                                <span>Price: <strong>£{item.productData.price.regular?.toFixed(2) || 'N/A'}</strong></span>
-                                            </div>
-                                         </div>
-                                         <div className="p-4 border rounded-lg bg-accent/50">
-                                            <h3 className="font-bold flex items-center gap-2 mb-2"><Lightbulb className="h-5 w-5 text-primary" /> AI Judgment</h3>
-                                            <p className="text-sm font-semibold text-primary-foreground bg-primary/80 rounded-md p-2">{item.judgement}</p>
-                                         </div>
+                           {item.insights ? (
+                             <div className="grid md:grid-cols-2 gap-6">
+                                <div className="p-4 border rounded-lg bg-accent/50 space-y-4">
+                                    <div>
+                                        <h3 className="font-bold flex items-center gap-2 mb-2"><Info className="h-5 w-5 text-primary" /> About This Product</h3>
+                                        <p className="text-sm">{item.insights.customerFacingSummary}</p>
                                     </div>
-                                     <div className="p-4 border rounded-lg">
-                                        <h3 className="font-bold mb-2">Next Steps</h3>
+                                </div>
+                                <div className="p-4 border rounded-lg space-y-4">
+                                    <div>
+                                        <h3 className="font-bold flex items-center gap-2 mb-2"><ThumbsUp className="h-5 w-5 text-primary" /> Key Selling Points</h3>
                                         <ul className="list-disc pl-5 space-y-2 text-sm">
-                                            {item.nextSteps?.map((step, i) => (
-                                                <li key={i}>{step}</li>
+                                            {item.insights.sellingPoints?.map((point, i) => (
+                                                <li key={i}>{point}</li>
                                             ))}
                                         </ul>
-                                     </div>
-
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold flex items-center gap-2 mb-2"><Lightbulb className="h-5 w-5 text-primary" /> Recipe Ideas</h3>
+                                        <ul className="list-disc pl-5 space-y-2 text-sm">
+                                            {item.insights.recipeIdeas?.map((idea, i) => (
+                                                <li key={i}>{idea}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
                                 </div>
-
-                            ) : (
+                            </div>
+                           ) : (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Could Not Fetch Details</AlertTitle>
+                                    <AlertTitle>Could Not Analyze Product</AlertTitle>
                                     <AlertDescription>
-                                        {item.productData?.proxyError ? item.productData.proxyError : `Could not fetch detailed product data for SKU ${item.sku}. The AI's suggestions are based only on the name.`}
+                                        {item.error || `Could not generate AI insights for SKU ${item.product.sku}.`}
                                     </AlertDescription>
                                 </Alert>
-                            )}
+                           )}
                         </CardContent>
                     </Card>
                 ))}
