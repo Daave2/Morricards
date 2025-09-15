@@ -675,7 +675,7 @@ export default function AssistantPageClient() {
                                     </InsightSection>
                                 </AccordionContent>
                             </AccordionItem>
-                            <AccordionItem value="item-2">
+                             <AccordionItem value="item-2">
                                 <AccordionTrigger>Full Product Details</AccordionTrigger>
                                 <AccordionContent className="pt-4 text-sm text-muted-foreground">
                                     <div className="space-y-4">
