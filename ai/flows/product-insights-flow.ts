@@ -30,7 +30,7 @@ const ProductInsightsOutputSchema = z.object({
   sellingPoints: z.array(z.string()).optional().describe('A list of 3-5 bullet points highlighting the key selling points of the product for a store colleague. These should be derived from the detailed product data.'),
   customerProfile: z.string().optional().describe('A brief sentence describing the ideal customer for this product, based on its category, price, and other attributes.'),
   placementNotes: z.string().optional().describe('A short note for a store colleague on ideal merchandising or placement for this product, using the commercialHierarchy to suggest co-location with related products.'),
-  allergens: z.array(z.string()).optional().describe("A list of allergens present in the product. For each item in the 'allergenInfo' array where 'value' is 'Contains', list the 'name'. If none are found, this should explicitly return an array containing the single string 'None listed'."),
+  allergens: z.array(z.string()).optional().describe("A list of all allergens where the value is 'Contains'. If the 'productDetails.allergenInfo' field is missing, empty, or all items have a value other than 'Contains', you must explicitly return an array containing the single string 'None listed'."),
 });
 export type ProductInsightsOutput = z.infer<typeof ProductInsightsOutputSchema>;
 

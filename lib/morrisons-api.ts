@@ -341,7 +341,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               temperature: finalProductDetails?.temperatureRegime,
               weight: finalProductDetails?.dimensions?.weight,
               status: finalProductDetails?.status,
-              stockSkuUsed: undefined,
+              stockSkuUsed: stockAndOrderSku,
               productDetails: JSON.parse(JSON.stringify(finalProductDetails)),
               lastStockChange: stockHistory || undefined,
               deliveryInfo: deliveryInfo,
