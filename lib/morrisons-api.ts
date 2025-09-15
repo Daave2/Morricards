@@ -16,7 +16,7 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
-const BASE_PRODUCT = 'https://api.morrisons.com/product/v1/items';
+const BASE_PRODUCT_PROXY = '/api/morrisons/product'; // Use the Next.js proxy
 
 export type Order = MorrisonsOrder;
 
@@ -115,22 +115,34 @@ async function fetchJson<T>(
 
 
 // ─────────────────────────── endpoint wrappers ────────────────────────────
-// Reusable logic to fetch from the main Product API, now callable from server actions directly.
+// NEW: Uses our Next.js proxy to avoid CORS issues and hide the API key.
 export async function fetchProductFromUpstream(
   sku: string,
   bearerToken?: string,
-  debug = false
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
   
-  const url = `${BASE_PRODUCT}/${encodeURIComponent(sku)}?apikey=${API_KEY}`;
+  const url = `${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
   
   try {
-    const product = await fetchJson<Product>(url, { bearer: bearerToken, debug });
+    const res = await fetch(url, {
+        headers: {
+            ...(bearerToken ? { 'Authorization': `Bearer ${bearerToken}` } : {})
+        },
+        cache: 'no-store',
+    });
+
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
+        return { product: null, error: `Product API Error ${res.status}: ${errData.error || errData.details || res.statusText}` };
+    }
+
+    const product = await res.json();
     if (!product) {
        return { product: null, error: `Product not found for SKU ${sku} via Product API.` };
     }
     return { product, error: null };
+
   } catch (error) {
     const errorMessage = `Error in fetchProductFromUpstream for SKU ${sku}: ${error instanceof Error ? error.message : String(error)}`;
     return { product: null, error: errorMessage };
@@ -213,67 +225,50 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
-        let pi: PriceIntegrity | null = null;
-        let piError: string | null = null;
-      
         try {
-            pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
-        } catch (e) {
-            piError = e instanceof Error ? e.message : String(e);
-            if (debugMode) console.warn(`PI check failed for ${scannedSku}, proceeding...`, e);
-        }
-        
-        const internalSku = (pi as any)?.product?.itemNumber?.toString() || scannedSku;
-
-        try {
-            const [
-                productProxyResult,
-                stockPayload,
-                stockHistory,
-                orderInfo,
-            ] = await Promise.allSettled([
-                fetchProductFromUpstream(internalSku, bearerToken, debugMode),
-                getStock(locationId, internalSku, bearerToken, debugMode),
-                getStockHistory(locationId, internalSku, bearerToken, debugMode),
-                getOrderInfo(locationId, internalSku, bearerToken, debugMode),
-            ]);
-
-            const productDetailsFromProxy = productProxyResult.status === 'fulfilled' ? productProxyResult.value.product : null;
+            // 1. Fetch from Price Integrity first. This is our baseline.
+            const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
+            const piProduct = pi?.product;
             
-            const getErrorString = (res: PromiseSettledResult<any>, name: string) => {
-                if (res.status === 'rejected') {
-                    return `${name} Error: ${res.reason instanceof Error ? res.reason.message : String(res.reason)}`;
-                }
-                if (res.status === 'fulfilled' && (res.value as any)?.error) {
-                    return `${name} Error: ${(res.value as any).error}`;
-                }
-                return null;
+            // 2. Determine the "main" SKU. It might be the scanned one, or a parent pack.
+            let mainSku = piProduct?.itemNumber?.toString() || scannedSku;
+            
+            // 3. Fetch the full, rich product data from our Next.js proxy.
+            const { product: mainProduct, error: productError } = await fetchProductFromUpstream(mainSku, bearerToken);
+            
+            // 4. If PI gave us a different SKU (pack vs each), and fetching the main SKU failed, try again with the original scanned SKU.
+            let fallbackProduct: Product | null = null;
+            if (productError && mainSku !== scannedSku) {
+                const { product } = await fetchProductFromUpstream(scannedSku, bearerToken);
+                fallbackProduct = product;
             }
-
-            const allErrors: string[] = [
-                piError ? `PI Error: ${piError}` : null,
-                getErrorString(productProxyResult, 'ProductProxy'),
-                getErrorString(stockPayload, 'Stock'),
-                getErrorString(stockHistory, 'StockHistory'),
-                getErrorString(orderInfo, 'OrderInfo'),
-            ].filter((e): e is string => e !== null);
-
-
+            
             const finalProductDetails: Product = {
-              ...(pi?.product || {}),
-              ...productDetailsFromProxy,
+                ...piProduct,
+                ...(fallbackProduct || {}), // Apply fallback first
+                ...(mainProduct || {}),   // Main product data takes precedence
             };
 
             if (Object.keys(finalProductDetails).length === 0) {
-              throw new Error(`Could not retrieve any product details for SKU ${scannedSku}. Upstream errors: ${allErrors.join('; ')}`);
+              throw new Error(`Could not retrieve any product details for SKU ${scannedSku}. Upstream error: ${productError}`);
             }
+
+            // The SKU for stock/order lookups should be the one from the final details if available
+            const stockAndOrderSku = finalProductDetails.itemNumber || mainSku;
+
+            // 5. Fetch stock and order info in parallel.
+            const [stockPayload, stockHistory, orderInfo] = await Promise.all([
+                getStock(locationId, stockAndOrderSku, bearerToken, debugMode),
+                getStockHistory(locationId, stockAndOrderSku, bearerToken, debugMode),
+                getOrderInfo(locationId, stockAndOrderSku, bearerToken, debugMode),
+            ]);
+
+            // 6. Assemble the final, merged object
+            const stockPosition = stockPayload?.stockPosition?.[0];
+            const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc } = extractLocationBits(pi);
             
-            const stockPosition = stockPayload.status === 'fulfilled' ? stockPayload.value?.stockPosition?.[0] : undefined;
-            const { std: stdLoc, secondary: secondaryLoc, promo: promoLoc, walk } = extractLocationBits(pi);
-            
-            const orderInfoResult = orderInfo.status === 'fulfilled' ? orderInfo.value : null;
             let deliveryInfo: DeliveryInfo | null = null;
-            const allOrders = orderInfoResult?.orders;
+            const allOrders = orderInfo?.orders;
             const relevantOrder = allOrders?.find(o => o.orderPosition === 'next') || allOrders?.find(o => o.orderPosition === 'last');
             
             if (relevantOrder) {
@@ -301,11 +296,11 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const prices = (pi?.prices ?? []) as any[];
             const promos = (pi?.promotions ?? []) as any[];
             
-            const name = finalProductDetails?.customerFriendlyDescription || pi?.product?.customerFriendlyDescription || 'Unknown Product';
+            const name = finalProductDetails?.customerFriendlyDescription || piProduct?.customerFriendlyDescription || 'Unknown Product';
             const primaryEan13 = finalProductDetails?.gtins?.find(g => g.type === 'EAN13' && g.additionalProperties?.isPrimaryBarcode)?.id;
 
             return {
-              sku: internalSku,
+              sku: stockAndOrderSku,
               scannedSku,
               primaryEan13,
               name: name!,
@@ -321,10 +316,10 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               status: finalProductDetails?.status,
               stockSkuUsed: undefined,
               productDetails: finalProductDetails,
-              lastStockChange: stockHistory.status === 'fulfilled' ? (stockHistory.value || undefined) : undefined,
+              lastStockChange: stockHistory || undefined,
               deliveryInfo: deliveryInfo,
               allOrders: allOrders ?? null,
-              proxyError: debugMode && allErrors.length > 0 ? allErrors.join('\n') : null,
+              proxyError: debugMode && productError ? `Product Proxy Error: ${productError}` : null,
             };
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : String(err);
