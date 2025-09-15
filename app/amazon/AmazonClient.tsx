@@ -161,7 +161,6 @@ export default function AmazonClient() {
         toast({ title: 'Data Fetched', description: 'AI is now generating suggestions...' });
         
         // Step 3: Call the main analysis prompt with the image AND the fetched data.
-        // CRUCIAL FIX: Sanitize the productsData object before passing it to the server action.
         const analysis = await pickingAnalysisFlow({
             imageDataUri: imageDataUri!,
             productsData: JSON.parse(JSON.stringify(productsData))
