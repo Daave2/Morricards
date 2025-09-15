@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Home, ListChecks, Bot, Map, ScanLine, Settings, CheckSquare, MoreHorizontal, Menu } from 'lucide-react';
+import { Home, ListChecks, Bot, Map, ScanLine, Settings, CheckSquare, MoreHorizontal, Menu, PackageSearch } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ import { navItems } from './AppSidebar';
 const mainNavItems = [
   { href: '/availability', label: 'Availability', icon: ListChecks },
   { href: '/assistant', label: 'Assistant', icon: Bot },
-  { href: '/map', label: 'Store Map', icon: Map },
+  { href: '/locker', label: 'Locker', icon: PackageSearch },
 ];
 
 // All items that will go into the "More" sheet

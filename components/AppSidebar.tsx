@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanLine, CheckSquare } from 'lucide-react';
+import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanLine, CheckSquare, PackageSearch } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -19,6 +19,7 @@ export const navItems = [
     { href: '/assistant', label: 'AI Product Assistant', icon: Bot },
     { href: '/price-checker', label: 'Validator', icon: ScanLine },
     { href: '/planogram', label: 'Planogram', icon: CheckSquare },
+    { href: '/locker', label: 'Locker', icon: PackageSearch },
     { href: '/map', label: 'Store Map', icon: Map },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];
