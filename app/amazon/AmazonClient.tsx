@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Bot, PackageSearch, Lightbulb, Info, ThumbsUp } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, PackageSearch, Lightbulb, Info, ThumbsUp, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { getProductData } from '@/app/actions';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ocrPrompt } from '@/ai/flows/picking-analysis-flow';
 import { productInsightsFlow, type ProductInsightsOutput } from '@/ai/flows/product-insights-flow';
-import { AlertTriangle } from 'lucide-react';
 
 const ImageUpload = ({ onImageSelect, selectedImage, disabled }: { onImageSelect: (file: File) => void, selectedImage: File | null, disabled?: boolean }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -127,7 +126,6 @@ export default function AmazonClient() {
     setAnalysisResults([]);
     toast({ title: 'Starting Analysis...', description: 'AI is reading the list. This may take a moment.' });
     
-    let results: EnrichedAnalysis[] = [];
     try {
         const imageDataUri = await toDataUri(listImage);
         
@@ -167,14 +165,15 @@ export default function AmazonClient() {
             }
             try {
                 const insights = await productInsightsFlow({ productData: product });
-                // Second sanitization step on the client side for absolute certainty.
-                return { product, insights: JSON.parse(JSON.stringify(insights)), error: null };
+                return { product, insights, error: null };
             } catch (e) {
-                return { product, insights: null, error: e instanceof Error ? e.message : String(e) };
+                const errorMessage = e instanceof Error ? e.message : String(e);
+                console.error(`Insight generation failed for SKU ${sku}:`, errorMessage);
+                return { product, insights: null, error: errorMessage };
             }
         });
 
-        results = await Promise.all(insightPromises);
+        const results = await Promise.all(insightPromises);
 
         // **CRUCIAL FINAL SANITIZATION**
         // This guarantees that only plain objects are passed to the state.
@@ -188,9 +187,12 @@ export default function AmazonClient() {
                 description: `Could not make the results safe for React. RAW DATA: ${JSON.stringify(results)}`,
                 duration: 20000,
             });
+            // Fallback to setting raw results if sanitization fails, which might still crash but we tried.
+            setAnalysisResults(results);
         }
         
-        toast({ title: 'Analysis Complete!', description: `AI has provided insights for ${results.length} items.` });
+        const successCount = results.filter(r => r.insights).length;
+        toast({ title: 'Analysis Complete!', description: `AI has provided insights for ${successCount} of ${results.length} items.` });
 
     } catch (error) {
          toast({
@@ -266,14 +268,16 @@ export default function AmazonClient() {
                                             ))}
                                         </ul>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold flex items-center gap-2 mb-2"><Lightbulb className="h-5 w-5 text-primary" /> Recipe Ideas</h3>
-                                        <ul className="list-disc pl-5 space-y-2 text-sm">
-                                            {item.insights.recipeIdeas?.map((idea, i) => (
-                                                <li key={i}>{idea}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                    {item.insights.recipeIdeas && item.insights.recipeIdeas.length > 0 && (
+                                        <div>
+                                            <h3 className="font-bold flex items-center gap-2 mb-2"><Lightbulb className="h-5 w-5 text-primary" /> Recipe Ideas</h3>
+                                            <ul className="list-disc pl-5 space-y-2 text-sm">
+                                                {item.insights.recipeIdeas?.map((idea, i) => (
+                                                    <li key={i}>{idea}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                            ) : (
@@ -294,3 +298,5 @@ export default function AmazonClient() {
     </main>
   );
 }
+
+    
