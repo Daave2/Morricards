@@ -97,13 +97,13 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
       if (product) {
           try {
             // Call the prompt directly and handle the response correctly
-            const diagnosticSummary = await pickerDiagnosisPrompt({ productData: product });
+            const diagnosticSummaryResult = await pickerDiagnosisPrompt({ productData: product });
             
-            if (!diagnosticSummary) {
+            if (!diagnosticSummaryResult || !diagnosticSummaryResult.output) {
                 throw new Error("AI failed to generate a diagnosis summary.");
             }
 
-            return { product, diagnosticSummary, error: product.proxyError || null };
+            return { product, diagnosticSummary: diagnosticSummaryResult.output, error: product.proxyError || null };
 
           } catch(e) {
             const error = e instanceof Error ? e.message : String(e);
