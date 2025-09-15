@@ -236,7 +236,7 @@ export default function AmazonClient() {
                 {analysisResults.map((item, index) => (
                     <Card key={item.sku || index}>
                         <CardHeader>
-                            {item.productData ? (
+                            {item.productData && !item.productData.proxyError ? (
                                 <CardTitle>{item.productData.name}</CardTitle>
                             ) : (
                                 <CardTitle>{item.productName || 'Unknown Product'}</CardTitle>
@@ -244,7 +244,7 @@ export default function AmazonClient() {
                             <CardDescription>SKU: {item.sku || 'Not Found'}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {item.productData ? (
+                            {item.productData && !item.productData.proxyError ? (
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <div className="space-y-4">
                                          <div className="p-4 border rounded-lg">
@@ -287,8 +287,9 @@ export default function AmazonClient() {
                             ) : (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Could Not Fetch Details</AlertTitle>
                                     <AlertDescription>
-                                        Could not fetch detailed product data for SKU {item.sku}. The AI's suggestions are based only on the name.
+                                        {item.productData?.proxyError ? item.productData.proxyError : `Could not fetch detailed product data for SKU ${item.sku}. The AI's suggestions are based only on the name.`}
                                     </AlertDescription>
                                 </Alert>
                             )}
