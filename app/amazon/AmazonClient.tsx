@@ -160,22 +160,6 @@ export default function AmazonClient() {
         
         toast({ title: 'Data Fetched', description: 'AI is now generating suggestions...' });
         
-        // **DEBUGGING STEP**: Attempt to stringify the data before sending it.
-        // This will show us if the object is serializable IN THE APP UI.
-        try {
-            JSON.stringify(productsData);
-        } catch (e) {
-            console.error("DEBUG: productsData object before sending to flow:", productsData);
-            toast({
-                variant: "destructive",
-                title: "DEBUG: Unserializable Data Detected",
-                description: "The 'productsData' object is not serializable and is causing the error. Check the console for the object structure.",
-                duration: 20000,
-            });
-            setIsLoading(false);
-            return; // Stop execution
-        }
-        
         // Step 3: Call the main analysis prompt with the image AND the fetched data.
         const analysis = await pickingAnalysisFlow({
             imageDataUri: imageDataUri!,
@@ -195,6 +179,8 @@ export default function AmazonClient() {
             productData: p.sku ? productDataMap.get(p.sku) : undefined,
         }));
         
+        // **CRUCIAL FINAL SANITIZATION**
+        // This guarantees that only plain objects are passed to the state.
         setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
         toast({ title: 'Analysis Complete!', description: `AI has provided suggestions for ${enrichedResults.length} items.` });
 
