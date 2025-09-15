@@ -92,7 +92,10 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
               if (!product._raw) {
                 throw new Error("Product has no raw data for AI diagnosis.");
               }
-              const diagnosticResult = await pickerDiagnosisPrompt({ rawData: product._raw });
+              // Sanitize the raw data object before passing to the prompt.
+              const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
+              
+              const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
               const diagnosticSummary = diagnosticResult.output;
               
               if (!diagnosticSummary) {
