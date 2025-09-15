@@ -328,6 +328,15 @@ export default function AmazonClient() {
                 <CardContent className="space-y-4">
                   {item.product && !item.error ? (
                     <div className="space-y-4">
+                        {item.diagnosticSummary && (
+                             <Alert>
+                                <Bot className="h-4 w-4" />
+                                <AlertTitle>AI Diagnosis</AlertTitle>
+                                <AlertDescription>
+                                    {item.diagnosticSummary}
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <div className="space-y-4 text-sm pt-4">
                           <DataRow
                             icon={<Boxes />}
