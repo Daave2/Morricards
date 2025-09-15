@@ -50,19 +50,24 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
   }
 
   // Step 2: Fetch detailed product data for all SKUs at once.
-  const { data: productsData, error: productError } = await fetchMorrisonsData({
+  const productsData = await fetchMorrisonsData({
     locationId: input.locationId,
     skus,
     bearerToken: input.bearerToken,
     debugMode: input.debugMode,
   });
 
-  if (productError) {
+  if (!productsData || productsData.length === 0) {
     // If the entire data fetch fails, we can't proceed.
-    throw new Error(`Failed to fetch product data: ${productError}`);
+    // Return SKUs that had no data so client can show them
+    return skus.map(sku => ({
+        product: { sku, name: `Product not found for SKU ${sku}` } as any,
+        insights: null,
+        error: `Could not fetch data for SKU ${sku}`,
+    }));
   }
 
-  const productMap = new Map(productsData?.map((p) => [p.sku, p]));
+  const productMap = new Map(productsData.map((p) => [p.sku, p]));
 
   // Step 3: For each SKU, generate insights using the fetched data.
   const insightPromises = skus.map(async (sku) => {

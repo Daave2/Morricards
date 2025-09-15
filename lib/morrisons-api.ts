@@ -124,7 +124,9 @@ export async function fetchProductFromUpstream(
 ): Promise<{ product: Product | null; error: string | null }> {
   if (!sku) return { product: null, error: 'No SKU provided.' };
   
-  const url = `${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
+  // This needs to be an absolute URL when called from the server (Genkit flow)
+  const baseUrl = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000') : '';
+  const url = `${baseUrl}${BASE_PRODUCT_PROXY}?sku=${encodeURIComponent(sku)}`;
   
   try {
     const res = await fetch(url, {
@@ -366,9 +368,3 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is Exclude<typeof r, { name: string; proxyError: string }> => 'name' in r && !r.name.startsWith('Error'));
 }
-
-    
-
-    
-
-
