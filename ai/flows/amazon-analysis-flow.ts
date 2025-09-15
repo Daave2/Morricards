@@ -45,6 +45,7 @@ export type AmazonAnalysisOutput = z.infer<typeof AmazonAnalysisOutputSchema>;
 const pickerDiagnosisPrompt = ai.definePrompt({
     name: 'pickerDiagnosisPrompt',
     input: { schema: z.object({ productData: z.custom<Product>() }) },
+    output: { schema: z.string() },
     prompt: `You are an expert stock controller and store detective, helping a picker who can't find an item on the shelf.
 Your task is to analyze the provided product data and create a short, actionable summary to help the picker understand the situation and what to do next.
 
@@ -96,8 +97,7 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
       if (product) {
           try {
             // Call the prompt directly and handle the response correctly
-            const llmResponse = await pickerDiagnosisPrompt({ productData: product });
-            const diagnosticSummary = llmResponse.response?.text ?? null; // Correctly access the text
+            const diagnosticSummary = await pickerDiagnosisPrompt({ productData: product });
             
             if (!diagnosticSummary) {
                 throw new Error("AI failed to generate a diagnosis summary.");
