@@ -178,7 +178,7 @@ export default function AmazonClient() {
         const productDataMap = new Map(productsData.map(p => [p.sku, p]));
         const enrichedResults = cleanAnalysis.products.map((p: AnalyzedProduct) => ({
             ...p,
-            productData: p.sku ? productDataMap.get(p.sku) : undefined,
+            productData: p.sku ? JSON.parse(JSON.stringify(productDataMap.get(p.sku) || null)) : undefined,
         }));
         
         setAnalysisResults(enrichedResults);
