@@ -48,7 +48,9 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
     if (!data || data.length === 0) {
       return { data: null, error: `No products found for the provided SKUs.` };
     }
-    return { data, error: null };
+    // Convert data to a plain JSON object to prevent serialization errors
+    const serializableData = JSON.parse(JSON.stringify(data));
+    return { data: serializableData, error: null };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('Failed to fetch Morrisons data:', e);
