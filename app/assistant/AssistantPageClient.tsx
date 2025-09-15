@@ -610,18 +610,14 @@ export default function AssistantPageClient() {
                     <div className='flex-grow'>
                         <CardTitle>{product.name}</CardTitle>
                         <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
-                        {(product.price.promotional || product.price.regular) && (
-                            <div className="mt-2 flex items-baseline gap-2">
-                                <Badge className="text-lg" variant={product.price.promotional ? 'destructive' : 'secondary'}>
-                                    {product.price.promotional || `£${product.price.regular?.toFixed(2)}`}
-                                </Badge>
-                                {product.price.promotional && product.price.regular && (
-                                    <span className="text-sm text-muted-foreground line-through">
-                                        £{product.price.regular.toFixed(2)}
-                                    </span>
-                                )}
-                            </div>
-                        )}
+                        <div className="mt-2 flex items-baseline gap-2">
+                             <span className={cn("text-lg font-semibold", product.price.promotional && "line-through text-muted-foreground text-base")}>
+                                £{product.price.regular?.toFixed(2) || 'N/A'}
+                            </span>
+                            {product.price.promotional && (
+                                <Badge variant="destructive">{product.price.promotional}</Badge>
+                            )}
+                        </div>
                          <div className="mt-2">
                             <DeliveryInfoRow deliveryInfo={product.deliveryInfo} allOrders={product.allOrders} productName={product.name} />
                         </div>

@@ -300,17 +300,12 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                           </TooltipProvider>
                       )}
                   </div>
-                  <div className="pt-2">
-                    {product.price.promotional && (
-                        <Badge variant="destructive" className="bg-accent text-accent-foreground">{product.price.promotional}</Badge>
-                    )}
-                  </div>
               </div>
             </CardHeader>
             <CardContent className={cn('flex-grow', layout === 'list' ? 'p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-start' : 'p-6 pt-0 space-y-3')}>
                 <div className="flex items-center gap-3 text-sm">
                     <Boxes className="h-5 w-5 text-primary" />
-                    <span>Stock record: <strong>{product.stockQuantity} {product.stockUnit}</strong></span>
+                    <span>Stock: <strong>{product.stockQuantity} {product.stockUnit}</strong></span>
                     <div className={`h-2.5 w-2.5 rounded-full ${stockColor}`} title={`Stock level: ${product.stockQuantity}`}></div>
                 </div>
                 <div className="flex items-start gap-3 text-sm">
@@ -326,7 +321,14 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                     <PoundSterling className="h-5 w-5 text-primary" />
-                    <span>Price: <strong>£{product.price.regular?.toFixed(2) || 'N/A'}</strong></span>
+                     <div className="flex items-baseline gap-2">
+                        <span className={cn(product.price.promotional && "line-through text-muted-foreground")}>
+                            £{product.price.regular?.toFixed(2) || 'N/A'}
+                        </span>
+                        {product.price.promotional && (
+                            <Badge variant="destructive">{product.price.promotional}</Badge>
+                        )}
+                    </div>
                 </div>
                 
                 <DeliveryInfoRow deliveryInfo={product.deliveryInfo} allOrders={product.allOrders} productName={product.name} />

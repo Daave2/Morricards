@@ -305,6 +305,16 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
             const prices = (pi?.prices ?? []) as any[];
             const promos = (pi?.promotions ?? []) as any[];
+
+            // Extract promotional text
+            const promoAttributes = promos?.[0]?.marketingAttributes;
+            let promotionalText = promoAttributes?.offerValue; // e.g., "£1.00"
+            if (!promotionalText && promoAttributes?.name) {
+                // Check for multi-buy text like "2 for £5.00"
+                if (/^\d+\s+for\s+£\d+(\.\d{2})?$/.test(promoAttributes.name)) {
+                    promotionalText = promoAttributes.name;
+                }
+            }
             
             const name = finalProductDetails?.customerFriendlyDescription || piProduct?.customerFriendlyDescription || 'Unknown Product';
             const primaryEan13 = finalProductDetails?.gtins?.find(g => g.type === 'EAN13' && g.additionalProperties?.isPrimaryBarcode)?.id;
@@ -316,7 +326,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               name: name!,
               price: {
                 regular: prices?.[0]?.regularPrice,
-                promotional: promos?.[0]?.marketingAttributes?.offerValue,
+                promotional: promotionalText,
               },
               stockQuantity: stockPosition?.qty ?? 0,
               stockUnit: stockPosition?.unitofMeasure || finalProductDetails?.standardUnitOfMeasure,
