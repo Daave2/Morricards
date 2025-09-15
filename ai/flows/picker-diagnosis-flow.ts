@@ -48,7 +48,7 @@ Product Data:
 
 export async function pickerDiagnosisFlow(input: z.infer<typeof PickerDiagnosisInputSchema>): Promise<string> {
   const { output } = await pickerDiagnosisPrompt(input);
-  if (!output) {
+  if (output === null || output === undefined) {
       throw new Error("Failed to generate diagnosis from the AI model.");
   }
   return JSON.parse(JSON.stringify(output));
