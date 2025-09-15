@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { pickingAnalysisFlow } from '@/ai/flows/picking-analysis-flow';
 import type { AnalyzedProduct } from '@/ai/flows/picking-analysis-types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { ocrPrompt } from '@/ai/flows/picking-analysis-flow';
 
 const ImageUpload = ({ onImageSelect, selectedImage, disabled }: { onImageSelect: (file: File) => void, selectedImage: File | null, disabled?: boolean }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -127,36 +128,53 @@ export default function AmazonClient() {
     try {
         const imageDataUri = await toDataUri(listImage);
         
-        // This now represents the full, combined call.
-        const analysis = await pickingAnalysisFlow({ 
-            imageDataUri: imageDataUri!,
-            // The client-side orchestration is now handled inside the flow itself for simplicity here.
-            // In a more complex app, we might do the two-step fetch here, but for now this is fine.
-        });
+        // Step 1: AI extracts SKUs from the image.
+        const ocrResult = await ocrPrompt({ imageDataUri: imageDataUri! });
+        const skus = ocrResult.output?.skus || [];
 
-        if (!analysis.products || analysis.products.length === 0) {
-            toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI could not identify any products or provide suggestions.' });
+        if (skus.length === 0) {
+            toast({ variant: 'destructive', title: 'OCR Failed', description: 'The AI could not read any SKUs from the image.' });
             setIsLoading(false);
             return;
         }
 
-        toast({ title: 'Products Analyzed', description: `Found suggestions for ${analysis.products.length} items. Fetching details...` });
-
-        // Step 2: Fetch detailed product data for all identified SKUs to enrich the UI
-        const skus = analysis.products.map(p => p.sku).filter((s): s is string => !!s);
-        const { data: productData, error } = await getProductData({
+        toast({ title: 'Products Identified', description: `Found ${skus.length} SKUs. Fetching product details...` });
+        
+        // Step 2: Fetch detailed product data using the extracted SKUs.
+        const { data: productsData, error: productError } = await getProductData({
             locationId: settings.locationId,
             skus,
             bearerToken: settings.bearerToken,
             debugMode: settings.debugMode,
         });
 
-        if (error) {
-             toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
+        if (productError) {
+             toast({ variant: 'destructive', title: 'Data Fetch Failed', description: productError });
         }
 
-        // Step 3: Enrich the analysis with the fetched data
-        const productDataMap = new Map(productData?.map(p => [p.sku, p]));
+        if (!productsData || productsData.length === 0) {
+            toast({ variant: 'destructive', title: 'Analysis Failed', description: 'Could not fetch data for any of the identified SKUs.' });
+            setIsLoading(false);
+            return;
+        }
+        
+        toast({ title: 'Data Fetched', description: 'AI is now generating suggestions...' });
+        
+        // Step 3: Call the main analysis prompt with the image AND the fetched data.
+        const analysis = await pickingAnalysisFlow({
+            imageDataUri: imageDataUri!,
+            productsData: productsData
+        });
+
+
+        if (!analysis.products || analysis.products.length === 0) {
+            toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI could not provide any suggestions for the identified products.' });
+            setIsLoading(false);
+            return;
+        }
+
+        // Step 4: Enrich the analysis with the fetched data for UI display
+        const productDataMap = new Map(productsData.map(p => [p.sku, p]));
         const enrichedResults = analysis.products.map(p => ({
             ...p,
             productData: p.sku ? productDataMap.get(p.sku) : undefined,
