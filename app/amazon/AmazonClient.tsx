@@ -161,9 +161,10 @@ export default function AmazonClient() {
         toast({ title: 'Data Fetched', description: 'AI is now generating suggestions...' });
         
         // Step 3: Call the main analysis prompt with the image AND the fetched data.
+        // CRUCIAL FIX: Sanitize the productsData object before passing it to the server action.
         const analysis = await pickingAnalysisFlow({
             imageDataUri: imageDataUri!,
-            productsData: productsData
+            productsData: JSON.parse(JSON.stringify(productsData))
         });
 
         if (!analysis.products || analysis.products.length === 0) {
@@ -179,6 +180,7 @@ export default function AmazonClient() {
             productData: p.sku ? productDataMap.get(p.sku) : undefined,
         }));
         
+        // Final sanitization before setting state, as a safeguard.
         setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
         toast({ title: 'Analysis Complete!', description: `AI has provided suggestions for ${enrichedResults.length} items.` });
 

@@ -8,7 +8,7 @@ export const PickingAnalysisInputSchema = z.object({
   imageDataUri: z
     .string()
     .describe("An image of the picking app screen, as a data URI."),
-  productsData: z.any(),
+  productsData: z.any().describe("The JSON data for the products found in the image."),
 });
 export type PickingAnalysisInput = z.infer<typeof PickingAnalysisInputSchema>;
 
