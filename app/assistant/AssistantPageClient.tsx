@@ -679,6 +679,17 @@ export default function AssistantPageClient() {
                                 <AccordionTrigger>Full Product Details</AccordionTrigger>
                                 <AccordionContent className="pt-4 text-sm text-muted-foreground">
                                     <div className="space-y-4">
+                                        <details className="pt-2 text-xs bg-muted/50 p-2 rounded-md">
+                                            <summary className="cursor-pointer font-semibold">Debug Info</summary>
+                                            <pre className="mt-2 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                                                {JSON.stringify({
+                                                    hasBwsDetails,
+                                                    ingredients: product.productDetails?.ingredients,
+                                                    nutrition: product.productDetails?.nutritionalInfo,
+                                                    bws: product.productDetails?.beersWinesSpirits
+                                                }, null, 2)}
+                                            </pre>
+                                        </details>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.primaryEan13 || product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                                             <DataRow icon={<Info />} label="Status" value={product.status} />
@@ -892,5 +903,3 @@ export default function AssistantPageClient() {
     </div>
   );
 }
-
-    
