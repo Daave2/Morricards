@@ -60,12 +60,12 @@ Your task is to analyze each product and provide a helpful 'judgment' and 'nextS
     *   \`lastStockChange\`: A recent 'invc' (inventory count) or sale can indicate rapid stock movement.
 
 3.  **Formulate Judgment and Next Steps**: Based on your analysis, for each product:
-    *   **Create a `judgement`**: A single, clear sentence summarizing the most likely scenario.
+    *   **Create a \`judgement\`**: A single, clear sentence summarizing the most likely scenario.
         *   *Example (low stock):* "This item is likely an early sellout due to very low stock count."
         *   *Example (promo location):* "The product is likely in a secondary promotional location."
         *   *Example (delivery due):* "Stock may be in the warehouse as a delivery is expected very soon."
         *   *Example (no clear reason):* "Stock and location data appear correct; a thorough search of the main shelf is needed."
-    *   **Create `nextSteps`**: A short, bulleted list of 2-3 practical actions for the picker.
+    *   **Create \`nextSteps\`**: A short, bulleted list of 2-3 practical actions for the picker.
         *   *Example (low stock):* ["Check the store's back-of-house system for any recent sales.", "Look carefully behind other products on the shelf."]
         *   *Example (promo location):* ["Check promotional aisle ends and displays near the main aisle.", "Scan the shelf talker at the primary location to see if it mentions a promotion."]
         *   *Example (delivery due):* ["Ask a colleague to check the goods-in area for the recent delivery.", "Check the top shelf or overhead storage near the main location."]
