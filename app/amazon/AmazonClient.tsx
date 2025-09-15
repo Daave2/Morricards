@@ -166,6 +166,7 @@ export default function AmazonClient() {
             productsData: productsData
         });
 
+        // This is the crucial sanitization step to prevent serialization errors.
         const cleanAnalysis = JSON.parse(JSON.stringify(analysis));
 
         if (!cleanAnalysis.products || cleanAnalysis.products.length === 0) {
@@ -178,6 +179,7 @@ export default function AmazonClient() {
         const productDataMap = new Map(productsData.map(p => [p.sku, p]));
         const enrichedResults = cleanAnalysis.products.map((p: AnalyzedProduct) => ({
             ...p,
+            // Sanitize the product data again right before setting state
             productData: p.sku ? JSON.parse(JSON.stringify(productDataMap.get(p.sku) || null)) : undefined,
         }));
         
