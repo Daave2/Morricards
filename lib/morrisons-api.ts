@@ -8,7 +8,7 @@
  */
 
 import type { components } from '../morrisons-types';
-import type { StockOrder, Order as MorrisonsOrder } from '../morrisons-types';
+import type { StockOrder, Order as MorrisonsOrder, SpaceInfo } from '../morrisons-types';
 
 const API_KEY = '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
 
@@ -16,6 +16,7 @@ const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
 const BASE_STOCK_HISTORY = 'https://api.morrisons.com/storemobileapp/v1/stores';
 const BASE_STOCK_ORDER = 'https://api.morrisons.com/stockorder/v1/customers/morrisons/orders';
+const BASE_SPACE = 'https://api.morrisons.com/space/v1/locations';
 const BASE_PRODUCT_PROXY = '/api/morrisons/product'; // Use the Next.js proxy
 
 export type Order = MorrisonsOrder;
@@ -63,6 +64,7 @@ export type FetchMorrisonsDataOutput = {
   lastStockChange?: StockHistory;
   deliveryInfo?: DeliveryInfo | null;
   allOrders?: Order[] | null;
+  spaceInfo?: SpaceInfo | null;
   proxyError?: string | null;
 }[];
 
@@ -182,6 +184,13 @@ async function getOrderInfo(locationId: string, sku: string, bearer?: string, de
     return fetchJson<StockOrder>(url, { debug, bearer });
 }
 
+// Space Info: Requires a bearer token.
+async function getSpaceInfo(locationId: string, sku: string, bearer?: string, debug?: boolean) {
+    if (!bearer) return null;
+    const url = `${BASE_SPACE}/${locationId}/items/${sku}?apikey=${API_KEY}`;
+    return fetchJson<SpaceInfo>(url, { debug, bearer });
+}
+
 // ─────────────────────── location formatting helpers ──────────────────────
 function niceLoc(raw: components['schemas']['Location']): string {
   const sideRe = /^([LR])(\d+)$/i;
@@ -256,11 +265,12 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             // The SKU for stock/order lookups should be the one from the final details if available
             const stockAndOrderSku = finalProductDetails.itemNumber || mainSku;
 
-            // 5. Fetch stock and order info in parallel.
-            const [stockPayload, stockHistory, orderInfo] = await Promise.all([
+            // 5. Fetch stock, order, and space info in parallel.
+            const [stockPayload, stockHistory, orderInfo, spaceInfo] = await Promise.all([
                 getStock(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getStockHistory(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getOrderInfo(locationId, stockAndOrderSku, bearerToken, debugMode),
+                getSpaceInfo(locationId, stockAndOrderSku, bearerToken, debugMode),
             ]);
 
             // 6. Assemble the final, merged object
@@ -319,6 +329,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               lastStockChange: stockHistory || undefined,
               deliveryInfo: deliveryInfo,
               allOrders: allOrders ?? null,
+              spaceInfo: spaceInfo ?? null,
               proxyError: debugMode && productError ? `Product Proxy Error: ${productError}` : null,
             };
         } catch (err) {
@@ -340,3 +351,5 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is Exclude<typeof r, { name: string; proxyError: string }> => 'name' in r && !r.name.startsWith('Error'));
 }
+
+    
