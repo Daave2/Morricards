@@ -256,7 +256,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             }
             
             const finalProductDetails: Product = {
-                ...piProduct,
+                ...(piProduct || {}),
                 ...(fallbackProduct || {}), // Apply fallback first
                 ...(mainProduct || {}),   // Main product data takes precedence
             };
