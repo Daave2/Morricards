@@ -62,5 +62,10 @@ Product Data:
   });
 
   const { output } = await prompt(input);
-  return output!;
+  if (!output) {
+      throw new Error("Failed to generate insights from the AI model.");
+  }
+  // This is the crucial fix: ensure the returned object is a plain serializable object
+  // before it's sent from the server-side flow to the client.
+  return JSON.parse(JSON.stringify(output));
 }
