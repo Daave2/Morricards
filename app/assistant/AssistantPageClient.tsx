@@ -38,9 +38,11 @@ import type { SearchHit } from '@/lib/morrisonsSearch';
 import { productChatFlow } from '@/ai/flows/product-chat-flow';
 import type { ChatMessage } from '@/ai/flows/product-chat-types';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type { components } from '@/morrisons-types';
 
 
-type Product = FetchMorrisonsDataOutput[0];
+type BaseProduct = FetchMorrisonsDataOutput[0];
+type FullProduct = components['schemas']['Product'];
 
 const FormSchema = z.object({
   sku: z.string().optional(),
@@ -218,7 +220,7 @@ const InsightSection = ({ title, content, icon, children, variant }: { title: st
 };
 
 
-const ChatInterface = ({ product, locationId }: { product: Product, locationId: string }) => {
+const ChatInterface = ({ product, locationId }: { product: BaseProduct, locationId: string }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -321,9 +323,10 @@ export default function AssistantPageClient() {
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
 
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<BaseProduct | null>(null);
+  const [productDetails, setProductDetails] = useState<FullProduct | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
-  const [recentItems, setRecentItems] = useState<Product[]>([]);
+  const [recentItems, setRecentItems] = useState<BaseProduct[]>([]);
   const [consecutiveFails, setConsecutiveFails] = useState(0);
 
 
@@ -347,7 +350,7 @@ export default function AssistantPageClient() {
     }
   }, []);
 
-  const updateRecentItems = (newItem: Product) => {
+  const updateRecentItems = (newItem: BaseProduct) => {
     setRecentItems(prev => {
       const withoutOld = prev.filter(item => item.sku !== newItem.sku);
       const newRecent = [newItem, ...withoutOld].slice(0, 5);
@@ -399,6 +402,7 @@ export default function AssistantPageClient() {
   const handleReset = () => {
     setProduct(null);
     setInsights(null);
+    setProductDetails(null);
   }
 
   const fetchProductAndInsights = async (sku: string) => {
@@ -455,6 +459,9 @@ export default function AssistantPageClient() {
       toast({ title: 'Product Found', description: `Generating AI insights for ${foundProduct.name}...` });
       form.setValue('sku', '');
 
+      // Fetch full details in parallel
+      fetchFullProductDetails(foundProduct.sku);
+
       setIsGeneratingInsights(true);
       try {
         const insightResult = await productInsightsFlow({ productData: foundProduct });
@@ -467,6 +474,30 @@ export default function AssistantPageClient() {
       }
     }
   };
+
+  const fetchFullProductDetails = async (sku: string) => {
+    try {
+        const res = await fetch(`/api/morrisons/product?sku=${sku}`, {
+            headers: {
+                ...(settings.bearerToken ? { 'Authorization': `Bearer ${settings.bearerToken}` } : {})
+            },
+            cache: 'no-store',
+        });
+
+        if (!res.ok) {
+            console.error(`Failed to fetch full product details: ${res.status}`);
+            setProductDetails(null);
+            return;
+        }
+
+        const details = await res.json();
+        setProductDetails(details);
+
+    } catch (error) {
+        console.error("Error fetching full product details:", error);
+        setProductDetails(null);
+    }
+  }
 
 
   const handleScanSuccess = async (text: string) => {
@@ -521,7 +552,7 @@ export default function AssistantPageClient() {
     }
   }
 
-  const bws = product?.productDetails?.beersWinesSpirits;
+  const bws = productDetails?.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
   const productLocation = product ? parseLocationString(product.location.standard) : null;
 
@@ -600,7 +631,7 @@ export default function AssistantPageClient() {
                 <div className='flex items-start gap-4'>
                     <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
                         <Image
-                            src={product.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                            src={productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                             alt={product.name}
                             width={100}
                             height={100}
@@ -682,23 +713,18 @@ export default function AssistantPageClient() {
                                         <details className="pt-2 text-xs bg-muted/50 p-2 rounded-md">
                                             <summary className="cursor-pointer font-semibold">Debug Info</summary>
                                             <pre className="mt-2 text-[10px] leading-tight whitespace-pre-wrap break-all">
-                                                {JSON.stringify({
-                                                    hasBwsDetails,
-                                                    ingredients: product.productDetails?.ingredients,
-                                                    nutrition: product.productDetails?.nutritionalInfo,
-                                                    bws: product.productDetails?.beersWinesSpirits
-                                                }, null, 2)}
+                                                {JSON.stringify(productDetails, null, 2)}
                                             </pre>
                                         </details>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.primaryEan13 || product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                                             <DataRow icon={<Info />} label="Status" value={product.status} />
-                                            <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails?.legacyItemNumbers?.[0]} />
+                                            <DataRow icon={<Footprints />} label="Walk Sequence" value={productDetails?.legacyItemNumbers?.[0]} />
                                             <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
-                                            <DataRow icon={<Crown />} label="Brand" value={product.productDetails?.brand} />
-                                            <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails?.countryOfOrigin} />
+                                            <DataRow icon={<Crown />} label="Brand" value={productDetails?.brand} />
+                                            <DataRow icon={<Globe />} label="Country of Origin" value={productDetails?.countryOfOrigin} />
                                             <DataRow icon={<Thermometer />} label="Temperature" value={product.temperature} />
-                                            <DataRow icon={<Weight />} label="Weight" value={product.weight ? `${product.weight} kg` : null} />
+                                            <DataRow icon={<Weight />} label="Weight" value={productDetails?.dimensions?.weight ? `${productDetails.dimensions.weight} kg` : null} />
                                             <div className='sm:col-span-2'>
                                                 <Button variant="outline" size="sm" className="w-full" asChild>
                                                 <Link href={`/map?sku=${product.sku}&locationId=${settings.locationId}`}>
@@ -713,7 +739,7 @@ export default function AssistantPageClient() {
                                             <SkuQrCode sku={product.sku} />
                                         </div>
 
-                                        {product.productDetails && <Accordion type="single" collapsible className="w-full text-xs">
+                                        {productDetails && <Accordion type="single" collapsible className="w-full text-xs">
                                             <AccordionItem value="stock">
                                                 <AccordionTrigger className='py-2 font-semibold'>Stock & Logistics</AccordionTrigger>
                                                 <AccordionContent className="space-y-3 pt-2">
@@ -724,11 +750,11 @@ export default function AssistantPageClient() {
                                                         value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
                                                     />
                                                     ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
-                                                    <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
-                                                    <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
-                                                    <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
-                                                    <DataRow icon={<Flag />} label="Perishable" value={product.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
-                                                    <DataRow icon={<Flag />} label="Manual Order" value={product.productDetails.manuallyStoreOrderedItem} />
+                                                    <DataRow icon={<Layers />} label="Storage" value={productDetails.storage?.join(', ')} />
+                                                    <DataRow icon={<Layers />} label="Pack Info" value={productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
+                                                    <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={productDetails.productLife ? `${productDetails.productLife.minimumCPCAcceptanceLife} / ${productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
+                                                    <DataRow icon={<Flag />} label="Perishable" value={productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
+                                                    <DataRow icon={<Flag />} label="Manual Order" value={productDetails.manuallyStoreOrderedItem} />
                                                      <DataRow icon={<Info />} label="Start of Day Stock" value={product.spaceInfo?.startOfDayQty} />
                                                     <DataRow icon={<Info />} label="End of Day Stock" value={product.spaceInfo?.endOfDayQty} />
                                                     <DataRow icon={<Info />} label="Facings" value={product.spaceInfo?.standardSpace?.locations?.[0]?.facings} />
@@ -736,17 +762,17 @@ export default function AssistantPageClient() {
                                                     <DataRow icon={<Info />} label="Merch Type" value={product.spaceInfo?.standardSpace?.locations?.[0]?.merchandiseType} />
                                                 </AccordionContent>
                                             </AccordionItem>
-                                             {product.productDetails.commercialHierarchy && (
+                                             {productDetails.commercialHierarchy && (
                                                 <AccordionItem value="classification">
                                                     <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
                                                     <AccordionContent className="pt-2">
                                                     <p className="text-xs">
                                                         {[
-                                                            product.productDetails.commercialHierarchy.divisionName,
-                                                            product.productDetails.commercialHierarchy.groupName,
-                                                            product.productDetails.commercialHierarchy.departmentName,
-                                                            product.productDetails.commercialHierarchy.className,
-                                                            product.productDetails.commercialHierarchy.subclassName,
+                                                            productDetails.commercialHierarchy.divisionName,
+                                                            productDetails.commercialHierarchy.groupName,
+                                                            productDetails.commercialHierarchy.departmentName,
+                                                            productDetails.commercialHierarchy.className,
+                                                            productDetails.commercialHierarchy.subclassName,
                                                         ].filter(Boolean).map(s => s?.replace(/^\d+\s/, '')).join(' → ')}
                                                     </p>
                                                     </AccordionContent>
@@ -756,28 +782,28 @@ export default function AssistantPageClient() {
                                                 <AccordionItem value="bws">
                                                     <AccordionTrigger className='py-2 font-semibold'>Beers, Wines & Spirits</AccordionTrigger>
                                                     <AccordionContent className="space-y-3 pt-2">
-                                                    <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={bws.alcoholByVolume ? `${bws.alcoholByVolume}%` : null} />
-                                                    <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} valueClassName="text-xs italic" />
-                                                    <DataRow icon={<Info />} label="Volume" value={bws.volumeInLitres ? `${bws.volumeInLitres}L` : null} />
+                                                    <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={bws?.alcoholByVolume ? `${bws.alcoholByVolume}%` : null} />
+                                                    <DataRow icon={<FileText />} label="Tasting Notes" value={bws?.tastingNotes} valueClassName="text-xs italic" />
+                                                    <DataRow icon={<Info />} label="Volume" value={bws?.volumeInLitres ? `${bws.volumeInLitres}L` : null} />
                                                     </AccordionContent>
                                                 </AccordionItem>
                                             )}
-                                            {(product.productDetails.ingredients && product.productDetails.ingredients.length > 0) &&
+                                            {(productDetails.ingredients && productDetails.ingredients.length > 0) &&
                                                 <AccordionItem value="ingredients">
                                                     <AccordionTrigger className='py-2 font-semibold'>Ingredients & Allergens</AccordionTrigger>
                                                     <AccordionContent className="space-y-4 pt-2">
-                                                        {product.productDetails.ingredients && product.productDetails.ingredients.length > 0 && (
+                                                        {productDetails.ingredients && productDetails.ingredients.length > 0 && (
                                                             <div>
                                                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Leaf className="h-5 w-5" /> Ingredients</h4>
-                                                                <p className="text-xs">{product.productDetails.ingredients.join(', ')}</p>
+                                                                <p className="text-xs">{productDetails.ingredients.join(', ')}</p>
                                                             </div>
                                                         )}
 
-                                                        {product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0 && (
+                                                        {productDetails.allergenInfo && productDetails.allergenInfo.length > 0 && (
                                                             <div>
                                                                 <h4 className="font-bold mb-2 flex items-center gap-2"><Shell className="h-5 w-5" /> Allergens</h4>
                                                                 <div className="flex flex-wrap gap-2">
-                                                                    {product.productDetails.allergenInfo.map(allergen => (
+                                                                    {productDetails.allergenInfo.map(allergen => (
                                                                         <Badge key={allergen.name} variant={allergen.value === 'Contains' ? 'destructive' : 'secondary'}>
                                                                             {allergen.name}
                                                                         </Badge>
@@ -788,13 +814,13 @@ export default function AssistantPageClient() {
                                                     </AccordionContent>
                                                 </AccordionItem>
                                             }
-                                            {product.productDetails.nutritionalInfo && product.productDetails.nutritionalInfo.length > 0 && (
+                                            {productDetails.nutritionalInfo && productDetails.nutritionalInfo.length > 0 && (
                                                 <AccordionItem value="nutrition">
                                                     <AccordionTrigger className='py-2 font-semibold'>Nutrition</AccordionTrigger>
                                                     <AccordionContent className="space-y-2 pt-2">
-                                                        <p className="text-xs text-muted-foreground">{product.productDetails.nutritionalHeading}</p>
+                                                        <p className="text-xs text-muted-foreground">{productDetails.nutritionalHeading}</p>
                                                         <div className='space-y-1 text-xs'>
-                                                            {product.productDetails.nutritionalInfo
+                                                            {productDetails.nutritionalInfo
                                                                 .filter(n => n.name && !n.name.startsWith('*'))
                                                                 .map(nutrient => (
                                                                     <div key={nutrient.name} className="flex justify-between border-b pb-1">
@@ -807,10 +833,10 @@ export default function AssistantPageClient() {
                                                 </AccordionItem>
                                             )}
                                         </Accordion>}
-                                        {product.productDetails?.productMarketing && <Separator className="my-4" />}
-                                        {product.productDetails?.productMarketing && (
+                                        {productDetails?.productMarketing && <Separator className="my-4" />}
+                                        {productDetails?.productMarketing && (
                                         <div className='italic text-xs bg-muted/50 p-3 rounded-md'>
-                                            {product.productDetails.productMarketing}
+                                            {productDetails.productMarketing}
                                         </div>
                                         )}
                                         <details className="pt-2 text-xs">
@@ -903,3 +929,5 @@ export default function AssistantPageClient() {
     </div>
   );
 }
+
+    
