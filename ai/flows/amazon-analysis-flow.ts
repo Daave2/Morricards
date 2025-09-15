@@ -97,7 +97,7 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
           try {
             // Call the prompt directly and handle the response correctly
             const llmResponse = await pickerDiagnosisPrompt({ productData: product });
-            const diagnosticSummary = llmResponse.response.text ?? null; // Correctly access the text
+            const diagnosticSummary = llmResponse.response?.text ?? null; // Correctly access the text
             
             if (!diagnosticSummary) {
                 throw new Error("AI failed to generate a diagnosis summary.");
