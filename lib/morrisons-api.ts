@@ -236,21 +236,20 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
+        let cumulativeError = '';
         try {
             // 1. Fetch from Price Integrity first. This is our baseline.
             const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
             const piProduct = pi?.product;
 
             // 2. Determine the "main" SKU to use for detailed lookups.
-            // If the scanned item is a component of a pack, the PI endpoint on the component
-            // often returns the parent pack's itemNumber.
             let mainSku = piProduct?.itemNumber?.toString() || scannedSku;
 
             // 3. Fetch the full, rich product data from our Next.js proxy using the main SKU.
             const { product: mainProduct, error: productError } = await fetchProductFromUpstream(mainSku, bearerToken);
+            if (productError) cumulativeError += `Product Proxy Error: ${productError}\n`;
             
-            // 4. If the main fetch failed but PI gave us a different SKU (pack vs each),
-            // it's possible the original scanned SKU has some data. Let's try it as a fallback.
+            // 4. If the main fetch failed but PI gave us a different SKU (pack vs each), try the original scanned SKU as a fallback.
             let fallbackProduct: Product | null = null;
             if (productError && mainSku !== scannedSku) {
                 const { product } = await fetchProductFromUpstream(scannedSku, bearerToken);
@@ -259,26 +258,38 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             
             const finalProductDetails: Product = {
                 ...(piProduct || {}),
-                ...(fallbackProduct || {}), // Apply fallback first
-                ...(mainProduct || {}),   // Main product data takes precedence
+                ...(fallbackProduct || {}), 
+                ...(mainProduct || {}),  
             };
 
-            // If, after all that, we still have no product details, we can't continue.
             if (Object.keys(finalProductDetails).length === 0) {
               throw new Error(`Could not retrieve any product details for SKU ${scannedSku}. Upstream error: ${productError}`);
             }
 
-            // The SKU for stock/order lookups should be the one from the final details if available
-            // This is often the sellable unit, not the scanned component.
             const stockAndOrderSku = finalProductDetails.itemNumber || mainSku;
 
-            // 5. Fetch stock, order, and space info in parallel using the most relevant SKU.
-            const [stockPayload, stockHistory, orderInfo, spaceInfo] = await Promise.all([
+            // 5. Fetch stock, order, and space info in parallel, capturing individual errors.
+            const results = await Promise.allSettled([
                 getStock(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getStockHistory(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getOrderInfo(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getSpaceInfo(locationId, stockAndOrderSku, bearerToken, debugMode),
             ]);
+
+            const [stockResult, stockHistoryResult, orderInfoResult, spaceInfoResult] = results;
+
+            const stockPayload = stockResult.status === 'fulfilled' ? stockResult.value : null;
+            if (stockResult.status === 'rejected') cumulativeError += `Stock API Error: ${stockResult.reason}\n`;
+
+            const stockHistory = stockHistoryResult.status === 'fulfilled' ? stockHistoryResult.value : null;
+            if (stockHistoryResult.status === 'rejected') cumulativeError += `Stock History API Error: ${stockHistoryResult.reason}\n`;
+            
+            const orderInfo = orderInfoResult.status === 'fulfilled' ? orderInfoResult.value : null;
+             if (orderInfoResult.status === 'rejected') cumulativeError += `Order Info API Error: ${orderInfoResult.reason}\n`;
+            
+            const spaceInfo = spaceInfoResult.status === 'fulfilled' ? spaceInfoResult.value : null;
+            if (spaceInfoResult.status === 'rejected') cumulativeError += `Space Info API Error: ${spaceInfoResult.reason}\n`;
+
 
             // 6. Assemble the final, merged object
             const stockPosition = stockPayload?.stockPosition?.[0];
@@ -313,10 +324,8 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const prices = (pi?.prices ?? []) as any[];
             const promos = (pi?.promotions ?? []) as any[];
 
-            // Extract promotional text
-            let promotionalText = promos?.[0]?.marketingAttributes?.offerValue; // e.g., "£1.00"
+            let promotionalText = promos?.[0]?.marketingAttributes?.offerValue;
             if (!promotionalText && promos?.[0]?.marketingAttributes?.name) {
-                // Check for multi-buy text like "2 for £5.00"
                 const promoName = promos[0].marketingAttributes.name;
                 if (/^\d+\s+for\s+£\d+(\.\d{2})?$/.test(promoName)) {
                     promotionalText = promoName;
@@ -347,7 +356,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               deliveryInfo: deliveryInfo,
               allOrders: allOrders ?? null,
               spaceInfo: spaceInfo ?? null,
-              proxyError: debugMode && productError ? `Product Proxy Error: ${productError}` : null,
+              proxyError: debugMode && cumulativeError ? cumulativeError.trim() : null,
             };
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : String(err);
