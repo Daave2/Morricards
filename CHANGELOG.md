@@ -6,7 +6,7 @@ This document tracks the major versions and completed features for the Store Mob
 -   Implemented an interactive AI chat feature on the Product Assistant page.
 -   Updated planogram validator to handle single-image analysis (listing items from a planogram), use a more robust card-based layout for results, allow camera capture for images, and show a detailed product modal on-click for every result item.
 -   Refactored the bottom navigation for a cleaner mobile experience.
--   Added `structure.md` to document the application architecture for AI assistants.
+-   Updated `structure.md` to document the application architecture for AI assistants, including the successful "two-step fetch" pattern for enriching product data on the client-side. This resolved a persistent issue with missing product details on the Assistant page.
 -   Updated `README.md` to guide assistants to use the new documentation files.
 
 ## v0.5 - Voice Input

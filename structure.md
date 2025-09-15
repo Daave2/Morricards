@@ -21,8 +21,9 @@ This directory contains all the routes and UI pages of the application, followin
 - **`/app/(pages)/*`**: Each subdirectory represents a route.
   - `page.tsx`: The main React component for the route. It's often a wrapper that suspense-loads a client component.
   - `*Client.tsx`: The primary interactive component for a page (e.g., `PickingListClient.tsx`). All client-side logic, state management, and form handling reside here.
-- **`app/api`**: Server-side API routes.
-- **`app/actions.ts`**: Contains Server Actions, which are used for form submissions and data fetching from client components without needing explicit API endpoints.
+- **`app/api`**: Server-side API routes. These are critical for proxying requests to external services that have CORS restrictions or require secret API keys.
+  - `app/api/morrisons/product/route.ts`: A key proxy that fetches the full, rich product data object.
+- **`app/actions.ts`**: Contains Server Actions, which are used for form submissions and initial data fetching from client components.
 - **`app/layout.tsx`**: The root layout of the application.
 - **`app/globals.css`**: Global styles and theme definitions for ShadCN and Tailwind CSS.
 
@@ -51,7 +52,7 @@ Custom React Hooks used across the application to encapsulate client-side logic.
 ### `/lib`
 Contains shared libraries, data, and utility functions.
 
-- **`lib/morrisons-api.ts`**: The primary client-side wrapper for fetching data from the external Morrisons APIs. It consolidates calls to different endpoints (product details, stock, pricing) into a single function.
+- **`lib/morrisons-api.ts`**: The client-side wrapper for fetching *basic* data from external Morrisons APIs. It consolidates calls to endpoints like stock and price integrity. Note that for full, rich product details, a different pattern is used (see below).
 - **`lib/idb.ts`**: A helper library for interacting with IndexedDB, used for offline data storage.
 - **`lib/offlineQueue.ts`**: Implements the logic for queueing API requests when the user is offline and flushing them when online.
 - **`lib/map-data.ts`**: Contains the static JSON data defining the store layout for the `StoreMap` component.
@@ -59,19 +60,28 @@ Contains shared libraries, data, and utility functions.
 
 ## 3. Key Interactions & Patterns
 
-- **Data Fetching**: Client components (`*Client.tsx`) call Server Actions defined in `app/actions.ts`. These actions then use the `lib/morrisons-api.ts` client to fetch data.
-- **AI Flows**: Client components directly import and call the server-side Genkit flow functions from `/ai/flows/*.ts`. These are exposed as async functions that can be invoked from the client.
-  - **Product Chat**: `app/assistant/AssistantPageClient.tsx` contains a `ChatInterface` component that calls the `productChatFlow` to create a conversational experience.
-  - **Planogram Validation**: `app/planogram/PlanogramClient.tsx` calls `planogramFlow`. This flow is a key example of complex AI logic, performing a full comparison of two images (planogram vs. shelf) or extracting items from a single planogram image. The results are returned as a single, consolidated list with a status for each item, and each item is clickable to show a full product detail modal.
-- **Settings**: All pages that need the Store ID or API tokens use the `useApiSettings` hook to get the current values. They do not manage this state locally.
-- **Offline**: When the app is offline (detected by `useNetworkSync`), actions like adding a product to the picking list or reporting an availability issue are queued in IndexedDB via `lib/offlineQueue.ts`. The `useNetworkSync` hook automatically flushes this queue when the app comes back online.
-- **Styling**: All styling is done via Tailwind CSS and ShadCN UI components. Themes are defined in `app/globals.css` and applied in the root `layout.tsx`. The bottom navigation bar was recently refactored into a "More" menu pattern in `components/BottomNavbar.tsx` for better mobile UX.
+- **Server Actions vs. API Routes**:
+  - **Server Actions** (`app/actions.ts`) are used for initial, straightforward data fetches that don't require complex merging (e.g., getting basic stock and price).
+  - **API Routes** (`app/api/*`) are used as server-side proxies to external APIs, especially those with CORS issues or when API keys must be hidden. The `/api/morrisons/product` route is a critical example.
+
+- **Successful Data Enrichment Pattern (AI Assistant)**:
+  - **Problem**: Fetching complete product data was challenging because rich details (ingredients, allergens) live in a separate API endpoint from basic data (stock, price). Attempts to merge this data server-side in a single function (`lib/morrisons-api.ts`) proved unreliable and difficult to debug.
+  - **Solution (The "Two-Step Fetch")**: The `app/assistant/AssistantPageClient.tsx` now implements a successful two-step, client-driven pattern:
+    1.  **Initial Fetch**: It calls the `getProductData` server action to get the basic product object, which includes stock, price, and location.
+    2.  **Enrichment Fetch**: Immediately after, it makes a *second*, direct `fetch` call from the client to the internal proxy at `/api/morrisons/product`. This route fetches the full, rich product JSON.
+    3.  **Client-Side Merge**: The client component then merges the results from both fetches into a single, complete product object and stores it in its state. This complete object is then used to render the UI and is passed to the AI flows.
+  - **Conclusion**: This pattern is now the standard for pages requiring a complete, multi-source view of a product. It is more robust and easier to debug than a complex, monolithic server-side fetching function.
+
+- **AI Flows**: Client components directly import and call the server-side Genkit flow functions from `/ai/flows/*.ts`. With the successful data enrichment pattern, these flows now receive the complete product object, enabling them to provide accurate and detailed responses.
+
+- **Offline**: When the app is offline (detected by `useNetworkSync`), actions are queued in IndexedDB via `lib/offlineQueue.ts`. The `useNetworkSync` hook automatically flushes this queue when the app comes back online.
 
 ## 4. Key Examples (Golden Paths)
 
 To ensure consistency, refer to these files as the standard for common tasks.
 
 -   **Creating a New Page**: Follow the pattern in `app/picking/page.tsx` (for the Suspense wrapper) and `app/picking/PickingListClient.tsx` (for the interactive client logic).
--   **Creating an AI Flow**: Use `ai/flows/product-insights-flow.ts` and its corresponding `*-types.ts` file as a template. `ai/flows/planogram-flow.ts` is a good example of a more complex, multi-input flow.
--   **Defining a Component**: `components/product-card.tsx` is a good example of a complex, data-driven component. The results display in `app/planogram/PlanogramClient.tsx` is a good example of rendering a list of cards for a responsive mobile layout.
+-   **Fetching and Displaying Complex Data**: Refer to `app/assistant/AssistantPageClient.tsx` for the canonical example of the "Two-Step Fetch" pattern.
+-   **Creating an AI Flow**: Use `ai/flows/product-insights-flow.ts` and its corresponding `*-types.ts` file as a template.
+-   **Defining a Component**: `components/product-card.tsx` is a good example of a complex, data-driven component that correctly renders all nested product details.
 -   **Handling Forms**: The forms in `app/picking/PickingListClient.tsx` and `app/settings/page.tsx` demonstrate the use of `react-hook-form` with Zod for validation.
