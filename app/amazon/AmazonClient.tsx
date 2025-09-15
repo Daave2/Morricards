@@ -163,12 +163,10 @@ export default function AmazonClient() {
         // Step 3: Call the main analysis prompt with the image AND the fetched data.
         const analysis = await pickingAnalysisFlow({
             imageDataUri: imageDataUri!,
-            productsData: JSON.parse(JSON.stringify(productsData))
+            productsData: productsData
         });
 
-        const cleanAnalysis = JSON.parse(JSON.stringify(analysis));
-
-        if (!cleanAnalysis.products || cleanAnalysis.products.length === 0) {
+        if (!analysis.products || analysis.products.length === 0) {
             toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI could not provide any suggestions for the identified products.' });
             setIsLoading(false);
             return;
@@ -176,9 +174,9 @@ export default function AmazonClient() {
 
         // Step 4: Enrich the analysis with the fetched data for UI display
         const productDataMap = new Map(productsData.map(p => [p.sku, p]));
-        const enrichedResults = cleanAnalysis.products.map((p: AnalyzedProduct) => ({
+        const enrichedResults = analysis.products.map((p: AnalyzedProduct) => ({
             ...p,
-            productData: p.sku ? JSON.parse(JSON.stringify(productDataMap.get(p.sku) || null)) : undefined,
+            productData: p.sku ? productDataMap.get(p.sku) : undefined,
         }));
         
         setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));

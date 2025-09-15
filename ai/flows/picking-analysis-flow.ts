@@ -9,7 +9,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { PickingAnalysisInputSchema, type PickingAnalysisInput, type PickingAnalysisOutput, PickingAnalysisOutputSchema } from './picking-analysis-types';
 
 const pickingAnalysisPrompt = ai.definePrompt({
@@ -71,10 +70,7 @@ Image: {{media url=imageDataUri}}`
 export async function pickingAnalysisFlow(input: PickingAnalysisInput): Promise<PickingAnalysisOutput> {
   
   // The client now orchestrates fetching. This flow just does the final analysis.
-  const { output } = await pickingAnalysisPrompt({
-      ...input,
-      productsData: JSON.parse(JSON.stringify(input.productsData)),
-  });
+  const { output } = await pickingAnalysisPrompt(input);
 
   return output || { products: [] };
 }
