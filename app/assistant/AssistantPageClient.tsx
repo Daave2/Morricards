@@ -706,13 +706,13 @@ export default function AssistantPageClient() {
                                             <AccordionItem value="stock">
                                                 <AccordionTrigger className='py-2 font-semibold'>Stock & Logistics</AccordionTrigger>
                                                 <AccordionContent className="space-y-3 pt-2">
-                                                {product.lastStockChange?.lastCountDateTime && (
+                                                {product.lastStockChange?.lastCountDateTime && product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
                                                     <DataRow
                                                         icon={<History />}
                                                         label="Last Stock Event"
                                                         value={`${product.lastStockChange.inventoryAction} of ${product.lastStockChange.qty} by ${product.lastStockChange.createdBy} at ${product.lastStockChange.lastCountDateTime}`}
                                                     />
-                                                    )}
+                                                    ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
                                                     <DataRow icon={<Layers />} label="Storage" value={product.productDetails.storage?.join(', ')} />
                                                     <DataRow icon={<Layers />} label="Pack Info" value={product.productDetails.packs?.map(p => `${p.packQuantity}x ${p.packNumber}`).join('; ')} />
                                                     <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
