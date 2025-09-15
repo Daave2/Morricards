@@ -18,7 +18,7 @@ import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/lib/morriso
 const pickerDiagnosisPrompt = ai.definePrompt({
     name: 'pickerDiagnosisPrompt',
     input: { schema: z.object({ rawData: z.any() }) },
-    output: { schema: z.string() },
+    output: { schema: z.object({ diagnosticSummary: z.string() }) },
     prompt: `You are an expert stock investigator for a UK supermarket. Your task is to analyze raw API data for a single product and provide a concise, helpful diagnosis for a store colleague who cannot find it on the shelf.
 
 The user needs to understand *why* the item might be missing and *where to look next*.
@@ -34,7 +34,7 @@ You will be given a '_raw' object containing several nested API responses. Use a
 "The system shows 5 units in stock, but the last delivery of 12 units was only last night. Since no sales are recorded, the missing stock is likely in the warehouse, possibly on a delivery cage that hasn't been worked yet. Also, check promo end-aisle 97, as this item is on promotion."
 "Stock is zero and the last delivery was over a week ago. This is a genuine out-of-stock. Check for a newer version of the product or a direct substitute."
 
-Analyze this raw data and provide your diagnosis:
+Analyze this raw data and provide your diagnosis in the 'diagnosticSummary' field of your response.
 \`\`\`json
 {{{json rawData}}}
 \`\`\`
@@ -92,11 +92,10 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
               if (!product._raw) {
                 throw new Error("Product has no raw data for AI diagnosis.");
               }
-              // Sanitize the raw data object before passing to the prompt.
               const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
               
               const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
-              const diagnosticSummary = diagnosticResult.output;
+              const diagnosticSummary = diagnosticResult.output?.diagnosticSummary;
               
               if (!diagnosticSummary) {
                 throw new Error("AI failed to generate a diagnosis summary.");
@@ -120,4 +119,3 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
   // This guarantees that only plain objects are returned from the flow.
   return JSON.parse(JSON.stringify(results));
 }
-
