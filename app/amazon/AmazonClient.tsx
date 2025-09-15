@@ -187,8 +187,6 @@ export default function AmazonClient() {
                 duration: 20000,
             });
             console.error("RAW DATA causing serialization error:", results);
-            // Fallback to setting raw results if sanitization fails, which might still crash but we tried.
-            setAnalysisResults(results);
         }
         
         const successCount = results.filter(r => r.insights).length;
