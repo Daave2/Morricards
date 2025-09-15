@@ -340,7 +340,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               weight: finalProductDetails?.dimensions?.weight,
               status: finalProductDetails?.status,
               stockSkuUsed: undefined,
-              productDetails: finalProductDetails,
+              productDetails: finalProductDetails, // This is the corrected line
               lastStockChange: stockHistory || undefined,
               deliveryInfo: deliveryInfo,
               allOrders: allOrders ?? null,
