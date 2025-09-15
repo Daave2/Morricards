@@ -167,7 +167,8 @@ export default function AmazonClient() {
             }
             try {
                 const insights = await productInsightsFlow({ productData: product });
-                return { product, insights, error: null };
+                // Second sanitization step on the client side for absolute certainty.
+                return { product, insights: JSON.parse(JSON.stringify(insights)), error: null };
             } catch (e) {
                 return { product, insights: null, error: e instanceof Error ? e.message : String(e) };
             }
