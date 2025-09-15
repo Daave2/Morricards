@@ -682,7 +682,7 @@ export default function AssistantPageClient() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                                             <DataRow icon={<Info />} label="Status" value={product.status} />
-                                            <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers} />
+                                            <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers?.[0]} />
                                             <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
                                             <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
                                             <DataRow icon={<Globe />} label="Country of Origin" value={product.productDetails.countryOfOrigin} />
