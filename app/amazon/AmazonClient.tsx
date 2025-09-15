@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -126,6 +127,7 @@ export default function AmazonClient() {
     setAnalysisResults([]);
     toast({ title: 'Starting Analysis...', description: 'AI is reading the list. This may take a moment.' });
     
+    let results: EnrichedAnalysis[] = [];
     try {
         const imageDataUri = await toDataUri(listImage);
         
@@ -171,7 +173,7 @@ export default function AmazonClient() {
             }
         });
 
-        const results = await Promise.all(insightPromises);
+        results = await Promise.all(insightPromises);
 
         // **CRUCIAL FINAL SANITIZATION**
         // This guarantees that only plain objects are passed to the state.
@@ -184,7 +186,8 @@ export default function AmazonClient() {
          toast({
             variant: 'destructive',
             title: 'Analysis Failed',
-            description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}`,
+            description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}. RAW DATA: ${JSON.stringify(results)}`,
+            duration: 20000,
         });
         console.error(error);
     }
