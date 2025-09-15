@@ -181,7 +181,6 @@ export default function AmazonClient() {
             const sanitizedResults = JSON.parse(JSON.stringify(results));
             setAnalysisResults(sanitizedResults);
         } catch (serializationError) {
-            // If even sanitization fails, show the raw, problematic data.
             toast({
                 variant: 'destructive',
                 title: 'Fatal Serialization Error',
@@ -196,7 +195,7 @@ export default function AmazonClient() {
          toast({
             variant: 'destructive',
             title: 'Analysis Failed',
-            description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}. RAW DATA: ${JSON.stringify(results)}`,
+            description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}.`,
             duration: 20000,
         });
         console.error(error);
