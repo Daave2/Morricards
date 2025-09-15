@@ -6,13 +6,15 @@
  * This flow handles the entire process of analyzing a picking list image:
  * 1. OCR to extract SKUs.
  * 2. Fetches data for each SKU.
- * 3. Returns a single, clean payload to the client.
+ * 3. Generates a diagnostic summary for the picker.
+ * 4. Returns a single, clean payload to the client.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { ocrPrompt } from '@/ai/flows/picking-analysis-flow';
 import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import { pickerDiagnosisFlow } from './picker-diagnosis-flow';
 
 const AmazonAnalysisInputSchema = z.object({
   imageDataUri: z
@@ -28,7 +30,8 @@ export type AmazonAnalysisInput = z.infer<typeof AmazonAnalysisInputSchema>;
 
 
 const EnrichedAnalysisSchema = z.object({
-  product: z.custom<FetchMorrisonsDataOutput[0]>(),
+  product: z.custom<FetchMorrisonsDataOutput[0]>().nullable(),
+  diagnosticSummary: z.string().nullable(),
   error: z.string().nullable(),
 });
 export type EnrichedAnalysis = z.infer<typeof EnrichedAnalysisSchema>;
@@ -55,17 +58,27 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
     debugMode: input.debugMode,
   });
   
-  const results = skus.map(sku => {
+  // Step 3: For each found product, generate a diagnostic summary.
+  const analysisPromises = skus.map(async (sku) => {
       const product = productsData.find(p => p.scannedSku === sku);
       if (product) {
-          return { product, error: product.proxyError || null };
+          try {
+            const diagnosticSummary = await pickerDiagnosisFlow({ productData: product });
+            return { product, diagnosticSummary, error: product.proxyError || null };
+          } catch(e) {
+            const error = e instanceof Error ? e.message : String(e);
+            return { product, diagnosticSummary: null, error: `Failed to generate AI diagnosis: ${error}` };
+          }
       } else {
           return {
-              product: { sku, name: `Product not found for SKU ${sku}` } as any,
+              product: null,
+              diagnosticSummary: null,
               error: `Could not fetch data for SKU ${sku}.`,
           };
       }
   });
+
+  const results = await Promise.all(analysisPromises);
 
   // **CRUCIAL FINAL SANITIZATION ON SERVER**
   // This guarantees that only plain objects are returned from the flow.

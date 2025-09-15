@@ -21,6 +21,7 @@ import {
   Boxes,
   Truck,
   History,
+  BrainCircuit,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -297,78 +298,89 @@ export default function AmazonClient() {
         {analysisResults.length > 0 && (
           <div className="space-y-6">
             {analysisResults.map((item, index) => (
-              <Card key={item.product.sku || index}>
+              <Card key={item.product?.sku || index}>
                 <CardHeader>
                    <div className='flex items-start gap-4'>
                         <div className={cn("rounded-lg p-2 flex-shrink-0", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
                             <Image
-                                src={item.product.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                                alt={item.product.name}
+                                src={item.product?.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                alt={item.product?.name || 'Unknown'}
                                 width={100}
                                 height={100}
                                 className="rounded-md object-cover"
                             />
                         </div>
                         <div className='flex-grow'>
-                            <CardTitle>{item.product.name || 'Unknown Product'}</CardTitle>
+                            <CardTitle>{item.product?.name || 'Unknown Product'}</CardTitle>
                             <CardDescription>
-                                SKU: {item.product.sku || 'Not Found'}
+                                SKU: {item.product?.sku || 'Not Found'}
                             </CardDescription>
-                             <div className="mt-2 flex items-baseline gap-2">
+                             {item.product && <div className="mt-2 flex items-baseline gap-2">
                                  <span className={cn("text-lg font-semibold", item.product.price.promotional && "line-through text-muted-foreground text-base")}>
                                     £{item.product.price.regular?.toFixed(2) || 'N/A'}
                                 </span>
                                 {item.product.price.promotional && (
                                     <Badge variant="destructive">{item.product.price.promotional}</Badge>
                                 )}
-                            </div>
+                            </div>}
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {item.product && !item.error ? (
-                    <div className="space-y-4 text-sm">
-                      <DataRow
-                        icon={<Boxes />}
-                        label="Stock"
-                        value={`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}
-                      />
-                      <DataRow
-                        icon={<MapPin />}
-                        label="Location"
-                        value={item.product.location.standard || 'N/A'}
-                      />
-                      {item.product.location.promotional && (
-                        <DataRow
-                          icon={<MapPin />}
-                          label="Promo Location"
-                          value={item.product.location.promotional}
-                        />
-                      )}
-                      <DeliveryInfoRow
-                        deliveryInfo={item.product.deliveryInfo}
-                        allOrders={item.product.allOrders}
-                        productName={item.product.name}
-                      />
-                       {item.product.lastStockChange?.lastCountDateTime && item.product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
+                    <div className="space-y-4">
+                        {item.diagnosticSummary && (
+                            <Alert>
+                                <BrainCircuit className="h-4 w-4" />
+                                <AlertTitle>AI Diagnosis</AlertTitle>
+                                <AlertDescription>
+                                    {item.diagnosticSummary}
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        <div className="space-y-4 text-sm pt-4">
                           <DataRow
-                              icon={<History />}
-                              label="Last Stock Event"
-                              value={`${item.product.lastStockChange.inventoryAction} of ${item.product.lastStockChange.qty} by ${item.product.lastStockChange.createdBy} at ${item.product.lastStockChange.lastCountDateTime}`}
+                            icon={<Boxes />}
+                            label="Stock"
+                            value={`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}
                           />
-                        ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
-                        
-                        <details className="pt-2 text-xs">
-                            <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                            {item.product.proxyError && (
-                              <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
-                                  <strong>Proxy Error:</strong> {item.product.proxyError}
-                              </div>
-                            )}
-                            <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
-                                {JSON.stringify(item.product, null, 2)}
-                            </pre>
-                        </details>
+                          <DataRow
+                            icon={<MapPin />}
+                            label="Location"
+                            value={item.product.location.standard || 'N/A'}
+                          />
+                          {item.product.location.promotional && (
+                            <DataRow
+                              icon={<MapPin />}
+                              label="Promo Location"
+                              value={item.product.location.promotional}
+                            />
+                          )}
+                          <DeliveryInfoRow
+                            deliveryInfo={item.product.deliveryInfo}
+                            allOrders={item.product.allOrders}
+                            productName={item.product.name}
+                          />
+                           {item.product.lastStockChange?.lastCountDateTime && item.product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
+                              <DataRow
+                                  icon={<History />}
+                                  label="Last Stock Event"
+                                  value={`${item.product.lastStockChange.inventoryAction} of ${item.product.lastStockChange.qty} by ${item.product.lastStockChange.createdBy} at ${item.product.lastStockChange.lastCountDateTime}`}
+                              />
+                            ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
+                            
+                            <details className="pt-2 text-xs">
+                                <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                                {item.product.proxyError && (
+                                  <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
+                                      <strong>Proxy Error:</strong> {item.product.proxyError}
+                                  </div>
+                                )}
+                                <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                                    {JSON.stringify(item.product, null, 2)}
+                                </pre>
+                            </details>
+                        </div>
                     </div>
                   ) : (
                     <Alert variant="destructive">
@@ -376,8 +388,14 @@ export default function AmazonClient() {
                       <AlertTitle>Could Not Analyze Product</AlertTitle>
                       <AlertDescription>
                         {item.error ||
-                          `Could not fetch data for SKU ${item.product.sku}.`}
+                          `Could not fetch data for SKU ${item.product?.sku}.`}
                       </AlertDescription>
+                       <details className="pt-2 text-xs">
+                          <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                          <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                              {JSON.stringify(item.product, null, 2)}
+                          </pre>
+                      </details>
                     </Alert>
                   )}
                 </CardContent>
