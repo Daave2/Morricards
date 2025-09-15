@@ -236,6 +236,29 @@ export default function PlanogramClient() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
+  useEffect(() => {
+    const handleSharedImage = async () => {
+      // @ts-ignore
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('message', event => {
+          if (event.data.action === 'load-image' && event.data.file) {
+            setPlanogramImage(event.data.file);
+            toast({
+              title: "Image Received",
+              description: "The shared image has been loaded as the planogram."
+            });
+            // Clean up the history so the user can use the back button.
+            window.history.replaceState({}, '', '/planogram');
+          }
+        });
+        // Let the service worker know we're ready.
+        navigator.serviceWorker.controller.postMessage('share-ready');
+      }
+    };
+    handleSharedImage();
+  }, [toast]);
+
+
   const startCamera = async () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
@@ -400,7 +423,7 @@ export default function PlanogramClient() {
           <CardHeader>
             <CardTitle>AI Planogram Validator</CardTitle>
             <CardDescription>
-              Upload an image of the planogram. Optionally, add a photo of the shelf to find differences.
+              Upload an image of the planogram. Optionally, add a photo of the shelf to find differences. You can also share an image from your phone directly to this page.
             </CardDescription>
           </CardHeader>
         </Card>
