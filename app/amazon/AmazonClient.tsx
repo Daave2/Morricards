@@ -177,10 +177,20 @@ export default function AmazonClient() {
 
         // **CRUCIAL FINAL SANITIZATION**
         // This guarantees that only plain objects are passed to the state.
-        const sanitizedResults = JSON.parse(JSON.stringify(results));
+        try {
+            const sanitizedResults = JSON.parse(JSON.stringify(results));
+            setAnalysisResults(sanitizedResults);
+        } catch (serializationError) {
+            // If even sanitization fails, show the raw, problematic data.
+            toast({
+                variant: 'destructive',
+                title: 'Fatal Serialization Error',
+                description: `Could not make the results safe for React. RAW DATA: ${JSON.stringify(results)}`,
+                duration: 20000,
+            });
+        }
         
-        setAnalysisResults(sanitizedResults);
-        toast({ title: 'Analysis Complete!', description: `AI has provided insights for ${sanitizedResults.length} items.` });
+        toast({ title: 'Analysis Complete!', description: `AI has provided insights for ${results.length} items.` });
 
     } catch (error) {
          toast({
