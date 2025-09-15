@@ -240,7 +240,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const piProduct = pi?.product;
             
             // 2. Determine the "main" SKU. It might be the scanned one, or a parent pack.
-            let mainSku = piProduct?.itemNumber?.toString() || scannedSku;
+            const mainSku = piProduct?.itemNumber?.toString() || scannedSku;
             
             // 3. Fetch the full, rich product data from our Next.js proxy.
             const { product: mainProduct, error: productError } = await fetchProductFromUpstream(mainSku, bearerToken);
