@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -15,17 +16,19 @@ import {
   UploadCloud,
   Bot,
   PackageSearch,
-  Lightbulb,
-  Info,
-  ThumbsUp,
   AlertTriangle,
+  MapPin,
+  Boxes,
+  Truck,
+  History,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { cn } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { amazonAnalysisFlow, EnrichedAnalysis } from '@/ai/flows/amazon-analysis-flow';
-
+import type { DeliveryInfo, Order } from '@/lib/morrisons-api';
+import { Badge } from '@/components/ui/badge';
 
 const ImageUpload = ({
   onImageSelect,
@@ -127,6 +130,53 @@ const toDataUri = (file: File | null): Promise<string | null> => {
   });
 };
 
+const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
+    if (value === undefined || value === null || value === '') return null;
+    return (
+        <div className="flex items-start gap-3">
+            <div className="w-5 h-5 text-primary flex-shrink-0 pt-0.5">{icon}</div>
+            <div className='flex-grow min-w-0'>
+                <span className="font-semibold">{label}:</span> <span className={cn('break-words', valueClassName)}>{value}</span>
+            </div>
+        </div>
+    );
+}
+
+const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInfo?: DeliveryInfo | null, allOrders?: Order[] | null, productName: string }) => {
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        const adjustedDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
+        return adjustedDate.toLocaleDateString('en-GB', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+        });
+    };
+
+    let deliveryInfoContent;
+    if (deliveryInfo) {
+      const friendlyDate = formatDate(deliveryInfo.expectedDate);
+      if (deliveryInfo.orderPosition === 'next') {
+        deliveryInfoContent = (
+          <span><strong>Next delivery due</strong> on <strong>{friendlyDate}</strong> with <strong>{deliveryInfo.totalUnits} units</strong> expected.</span>
+        );
+      } else {
+        deliveryInfoContent = (
+          <span><strong>Last delivery was</strong> on <strong>{friendlyDate}</strong>.</span>
+        );
+      }
+    } else {
+        deliveryInfoContent = (<span>There are <strong>no upcoming deliveries</strong> scheduled for this item.</span>);
+    }
+
+  return (
+    <div className="flex items-start gap-3 text-sm">
+        <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+        <div className="flex-grow">{deliveryInfoContent}</div>
+    </div>
+  )
+}
+
 export default function AmazonClient() {
   const [listImage, setListImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -179,10 +229,10 @@ export default function AmazonClient() {
         console.error("RAW DATA causing serialization error on client:", results);
       }
       
-      const successCount = results.filter((r) => r.insights).length;
+      const successCount = results.filter((r) => r.product && !r.error).length;
       toast({
         title: 'Analysis Complete!',
-        description: `AI has provided insights for ${successCount} of ${results.length} items.`,
+        description: `Successfully analyzed ${successCount} of ${results.length} items.`,
       });
     } catch (error) {
       toast({
@@ -249,52 +299,64 @@ export default function AmazonClient() {
             {analysisResults.map((item, index) => (
               <Card key={item.product.sku || index}>
                 <CardHeader>
-                  <CardTitle>{item.product.name || 'Unknown Product'}</CardTitle>
-                  <CardDescription>
-                    SKU: {item.product.sku || 'Not Found'}
-                  </CardDescription>
+                   <div className='flex items-start gap-4'>
+                        <div className={cn("rounded-lg p-2 flex-shrink-0", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
+                            <Image
+                                src={item.product.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                alt={item.product.name}
+                                width={100}
+                                height={100}
+                                className="rounded-md object-cover"
+                            />
+                        </div>
+                        <div className='flex-grow'>
+                            <CardTitle>{item.product.name || 'Unknown Product'}</CardTitle>
+                            <CardDescription>
+                                SKU: {item.product.sku || 'Not Found'}
+                            </CardDescription>
+                             <div className="mt-2 flex items-baseline gap-2">
+                                 <span className={cn("text-lg font-semibold", item.product.price.promotional && "line-through text-muted-foreground text-base")}>
+                                    £{item.product.price.regular?.toFixed(2) || 'N/A'}
+                                </span>
+                                {item.product.price.promotional && (
+                                    <Badge variant="destructive">{item.product.price.promotional}</Badge>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {item.insights ? (
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="p-4 border rounded-lg bg-accent/50 space-y-4">
-                        <div>
-                          <h3 className="font-bold flex items-center gap-2 mb-2">
-                            <Info className="h-5 w-5 text-primary" /> About This
-                            Product
-                          </h3>
-                          <p className="text-sm">
-                            {item.insights.customerFacingSummary}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="p-4 border rounded-lg space-y-4">
-                        <div>
-                          <h3 className="font-bold flex items-center gap-2 mb-2">
-                            <ThumbsUp className="h-5 w-5 text-primary" /> Key
-                            Selling Points
-                          </h3>
-                          <ul className="list-disc pl-5 space-y-2 text-sm">
-                            {item.insights.sellingPoints?.map((point, i) => (
-                              <li key={i}>{point}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        {item.insights.recipeIdeas &&
-                          item.insights.recipeIdeas.length > 0 && (
-                            <div>
-                              <h3 className="font-bold flex items-center gap-2 mb-2">
-                                <Lightbulb className="h-5 w-5 text-primary" />{' '}
-                                Recipe Ideas
-                              </h3>
-                              <ul className="list-disc pl-5 space-y-2 text-sm">
-                                {item.insights.recipeIdeas?.map((idea, i) => (
-                                  <li key={i}>{idea}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                      </div>
+                  {item.product && !item.error ? (
+                    <div className="space-y-4 text-sm">
+                      <DataRow
+                        icon={<Boxes />}
+                        label="Stock"
+                        value={`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}
+                      />
+                      <DataRow
+                        icon={<MapPin />}
+                        label="Location"
+                        value={item.product.location.standard || 'N/A'}
+                      />
+                      {item.product.location.promotional && (
+                        <DataRow
+                          icon={<MapPin />}
+                          label="Promo Location"
+                          value={item.product.location.promotional}
+                        />
+                      )}
+                      <DeliveryInfoRow
+                        deliveryInfo={item.product.deliveryInfo}
+                        allOrders={item.product.allOrders}
+                        productName={item.product.name}
+                      />
+                       {item.product.lastStockChange?.lastCountDateTime && item.product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
+                          <DataRow
+                              icon={<History />}
+                              label="Last Stock Event"
+                              value={`${item.product.lastStockChange.inventoryAction} of ${item.product.lastStockChange.qty} by ${item.product.lastStockChange.createdBy} at ${item.product.lastStockChange.lastCountDateTime}`}
+                          />
+                        ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
                     </div>
                   ) : (
                     <Alert variant="destructive">
@@ -302,7 +364,7 @@ export default function AmazonClient() {
                       <AlertTitle>Could Not Analyze Product</AlertTitle>
                       <AlertDescription>
                         {item.error ||
-                          `Could not generate AI insights for SKU ${item.product.sku}.`}
+                          `Could not fetch data for SKU ${item.product.sku}.`}
                       </AlertDescription>
                     </Alert>
                   )}
