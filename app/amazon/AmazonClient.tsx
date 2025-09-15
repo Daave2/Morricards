@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -184,6 +184,28 @@ export default function AmazonClient() {
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
+
+  useEffect(() => {
+    const handleSharedImage = async () => {
+      // @ts-ignore
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('message', event => {
+          if (event.data.action === 'load-image' && event.data.file) {
+            setListImage(event.data.file);
+            toast({
+              title: "Image Received",
+              description: "The shared image has been loaded for analysis."
+            });
+            // Clean up the history so the user can use the back button.
+            window.history.replaceState({}, '', '/amazon');
+          }
+        });
+        // Let the service worker know we're ready.
+        navigator.serviceWorker.controller.postMessage('share-ready');
+      }
+    };
+    handleSharedImage();
+  }, [toast]);
 
   const handleAnalysis = async () => {
     if (!listImage) {
