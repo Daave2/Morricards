@@ -722,6 +722,11 @@ export default function AssistantPageClient() {
                                                     <DataRow icon={<CalendarClock />} label="Min Life (CPC/CFC)" value={product.productDetails.productLife ? `${product.productDetails.productLife.minimumCPCAcceptanceLife} / ${product.productDetails.productLife.minimumCFCAcceptanceLife} days` : null} />
                                                     <DataRow icon={<Flag />} label="Perishable" value={product.productDetails.productFlags?.perishableInd ? 'Yes' : 'No'} />
                                                     <DataRow icon={<Flag />} label="Manual Order" value={product.productDetails.manuallyStoreOrderedItem} />
+                                                     <DataRow icon={<Info />} label="Start of Day Stock" value={product.spaceInfo?.startOfDayQty} />
+                                                    <DataRow icon={<Info />} label="End of Day Stock" value={product.spaceInfo?.endOfDayQty} />
+                                                    <DataRow icon={<Info />} label="Facings" value={product.spaceInfo?.standardSpace?.locations?.[0]?.facings} />
+                                                    <DataRow icon={<Info />} label="Fill Quantity" value={product.spaceInfo?.standardSpace?.locations?.[0]?.fillQty} />
+                                                    <DataRow icon={<Info />} label="Merch Type" value={product.spaceInfo?.standardSpace?.locations?.[0]?.merchandiseType} />
                                                 </AccordionContent>
                                             </AccordionItem>
                                              {product.productDetails.commercialHierarchy && (
@@ -750,6 +755,12 @@ export default function AssistantPageClient() {
                                                 </AccordionItem>
                                             )}
                                         </Accordion>
+                                        {product.productDetails.productMarketing && <Separator className="my-4" />}
+                                        {product.productDetails.productMarketing && (
+                                        <div className='italic text-xs bg-muted/50 p-3 rounded-md'>
+                                            {product.productDetails.productMarketing}
+                                        </div>
+                                        )}
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
