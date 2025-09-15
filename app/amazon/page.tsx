@@ -21,3 +21,5 @@ export default function AmazonPage() {
     </Suspense>
   );
 }
+
+    

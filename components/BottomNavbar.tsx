@@ -12,7 +12,7 @@ import { navItems } from './AppSidebar';
 const mainNavItems = [
   { href: '/availability', label: 'Availability', icon: ListChecks },
   { href: '/assistant', label: 'Assistant', icon: Bot },
-  { href: '/locker', label: 'Locker', icon: PackageSearch },
+  { href: '/amazon', label: 'Amazon', icon: PackageSearch },
 ];
 
 // All items that will go into the "More" sheet

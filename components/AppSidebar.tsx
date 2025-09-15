@@ -19,8 +19,8 @@ export const navItems = [
     { href: '/assistant', label: 'AI Product Assistant', icon: Bot },
     { href: '/price-checker', label: 'Validator', icon: ScanLine },
     { href: '/planogram', label: 'Planogram', icon: CheckSquare },
-    { href: '/locker', label: 'Locker', icon: PackageSearch },
     { href: '/map', label: 'Store Map', icon: Map },
+    { href: '/amazon', label: 'Amazon', icon: PackageSearch },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
