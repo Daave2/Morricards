@@ -238,14 +238,17 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             // 1. Fetch from Price Integrity first. This is our baseline.
             const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
             const piProduct = pi?.product;
-            
-            // 2. Determine the "main" SKU. It might be the scanned one, or a parent pack.
-            const mainSku = piProduct?.itemNumber?.toString() || scannedSku;
-            
-            // 3. Fetch the full, rich product data from our Next.js proxy.
+
+            // 2. Determine the "main" SKU to use for detailed lookups.
+            // If the scanned item is a component of a pack, the PI endpoint on the component
+            // often returns the parent pack's itemNumber.
+            let mainSku = piProduct?.itemNumber?.toString() || scannedSku;
+
+            // 3. Fetch the full, rich product data from our Next.js proxy using the main SKU.
             const { product: mainProduct, error: productError } = await fetchProductFromUpstream(mainSku, bearerToken);
             
-            // 4. If PI gave us a different SKU (pack vs each), and fetching the main SKU failed, try again with the original scanned SKU.
+            // 4. If the main fetch failed but PI gave us a different SKU (pack vs each),
+            // it's possible the original scanned SKU has some data. Let's try it as a fallback.
             let fallbackProduct: Product | null = null;
             if (productError && mainSku !== scannedSku) {
                 const { product } = await fetchProductFromUpstream(scannedSku, bearerToken);
@@ -258,14 +261,16 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
                 ...(mainProduct || {}),   // Main product data takes precedence
             };
 
+            // If, after all that, we still have no product details, we can't continue.
             if (Object.keys(finalProductDetails).length === 0) {
               throw new Error(`Could not retrieve any product details for SKU ${scannedSku}. Upstream error: ${productError}`);
             }
 
             // The SKU for stock/order lookups should be the one from the final details if available
+            // This is often the sellable unit, not the scanned component.
             const stockAndOrderSku = finalProductDetails.itemNumber || mainSku;
 
-            // 5. Fetch stock, order, and space info in parallel.
+            // 5. Fetch stock, order, and space info in parallel using the most relevant SKU.
             const [stockPayload, stockHistory, orderInfo, spaceInfo] = await Promise.all([
                 getStock(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getStockHistory(locationId, stockAndOrderSku, bearerToken, debugMode),
@@ -307,12 +312,12 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const promos = (pi?.promotions ?? []) as any[];
 
             // Extract promotional text
-            const promoAttributes = promos?.[0]?.marketingAttributes;
-            let promotionalText = promoAttributes?.offerValue; // e.g., "£1.00"
-            if (!promotionalText && promoAttributes?.name) {
+            let promotionalText = promos?.[0]?.marketingAttributes?.offerValue; // e.g., "£1.00"
+            if (!promotionalText && promos?.[0]?.marketingAttributes?.name) {
                 // Check for multi-buy text like "2 for £5.00"
-                if (/^\d+\s+for\s+£\d+(\.\d{2})?$/.test(promoAttributes.name)) {
-                    promotionalText = promoAttributes.name;
+                const promoName = promos[0].marketingAttributes.name;
+                if (/^\d+\s+for\s+£\d+(\.\d{2})?$/.test(promoName)) {
+                    promotionalText = promoName;
                 }
             }
             
