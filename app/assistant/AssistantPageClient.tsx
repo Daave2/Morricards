@@ -14,7 +14,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send, Beaker } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -71,13 +71,13 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
 }
 
 
-const DataRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode }) => {
+const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode, label: string, value?: string | number | null | React.ReactNode, valueClassName?: string }) => {
     if (value === undefined || value === null || value === '') return null;
     return (
         <div className="flex items-start gap-3">
             <div className="w-5 h-5 text-muted-foreground flex-shrink-0 pt-0.5">{icon}</div>
             <div className='flex-grow min-w-0'>
-                <span className="font-bold">{label}:</span> <span className={'break-words'}>{value}</span>
+                <span className="font-bold">{label}:</span> <span className={cn('break-words', valueClassName)}>{value}</span>
             </div>
         </div>
     );
@@ -737,6 +737,7 @@ export default function AssistantPageClient() {
                                                         {[
                                                             product.productDetails.commercialHierarchy.divisionName,
                                                             product.productDetails.commercialHierarchy.groupName,
+                                                            product.productDetails.commercialHierarchy.departmentName,
                                                             product.productDetails.commercialHierarchy.className,
                                                             product.productDetails.commercialHierarchy.subclassName,
                                                         ].filter(Boolean).map(s => s?.replace(/^\d+\s/, '')).join(' → ')}
@@ -749,8 +750,52 @@ export default function AssistantPageClient() {
                                                     <AccordionTrigger className='py-2 font-semibold'>Beers, Wines & Spirits</AccordionTrigger>
                                                     <AccordionContent className="space-y-3 pt-2">
                                                     <DataRow icon={<div className='w-5 text-center font-bold'>%</div>} label="ABV" value={bws.alcoholByVolume ? `${bws.alcoholByVolume}%` : null} />
-                                                    <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} />
+                                                    <DataRow icon={<FileText />} label="Tasting Notes" value={bws.tastingNotes} valueClassName="text-xs italic" />
                                                     <DataRow icon={<Info />} label="Volume" value={bws.volumeInLitres ? `${bws.volumeInLitres}L` : null} />
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            )}
+                                            {(product.productDetails.ingredients && product.productDetails.ingredients.length > 0) &&
+                                                <AccordionItem value="ingredients">
+                                                    <AccordionTrigger className='py-2 font-semibold'>Ingredients & Allergens</AccordionTrigger>
+                                                    <AccordionContent className="space-y-4 pt-2">
+                                                        {product.productDetails.ingredients && product.productDetails.ingredients.length > 0 && (
+                                                            <div>
+                                                                <h4 className="font-bold mb-2 flex items-center gap-2"><Leaf className="h-5 w-5" /> Ingredients</h4>
+                                                                <p className="text-xs">{product.productDetails.ingredients.join(', ')}</p>
+                                                            </div>
+                                                        )}
+
+                                                        {product.productDetails.allergenInfo && product.productDetails.allergenInfo.length > 0 && (
+                                                            <div>
+                                                                <h4 className="font-bold mb-2 flex items-center gap-2"><Shell className="h-5 w-5" /> Allergens</h4>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {product.productDetails.allergenInfo.map(allergen => (
+                                                                        <Badge key={allergen.name} variant={allergen.value === 'Contains' ? 'destructive' : 'secondary'}>
+                                                                            {allergen.name}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            }
+                                            {product.productDetails.nutritionalInfo && product.productDetails.nutritionalInfo.length > 0 && (
+                                                <AccordionItem value="nutrition">
+                                                    <AccordionTrigger className='py-2 font-semibold'>Nutrition</AccordionTrigger>
+                                                    <AccordionContent className="space-y-2 pt-2">
+                                                        <p className="text-xs text-muted-foreground">{product.productDetails.nutritionalHeading}</p>
+                                                        <div className='space-y-1 text-xs'>
+                                                            {product.productDetails.nutritionalInfo
+                                                                .filter(n => n.name && !n.name.startsWith('*'))
+                                                                .map(nutrient => (
+                                                                    <div key={nutrient.name} className="flex justify-between border-b pb-1">
+                                                                        <span>{nutrient.name}</span>
+                                                                        <span className="text-right">{nutrient.perComp?.split(',')[0]}</span>
+                                                                    </div>
+                                                                ))}
+                                                        </div>
                                                     </AccordionContent>
                                                 </AccordionItem>
                                             )}
@@ -761,6 +806,17 @@ export default function AssistantPageClient() {
                                             {product.productDetails.productMarketing}
                                         </div>
                                         )}
+                                        <details className="pt-2 text-xs">
+                                            <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                                            {product.proxyError && (
+                                                <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
+                                                    <strong>Proxy Error:</strong> {product.proxyError}
+                                                </div>
+                                            )}
+                                            <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                                                {JSON.stringify(product, null, 2)}
+                                            </pre>
+                                        </details>
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
