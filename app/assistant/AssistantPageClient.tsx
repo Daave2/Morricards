@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -324,7 +323,6 @@ export default function AssistantPageClient() {
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   const [product, setProduct] = useState<BaseProduct | null>(null);
-  const [productDetails, setProductDetails] = useState<FullProduct | null>(null);
   const [insights, setInsights] = useState<ProductInsightsOutput | null>(null);
   const [recentItems, setRecentItems] = useState<BaseProduct[]>([]);
   const [consecutiveFails, setConsecutiveFails] = useState(0);
@@ -402,7 +400,6 @@ export default function AssistantPageClient() {
   const handleReset = () => {
     setProduct(null);
     setInsights(null);
-    setProductDetails(null);
   }
 
   const fetchProductAndInsights = async (sku: string) => {
@@ -421,6 +418,7 @@ export default function AssistantPageClient() {
       return;
     }
 
+    // Step 1: Get basic data
     const { data, error } = await getProductData({
       locationId,
       skus: [sku],
@@ -428,9 +426,8 @@ export default function AssistantPageClient() {
       debugMode: settings.debugMode,
     });
 
-    setIsFetchingProduct(false);
-
     if (error || !data || data.length === 0) {
+      setIsFetchingProduct(false);
       playError();
       const newFailCount = consecutiveFails + 1;
       setConsecutiveFails(newFailCount);
@@ -449,56 +446,56 @@ export default function AssistantPageClient() {
         description: newFailCount >= 2 ? `Lookup failed again. Your token may have expired.` : `Could not find product data for EAN/SKU: ${sku}`,
         action: toastAction,
       });
-
-    } else {
-      setConsecutiveFails(0); // Reset on success
-      playSuccess();
-      const foundProduct = data[0];
-      setProduct(foundProduct);
-      updateRecentItems(foundProduct);
-      toast({ title: 'Product Found', description: `Generating AI insights for ${foundProduct.name}...` });
-      form.setValue('sku', '');
-
-      // Fetch full details in parallel
-      fetchFullProductDetails(foundProduct.sku);
-
-      setIsGeneratingInsights(true);
-      try {
-        const insightResult = await productInsightsFlow({ productData: foundProduct });
-        setInsights(insightResult);
-      } catch (e) {
-        console.error("Insight generation failed:", e);
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate product insights.' });
-      } finally {
-        setIsGeneratingInsights(false);
-      }
+      return;
     }
-  };
 
-  const fetchFullProductDetails = async (sku: string) => {
+    const foundProduct = data[0];
+    
+    // Step 2: Enrich with full details
+    let completeProduct = foundProduct;
     try {
-        const res = await fetch(`/api/morrisons/product?sku=${sku}`, {
+        const res = await fetch(`/api/morrisons/product?sku=${foundProduct.sku}`, {
             headers: {
                 ...(settings.bearerToken ? { 'Authorization': `Bearer ${settings.bearerToken}` } : {})
             },
             cache: 'no-store',
         });
 
-        if (!res.ok) {
-            console.error(`Failed to fetch full product details: ${res.status}`);
-            setProductDetails(null);
-            return;
+        if (res.ok) {
+            const details: FullProduct = await res.json();
+            // Merge the rich details into the product object
+            completeProduct = {
+                ...foundProduct,
+                productDetails: {
+                    ...foundProduct.productDetails, // Keep any existing details from base fetch
+                    ...details, // Overwrite with richer details
+                }
+            };
         }
-
-        const details = await res.json();
-        setProductDetails(details);
-
-    } catch (error) {
-        console.error("Error fetching full product details:", error);
-        setProductDetails(null);
+    } catch (e) {
+      console.error("Could not fetch full product details:", e);
+      // Continue with just the base product info
     }
-  }
 
+    setProduct(completeProduct);
+    updateRecentItems(completeProduct);
+    setIsFetchingProduct(false);
+    playSuccess();
+    toast({ title: 'Product Found', description: `Generating AI insights for ${completeProduct.name}...` });
+    form.setValue('sku', '');
+
+    // Step 3: Generate insights with the complete data
+    setIsGeneratingInsights(true);
+    try {
+      const insightResult = await productInsightsFlow({ productData: completeProduct });
+      setInsights(insightResult);
+    } catch (e) {
+      console.error("Insight generation failed:", e);
+      toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate product insights.' });
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
 
   const handleScanSuccess = async (text: string) => {
     const sku = text.split(',')[0].trim();
@@ -552,6 +549,7 @@ export default function AssistantPageClient() {
     }
   }
 
+  const productDetails = product?.productDetails;
   const bws = productDetails?.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
   const productLocation = product ? parseLocationString(product.location.standard) : null;
@@ -929,5 +927,3 @@ export default function AssistantPageClient() {
     </div>
   );
 }
-
-    

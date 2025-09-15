@@ -45,7 +45,7 @@ Analyze the following product JSON data and generate a helpful summary. The data
 
 You must use the information in the 'productDetails' object to make your response as detailed and helpful as possible. Specifically:
 - **For the customerFacingSummary**: Examine the 'ingredients' array and mention one or two key ingredients. If 'nutritionalInfo' is available, briefly summarize it. Mention the 'brand' and 'countryOfOrigin'. Use 'productLife' to give advice on shelf life and 'storage' for storage instructions. **Do not mention allergens here**.
-- **For the allergens field**: Look at the 'allergenInfo' array. For every object in this array where the 'value' field is 'Contains', extract the 'name' field and add it to your response array. If no objects have a 'value' of 'Contains', or if the 'allergenInfo' field is missing or empty, you must return an array containing the single string 'None listed'.
+- **For the allergens field**: Look at the 'productDetails.allergenInfo' array. For every object in this array where the 'value' field is 'Contains', extract the 'name' field and add it to your response array. If no objects have a 'value' of 'Contains', or if the 'allergenInfo' field is missing or empty, you must return an array containing the single string 'None listed'.
 - **For the sellingPoints**: Base your points on concrete data. Use the 'brand', 'countryOfOrigin', specific 'ingredients', or unique 'productFlags' to create compelling points. Do not be generic.
 - **For the customerProfile**: Use the 'commercialHierarchy', 'price', and 'brand' to define the ideal customer. For example, a premium brand in the 'Organic' subclass might appeal to health-conscious shoppers.
 - **For the placementNotes**: Use the \`commercialHierarchy\` (e.g., \`departmentName\`, \`className\`) to suggest placing the item near other products in the same category.
@@ -64,5 +64,3 @@ Product Data:
   const { output } = await prompt(input);
   return output!;
 }
-
-    
