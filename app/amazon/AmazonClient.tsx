@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -184,9 +183,10 @@ export default function AmazonClient() {
             toast({
                 variant: 'destructive',
                 title: 'Fatal Serialization Error',
-                description: `Could not make the results safe for React. RAW DATA: ${JSON.stringify(results)}`,
+                description: `Could not make the results safe for React. Check console for raw data.`,
                 duration: 20000,
             });
+            console.error("RAW DATA causing serialization error:", results);
             // Fallback to setting raw results if sanitization fails, which might still crash but we tried.
             setAnalysisResults(results);
         }
@@ -298,5 +298,3 @@ export default function AmazonClient() {
     </main>
   );
 }
-
-    
