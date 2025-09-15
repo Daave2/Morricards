@@ -1,7 +1,5 @@
 
 import { z } from 'genkit';
-import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
-
 
 // 1. Define the input schema for the entire flow
 export const PickingAnalysisInputSchema = z.object({
@@ -27,5 +25,3 @@ export const PickingAnalysisOutputSchema = z.object({
   products: z.array(AnalyzedProductSchema).describe("An array of all products analyzed from the screenshot."),
 });
 export type PickingAnalysisOutput = z.infer<typeof PickingAnalysisOutputSchema>;
-
-    

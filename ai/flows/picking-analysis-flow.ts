@@ -74,5 +74,3 @@ export async function pickingAnalysisFlow(input: PickingAnalysisInput): Promise<
 
   return output || { products: [] };
 }
-
-    
