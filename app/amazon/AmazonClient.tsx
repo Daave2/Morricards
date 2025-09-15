@@ -166,8 +166,9 @@ export default function AmazonClient() {
             productsData: productsData
         });
 
+        const cleanAnalysis = JSON.parse(JSON.stringify(analysis));
 
-        if (!analysis.products || analysis.products.length === 0) {
+        if (!cleanAnalysis.products || cleanAnalysis.products.length === 0) {
             toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI could not provide any suggestions for the identified products.' });
             setIsLoading(false);
             return;
@@ -175,7 +176,7 @@ export default function AmazonClient() {
 
         // Step 4: Enrich the analysis with the fetched data for UI display
         const productDataMap = new Map(productsData.map(p => [p.sku, p]));
-        const enrichedResults = analysis.products.map(p => ({
+        const enrichedResults = cleanAnalysis.products.map((p: AnalyzedProduct) => ({
             ...p,
             productData: p.sku ? productDataMap.get(p.sku) : undefined,
         }));
@@ -300,5 +301,3 @@ export default function AmazonClient() {
     </main>
   );
 }
-
-    
