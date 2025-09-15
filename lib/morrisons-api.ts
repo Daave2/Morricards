@@ -290,7 +290,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             
             if (relevantOrder) {
               const ordered = relevantOrder.lines?.status?.[0]?.ordered;
-              const expectedDate = relevantOrder.delivery?.dateDeliveryExpected || ordered?.date?.split('T')[0];
+              const expectedDate = relevantOrder.lines?.delivery?.dateDeliveryExpected || ordered?.date?.split('T')[0];
 
               if (ordered && expectedDate) {
                   const packSize = 
