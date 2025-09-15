@@ -30,7 +30,7 @@ const ProductInsightsOutputSchema = z.object({
   sellingPoints: z.array(z.string()).optional().describe('A list of 3-5 bullet points highlighting the key selling points of the product for a store colleague. These should be derived from the detailed product data.'),
   customerProfile: z.string().optional().describe('A brief sentence describing the ideal customer for this product, based on its category, price, and other attributes.'),
   placementNotes: z.string().optional().describe('A short note for a store colleague on ideal merchandising or placement for this product, using the commercialHierarchy to suggest co-location with related products.'),
-  allergens: z.array(z.string()).optional().describe("A list of allergens present in the product, derived from the 'allergenInfo' field. If none are found, this should explicitly say 'None listed'."),
+  allergens: z.array(z.string()).optional().describe("A list of allergens present in the product. For each item in the 'allergenInfo' array where 'value' is 'Contains', list the 'name'. If none are found, this should explicitly return an array containing the single string 'None listed'."),
 });
 export type ProductInsightsOutput = z.infer<typeof ProductInsightsOutputSchema>;
 
@@ -45,7 +45,7 @@ Analyze the following product JSON data and generate a helpful summary. The data
 
 You must use the information in the 'productDetails' object to make your response as detailed and helpful as possible. Specifically:
 - **For the customerFacingSummary**: Examine the 'ingredients' array and mention one or two key ingredients. If 'nutritionalInfo' is available, briefly summarize it. Mention the 'brand' and 'countryOfOrigin'. Use 'productLife' to give advice on shelf life and 'storage' for storage instructions. **Do not mention allergens here**.
-- **For the allergens field**: Look at 'allergenInfo' and list all allergens that have a value of 'Contains'. If there are none or the field is missing, return an array containing the single string 'None listed'.
+- **For the allergens field**: Look at the 'allergenInfo' array. For every object in this array where the 'value' field is 'Contains', extract the 'name' field and add it to your response array. If no objects have a 'value' of 'Contains', or if the 'allergenInfo' field is missing or empty, you must return an array containing the single string 'None listed'.
 - **For the sellingPoints**: Base your points on concrete data. Use the 'brand', 'countryOfOrigin', specific 'ingredients', or unique 'productFlags' to create compelling points. Do not be generic.
 - **For the customerProfile**: Use the 'commercialHierarchy', 'price', and 'brand' to define the ideal customer. For example, a premium brand in the 'Organic' subclass might appeal to health-conscious shoppers.
 - **For the placementNotes**: Use the \`commercialHierarchy\` (e.g., \`departmentName\`, \`className\`) to suggest placing the item near other products in the same category.
