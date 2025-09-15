@@ -47,6 +47,15 @@ export type FetchMorrisonsDataInput = {
   debugMode?: boolean;
 };
 
+type RawData = {
+    productProxy: Product | null;
+    priceIntegrity: PriceIntegrity | null;
+    stock: StockPayload | null;
+    stockHistory: StockHistory | null;
+    orderInfo: StockOrder | null;
+    spaceInfo: SpaceInfo | null;
+}
+
 export type FetchMorrisonsDataOutput = {
   sku: string;
   scannedSku: string;
@@ -66,6 +75,7 @@ export type FetchMorrisonsDataOutput = {
   allOrders?: Order[] | null;
   spaceInfo?: SpaceInfo | null;
   proxyError?: string | null;
+  _raw?: RawData | null;
 }[];
 
 // ─────────────────────────── core fetch helper ────────────────────────────
@@ -237,9 +247,19 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
   const rows = await Promise.all(
     skus.map(async (scannedSku) => {
         let cumulativeError = '';
+        const rawData: RawData = {
+            productProxy: null,
+            priceIntegrity: null,
+            stock: null,
+            stockHistory: null,
+            orderInfo: null,
+            spaceInfo: null,
+        }
+
         try {
             // 1. Fetch from Price Integrity first. This is our baseline.
             const pi = await getPI(locationId, scannedSku, bearerToken, debugMode);
+            rawData.priceIntegrity = pi;
             const piProduct = pi?.product;
 
             // 2. Determine the "main" SKU to use for detailed lookups.
@@ -248,6 +268,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             // 3. Fetch the full, rich product data from our Next.js proxy using the main SKU.
             const { product: mainProduct, error: productError } = await fetchProductFromUpstream(mainSku, bearerToken);
             if (productError) cumulativeError += `Product Proxy Error: ${productError}\n`;
+            rawData.productProxy = mainProduct;
             
             // 4. If the main fetch failed but PI gave us a different SKU (pack vs each), try the original scanned SKU as a fallback.
             let fallbackProduct: Product | null = null;
@@ -269,25 +290,27 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             const stockAndOrderSku = finalProductDetails.itemNumber || mainSku;
 
             // 5. Fetch stock, order, and space info in parallel, capturing individual errors.
-            const results = await Promise.allSettled([
+            const [stockResult, stockHistoryResult, orderInfoResult, spaceInfoResult] = await Promise.allSettled([
                 getStock(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getStockHistory(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getOrderInfo(locationId, stockAndOrderSku, bearerToken, debugMode),
                 getSpaceInfo(locationId, stockAndOrderSku, bearerToken, debugMode),
             ]);
 
-            const [stockResult, stockHistoryResult, orderInfoResult, spaceInfoResult] = results;
-
             const stockPayload = stockResult.status === 'fulfilled' ? stockResult.value : null;
+            rawData.stock = stockPayload;
             if (stockResult.status === 'rejected') cumulativeError += `Stock API Error: ${stockResult.reason}\n`;
 
             const stockHistory = stockHistoryResult.status === 'fulfilled' ? stockHistoryResult.value : null;
+            rawData.stockHistory = stockHistory;
             if (stockHistoryResult.status === 'rejected') cumulativeError += `Stock History API Error: ${stockHistoryResult.reason}\n`;
             
             const orderInfo = orderInfoResult.status === 'fulfilled' ? orderInfoResult.value : null;
-             if (orderInfoResult.status === 'rejected') cumulativeError += `Order Info API Error: ${orderInfoResult.reason}\n`;
+            rawData.orderInfo = orderInfo;
+            if (orderInfoResult.status === 'rejected') cumulativeError += `Order Info API Error: ${orderInfoResult.reason}\n`;
             
             const spaceInfo = spaceInfoResult.status === 'fulfilled' ? spaceInfoResult.value : null;
+            rawData.spaceInfo = spaceInfo;
             if (spaceInfoResult.status === 'rejected') cumulativeError += `Space Info API Error: ${spaceInfoResult.reason}\n`;
 
 
@@ -357,6 +380,7 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
               allOrders: allOrders ?? null,
               spaceInfo: spaceInfo ?? null,
               proxyError: debugMode && cumulativeError ? cumulativeError.trim() : null,
+              _raw: debugMode ? JSON.parse(JSON.stringify(rawData)) : null,
             };
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : String(err);
