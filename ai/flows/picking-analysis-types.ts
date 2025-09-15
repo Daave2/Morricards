@@ -8,7 +8,7 @@ export const PickingAnalysisInputSchema = z.object({
   imageDataUri: z
     .string()
     .describe("An image of the picking app screen, as a data URI."),
-  productsData: z.custom<FetchMorrisonsDataOutput>(),
+  productsData: z.any(),
 });
 export type PickingAnalysisInput = z.infer<typeof PickingAnalysisInputSchema>;
 
