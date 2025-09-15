@@ -10,34 +10,37 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
+import { type PickingAnalysisInput, type PickingAnalysisOutput, PickingAnalysisOutputSchema } from './picking-analysis-types';
 
-// 1. Define the input schema for the entire flow
-const PickingAnalysisInputSchema = z.object({
-  imageDataUri: z
-    .string()
-    .describe("An image of the picking app screen, as a data URI."),
-});
-export type PickingAnalysisInput = z.infer<typeof PickingAnalysisInputSchema>;
+// 1. The exported flow function
+export async function pickingAnalysisFlow(input: PickingAnalysisInput): Promise<PickingAnalysisOutput> {
 
+  // Step 1: A simple OCR flow to get the SKUs from the image.
+  // This is a simplified preliminary step. In a real scenario, we might use a more robust OCR model.
+  const ocrPrompt = ai.definePrompt({
+    name: 'pickingListOcr',
+    input: { schema: z.object({ imageDataUri: z.string() }) },
+    output: { schema: z.object({ skus: z.array(z.string()).describe("An array of all the SKUs found in the image.") }) },
+    prompt: `Analyze the provided image of a shopping list app. Identify every product SKU visible and return them as an array of strings.
 
-// 2. Define the output schema for a single analyzed product
-export const AnalyzedProductSchema = z.object({
-    productName: z.string().nullable().describe("The name of the product identified in the list."),
-    sku: z.string().nullable().describe("The SKU or EAN of the product identified."),
-    judgement: z.string().describe("A concise, one-sentence judgment on the most likely reason the item cannot be found, based on its data. E.g., 'Likely out of stock due to recent sell-out.' or 'Item may be in a secondary promotional location.'"),
-    nextSteps: z.array(z.string()).describe("A short, ordered list of 2-3 actionable steps for the picker. E.g., ['Check the back stock room system for recent deliveries.', 'Look for a promotional end-cap display for this brand.']")
-});
-export type AnalyzedProduct = z.infer<typeof AnalyzedProductSchema>;
+Image: {{media url=imageDataUri}}`
+  });
+  
+  const ocrResult = await ocrPrompt({ imageDataUri: input.imageDataUri });
+  const skus = ocrResult.output?.skus || [];
 
-// 3. Define the final output schema for the flow
-const PickingAnalysisOutputSchema = z.object({
-  products: z.array(AnalyzedProductSchema).describe("An array of all products analyzed from the screenshot."),
-});
-export type PickingAnalysisOutput = z.infer<typeof PickingAnalysisOutputSchema>;
+  if (skus.length === 0) {
+      return { products: [] };
+  }
 
-
-// 4. Define the main prompt that orchestrates the analysis
-const pickingAnalysisPrompt = ai.definePrompt({
+  // Step 2: Fetch the product data using the extracted SKUs.
+  // This part happens on the client in the real app, but we simulate it here.
+  // In the real implementation, the client will call this flow with the data already fetched.
+  // For this flow to be self-contained for testing, we'd call `getProductData` here.
+  // However, to integrate with the client, we'll assume the data is passed in.
+  // The prompt is now designed to receive this data directly.
+  
+  const pickingAnalysisPrompt = ai.definePrompt({
     name: 'pickingAnalysisPrompt',
     // The prompt now takes the image AND the fetched data for all products
     input: { schema: z.object({
@@ -47,7 +50,7 @@ const pickingAnalysisPrompt = ai.definePrompt({
     output: { schema: PickingAnalysisOutputSchema },
     prompt: `You are an expert retail assistant specializing in troubleshooting for grocery pickers. You will be given a screenshot of a picker's app and the corresponding product data for the items on that list.
 
-Your task is to analyze each product and provide a helpful 'judgment' and 'nextSteps' to help the picker find it.
+Your task is to analyze each product and provide a helpful 'judgement' and 'nextSteps' to help the picker find it.
 
 **Analysis Steps:**
 
@@ -82,34 +85,6 @@ Return a single JSON object containing a 'products' array with your analysis for
 `,
 });
 
-
-// 5. The exported flow function
-export async function pickingAnalysisFlow(input: PickingAnalysisInput): Promise<PickingAnalysisOutput> {
-
-  // Step 1: A simple OCR flow to get the SKUs from the image.
-  // This is a simplified preliminary step. In a real scenario, we might use a more robust OCR model.
-  const ocrPrompt = ai.definePrompt({
-    name: 'pickingListOcr',
-    input: { schema: z.object({ imageDataUri: z.string() }) },
-    output: { schema: z.object({ skus: z.array(z.string()).describe("An array of all the SKUs found in the image.") }) },
-    prompt: `Analyze the provided image of a shopping list app. Identify every product SKU visible and return them as an array of strings.
-
-Image: {{media url=imageDataUri}}`
-  });
-  
-  const ocrResult = await ocrPrompt({ imageDataUri: input.imageDataUri });
-  const skus = ocrResult.output?.skus || [];
-
-  if (skus.length === 0) {
-      return { products: [] };
-  }
-
-  // Step 2: Fetch the product data using the extracted SKUs.
-  // This part happens on the client in the real app, but we simulate it here.
-  // In the real implementation, the client will call this flow with the data already fetched.
-  // For this flow to be self-contained for testing, we'd call `getProductData` here.
-  // However, to integrate with the client, we'll assume the data is passed in.
-  // The prompt is now designed to receive this data directly.
 
   // For the purpose of this file, we can't actually fetch data. The client will do that.
   // So, the `productsData` for the main prompt will be fetched on the client and passed.

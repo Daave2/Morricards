@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -12,8 +11,10 @@ import { getProductData } from '@/app/actions';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { cn } from '@/lib/utils';
-import { pickingAnalysisFlow, type AnalyzedProduct } from '@/ai/flows/picking-analysis-flow';
+import { pickingAnalysisFlow } from '@/ai/flows/picking-analysis-flow';
+import type { AnalyzedProduct } from '@/ai/flows/picking-analysis-types';
 import ProductCard from '@/components/product-card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const ImageUpload = ({ onImageSelect, selectedImage, disabled }: { onImageSelect: (file: File) => void, selectedImage: File | null, disabled?: boolean }) => {
   const [isDragging, setIsDragging] = useState(false);
