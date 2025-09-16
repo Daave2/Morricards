@@ -11,7 +11,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { ocrPrompt } from '@/ai/flows/picking-analysis-flow';
 import { fetchMorrisonsData, type FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 
@@ -81,7 +81,7 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
     locationId: input.locationId,
     skus,
     bearerToken: input.bearerToken,
-    debugMode: input.debugMode,
+    debugMode: true, // Always enable debug mode for this flow to get _raw data
   });
   
   // Step 3: Map the fetched data, enrich with AI diagnosis, and format for the client.
