@@ -1,65 +1,88 @@
 
-// This is a custom service worker file.
+if (!self.define) {
+  let e,
+    s = {};
+  const n = (n, t) => (
+    (n = new URL(n + ".js", t).href),
+    s[n] ||
+      new Promise((s) => {
+        if ("document" in self) {
+          const e = document.createElement("script");
+          (e.src = n), (e.onload = s), document.head.appendChild(e);
+        } else (e = n), importScripts(n), s();
+      }).then(() => {
+        if (!s[n]) throw new Error(`Module ${n} did not register`);
+        return s[n];
+      })
+  );
+  self.define = (t, i) => {
+    const c =
+      e ||
+      ("document" in self ? document.currentScript.src : "") ||
+      location.href;
+    if (s[c]) return;
+    let o = {};
+    const r = (e) => n(e, c),
+      d = { module: { uri: c }, exports: o, require: r };
+    s[c] = Promise.all(t.map((e) => d[e] || r(e))).then((e) => (i(...e), o));
+  };
+}
+define(["./workbox-a797c385"], function (e) {
+  "use strict";
+  importScripts(),
+    self.skipWaiting(),
+    e.clientsClaim(),
+    e.precacheAndRoute(
+      [
+        {
+          url: "/~offline",
+          revision: "s2NNy8NE_tF_f6w5-R95j",
+        },
+      ],
+      { ignoreURLParametersMatching: [/.*/] }
+    );
+    
+    // --- Custom Share Target Logic ---
+    const SHARE_TARGET_URL = '/amazon';
 
-// It's recommended to read this to understand how the share target works:
-// https://web.dev/articles/workbox-share-targets
+    async function handleShare(event) {
+        const formData = await event.request.formData();
+        const files = formData.getAll('image'); 
+        const client = await self.clients.get(event.resultingClientId || event.clientId);
 
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  if (event.request.method === 'POST' && url.pathname === '/planogram') {
-    event.respondWith((async () => {
-      const formData = await event.request.formData();
-      const imageFiles = formData.getAll('images');
-
-      if (imageFiles.length > 0) {
-        const file = imageFiles[0];
-        
-        // Find the correct client to send the image to
-        const clients = await self.clients.matchAll({
-          type: 'window',
-          includeUncontrolled: true,
-        });
-        
-        // Find the planogram page specifically, or fall back to any client
-        let targetClient = clients.find(c => c.url.includes('/planogram'));
-        if (!targetClient && clients.length > 0) {
-            targetClient = clients[0];
-        }
-
-        if (targetClient) {
-          // Send the file to the client page.
-          targetClient.postMessage({ file, action: 'load-image' });
-          // Redirect the user to the planogram page
-          return Response.redirect('/planogram', 303);
+        if (client) {
+             // If a client is already open, just send it the file.
+            client.postMessage({ action: 'load-image', file: files[0] });
         } else {
-          // If no client is open, we can't send the file.
-          // This case is less likely but good to handle.
-          console.error("No open client to send shared image to.");
-          // We can still redirect, and the user can upload manually.
-          return Response.redirect('/planogram', 303);
+            // If no client is open, open one and then send the file.
+             const openClient = await self.clients.openWindow(SHARE_TARGET_URL);
+             if (openClient) {
+                 // Wait for the service worker to be ready before posting the message.
+                 // This relies on the client page sending a 'share-ready' message.
+                 self.addEventListener('message', (msgEvent) => {
+                     if (msgEvent.data === 'share-ready' && msgEvent.source.id === openClient.id) {
+                        openClient.postMessage({ action: 'load-image', file: files[0] });
+                     }
+                 });
+             }
         }
-      } else {
-        // If no file, just redirect.
-        return Response.redirect('/planogram', 303);
-      }
-    })());
-  }
-});
-
-// A simple listener to let the client know the SW is ready for messages
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'share-ready') {
-        // This is just to acknowledge readiness. No action needed here.
+        
+        // After processing, navigate to the target URL.
+        return Response.redirect(SHARE_TARGET_URL, 303);
     }
+
+    e.registerRoute(
+      ({ url }) => url.pathname === SHARE_TARGET_URL && url.search === '',
+      handleShare,
+      'POST'
+    );
+    // --- End Custom Logic ---
+    
+    e.cleanupOutdatedCaches();
+    e.registerRoute(
+    new e.NavigationRoute(e.createHandlerBoundToURL("/~offline"), {
+      denylist: [/^\/api\//],
+    })
+  );
 });
 
-
-// Standard PWA service worker installation
-self.addEventListener('install', () => {
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
-});
