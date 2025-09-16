@@ -170,13 +170,13 @@ export default function MapPageClient() {
       const result = await findAisleForProductTool({ productCategory: values.productCategory });
       if (result.bestAisleId) {
         setHighlightedAisle(result.bestAisleId);
-        toast({ title: 'Aisle Found!', description: `AI suggests this is the best aisle for ${values.productCategory}.` });
+        toast({ title: 'Aisle Found!', description: `This is the suggested aisle for ${values.productCategory}.` });
       } else {
-        toast({ variant: 'destructive', title: 'Aisle Not Found', description: `The AI could not determine an aisle for ${values.productCategory}.` });
+        toast({ variant: 'destructive', title: 'Aisle Not Found', description: `Could not determine an aisle for ${values.productCategory}.` });
       }
     } catch (e) {
         const error = e instanceof Error ? e.message : String(e);
-        toast({ variant: 'destructive', title: 'AI Error', description: `An error occurred: ${error}` });
+        toast({ variant: 'destructive', title: 'Error', description: `An error occurred: ${error}` });
     } finally {
         setIsAisleLoading(false);
     }
@@ -200,7 +200,7 @@ export default function MapPageClient() {
                 <Card className="shadow-md">
                    <CardHeader>
                       <CardTitle>Find on Map</CardTitle>
-                      <CardDescription>Use AI to find a general aisle, or search for specific products to see all their locations.</CardDescription>
+                      <CardDescription>Lookup a general aisle, or search for specific products to see all their locations.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <SearchComponent onSearch={handleSearch} onClear={handleReset} />
@@ -212,7 +212,7 @@ export default function MapPageClient() {
                           name="productCategory"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Find by Category (AI)</FormLabel>
+                              <FormLabel>Find by Category</FormLabel>
                               <FormControl>
                                 <Input placeholder="e.g., Ketchup, Dog Food" {...field} />
                               </FormControl>
@@ -230,7 +230,7 @@ export default function MapPageClient() {
                           ) : (
                             <BrainCircuit className="mr-2 h-4 w-4" />
                           )}
-                          Find Aisle with AI
+                          Find Aisle
                         </Button>
                       </form>
                     </Form>
