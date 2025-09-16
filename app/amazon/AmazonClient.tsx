@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -27,6 +27,8 @@ import {
   CalendarClock,
   CheckCircle2,
   Package,
+  Camera,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -67,10 +69,12 @@ const ImageUpload = ({
   onImageSelect,
   selectedImage,
   disabled,
+  onCameraClick,
 }: {
   onImageSelect: (file: File) => void;
   selectedImage: File | null;
   disabled?: boolean;
+  onCameraClick: () => void;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -109,7 +113,7 @@ const ImageUpload = ({
 
   return (
     <Card className={cn(disabled && 'bg-muted/50')}>
-      <CardContent className="p-4">
+      <CardContent className="p-4 space-y-4">
         <label
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -148,6 +152,10 @@ const ImageUpload = ({
             disabled={disabled}
           />
         </label>
+         <Button variant="outline" className="w-full" onClick={onCameraClick} disabled={disabled}>
+            <Camera className="mr-2 h-4 w-4" />
+            Use Camera
+        </Button>
       </CardContent>
     </Card>
   );
@@ -421,9 +429,77 @@ export default function AmazonClient() {
   const [listImage, setListImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<EnrichedAnalysis[]>([]);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = async () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+        }
+      } catch (err) {
+        console.error("Error accessing camera: ", err);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Error',
+          description: 'Could not access the camera. Please check permissions.',
+        });
+        setIsCameraOpen(false);
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    streamRef.current = null;
+  };
+  
+  useEffect(() => {
+    if (isCameraOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCameraOpen]);
+  
+  const handleCapture = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(blob => {
+        if (blob) {
+            const file = new File([blob], `list-capture.jpg`, { type: 'image/jpeg' });
+            setListImage(file);
+            toast({ title: 'Image Captured' });
+        }
+    }, 'image/jpeg', 0.9);
+
+    setIsCameraOpen(false);
+  };
+
 
   useEffect(() => {
     const handleSharedImage = async () => {
@@ -512,6 +588,25 @@ export default function AmazonClient() {
   };
 
   return (
+    <>
+     {isCameraOpen && (
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+            <video ref={videoRef} autoPlay playsInline className="w-full max-w-4xl h-auto rounded-lg border aspect-video object-cover" />
+            <canvas ref={canvasRef} className="hidden" />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-11/12 max-w-2xl h-1/2 border-4 border-dashed border-white/50 rounded-xl" />
+            </div>
+            <div className="mt-6 flex gap-4">
+                <Button size="lg" onClick={handleCapture} className="h-16 w-16 rounded-full">
+                    <Camera className="h-8 w-8" />
+                </Button>
+            </div>
+             <Button variant="ghost" size="icon" onClick={() => setIsCameraOpen(false)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/50 text-white hover:text-white">
+              <X className="h-6 w-6" />
+            </Button>
+        </div>
+    )}
+
     <main className="container mx-auto px-4 py-8 md:py-12">
       <div className="space-y-8 max-w-4xl mx-auto">
         <Card>
@@ -531,6 +626,7 @@ export default function AmazonClient() {
           onImageSelect={setListImage}
           selectedImage={listImage}
           disabled={isLoading}
+          onCameraClick={() => setIsCameraOpen(true)}
         />
 
         <Button
@@ -565,13 +661,6 @@ export default function AmazonClient() {
         )}
       </div>
     </main>
+    </>
   );
 }
-
-    
-
-    
-
-    
-
-    
