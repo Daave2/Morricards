@@ -4,6 +4,7 @@ This document tracks the major versions and completed features for the Store Mob
 
 ## v0.6 - AI Guidance & Documentation (Current)
 -   Implemented an interactive AI chat feature on the Product Assistant page.
+-   Updated the Amazon Picker Assistant to handle single-image analysis, use a more robust card-based layout for results, allow camera capture for images, and show a detailed product modal on-click for every result item.
 -   Updated planogram validator to handle single-image analysis (listing items from a planogram), use a more robust card-based layout for results, allow camera capture for images, and show a detailed product modal on-click for every result item.
 -   Refactored the bottom navigation for a cleaner mobile experience.
 -   Updated `structure.md` to document the application architecture for AI assistants, including the successful "two-step fetch" pattern for enriching product data on the client-side. This resolved a persistent issue with missing product details on the Assistant page.
