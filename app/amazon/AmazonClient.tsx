@@ -24,6 +24,9 @@ import {
   Map,
   ChevronDown,
   Barcode,
+  CalendarClock,
+  CheckCircle2,
+  Package,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -35,6 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import SkuQrCode from '@/components/SkuQrCode';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
@@ -171,6 +175,55 @@ const DataRow = ({ icon, label, value, valueClassName }: { icon: React.ReactNode
     );
 }
 
+const DeliveryDetailsModal = ({ orders, productName }: { orders: Order[], productName: string }) => {
+  return (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Delivery History for {productName}</DialogTitle>
+      </DialogHeader>
+      <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+        {orders.length > 0 ? orders.map((order, index) => {
+          const expectedDate = order.delivery?.dateDeliveryExpected || order.lines?.status?.[0]?.ordered?.date;
+          return (
+            <Card key={`${order.orderId}-${order.orderPosition}-${index}`}>
+              <CardHeader>
+                <CardTitle className="text-lg flex justify-between items-center">
+                  <span>Order: {order.orderPosition === 'next' ? 'Next' : 'Last'}</span>
+                  <Badge variant={order.statusCurrent === 'receipted' ? 'default' : 'secondary'}>{order.statusCurrent}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Created: {new Date(order.createdAt).toLocaleDateString()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                  <DataRow icon={<CalendarClock/>} label="Expected Delivery" value={expectedDate ? new Date(expectedDate).toLocaleDateString() : 'N/A'} />
+                  {order.lines?.status?.map((s, i) => (
+                      <div key={i} className="pl-4 border-l-2 ml-2 space-y-2">
+                          {s.ordered && (
+                              <div>
+                                  <p className="font-semibold">Ordered</p>
+                                  <DataRow icon={<Package/>} label="Quantity" value={`${s.ordered.quantity} ${s.ordered.quantityType}(s)`} />
+                                  <DataRow icon={<CalendarClock/>} label="Date" value={s.ordered.date ? new Date(s.ordered.date).toLocaleDateString() : 'N/A'} />
+                              </div>
+                          )}
+                          {s.receipted && (
+                              <div>
+                                  <p className="font-semibold">Receipted</p>
+                                  <DataRow icon={<CheckCircle2/>} label="Quantity" value={`${s.receipted.quantity} ${s.receipted.quantityType}(s)`} />
+                                  <DataRow icon={<CalendarClock/>} label="Date" value={s.receipted.date ? new Date(s.receipted.date).toLocaleString() : 'N/A'} />
+                              </div>
+                          )}
+                      </div>
+                  ))}
+              </CardContent>
+            </Card>
+          )
+        }) : <p>No delivery history found.</p>}
+      </div>
+    </DialogContent>
+  )
+}
+
 const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInfo?: DeliveryInfo | null, allOrders?: Order[] | null, productName: string }) => {
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -197,13 +250,29 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     } else {
         deliveryInfoContent = (<span>There are <strong>no upcoming deliveries</strong> scheduled for this item.</span>);
     }
+    
+    const hasAllOrders = allOrders && allOrders.length > 0;
 
-  return (
-    <div className="flex items-start gap-3 text-sm">
-        <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-        <div className="flex-grow">{deliveryInfoContent}</div>
-    </div>
-  )
+    if (hasAllOrders) {
+      return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <div className="flex items-start gap-3 text-sm cursor-pointer hover:bg-muted p-2 -m-2 rounded-md transition-colors">
+                    <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex-grow">{deliveryInfoContent}</div>
+                </div>
+            </DialogTrigger>
+            <DeliveryDetailsModal orders={allOrders} productName={productName} />
+        </Dialog>
+      )
+    }
+
+    return (
+        <div className="flex items-start gap-3 text-sm">
+            <Truck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="flex-grow">{deliveryInfoContent}</div>
+        </div>
+    )
 }
 
 const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: number }) => {
@@ -498,6 +567,8 @@ export default function AmazonClient() {
     </main>
   );
 }
+
+    
 
     
 
