@@ -16,7 +16,7 @@ import { usePathname } from 'next/navigation';
 export const navItems = [
     { href: '/picking', label: 'Picking List', icon: Home },
     { href: '/availability', label: 'Availability Report', icon: ListChecks },
-    { href: '/assistant', label: 'AI Product Assistant', icon: Bot },
+    { href: '/assistant', label: 'Product Assistant', icon: Bot },
     { href: '/price-checker', label: 'Validator', icon: ScanLine },
     { href: '/planogram', label: 'Planogram', icon: CheckSquare },
     { href: '/map', label: 'Store Map', icon: Map },
