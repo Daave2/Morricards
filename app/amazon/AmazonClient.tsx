@@ -23,6 +23,7 @@ import {
   History,
   Map,
   ChevronDown,
+  Barcode,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -207,6 +208,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
 
 const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: number }) => {
     const [isMapOpen, setIsMapOpen] = useState(false);
+    const [isQrOpen, setIsQrOpen] = useState(false);
     const productLocation = item.product ? parseLocationString(item.product.location.standard) : null;
   
     return (
@@ -297,6 +299,21 @@ const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: numb
                       />
                     ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
                     
+                    <Collapsible open={isQrOpen} onOpenChange={setIsQrOpen}>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="outline" className="w-full">
+                                <Barcode className="mr-2 h-4 w-4" />
+                                {isQrOpen ? 'Hide SKU Barcode' : 'Show SKU Barcode'}
+                                <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isQrOpen && "rotate-180")} />
+                            </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                            <div className="flex justify-center py-4">
+                                <SkuQrCode sku={item.product.sku} />
+                            </div>
+                        </CollapsibleContent>
+                    </Collapsible>
+
                     <details className="pt-2 text-xs">
                         <summary className="cursor-pointer font-semibold">Raw Data</summary>
                         {item.product.proxyError && (
@@ -304,9 +321,6 @@ const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: numb
                               <strong>Proxy Error:</strong> {item.product.proxyError}
                           </div>
                         )}
-                        <div className="flex justify-center py-2">
-                          <SkuQrCode sku={item.product.sku} />
-                        </div>
                         <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
                             {JSON.stringify(item.product, null, 2)}
                         </pre>
@@ -484,5 +498,7 @@ export default function AmazonClient() {
     </main>
   );
 }
+
+    
 
     
