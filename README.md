@@ -4,7 +4,7 @@ This is a NextJS starter in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
 
-## For AI Assistants
+## For Assistants
 
 Before making changes, and after completing them, please review and update the following files to understand the project's structure and keep its status current:
 

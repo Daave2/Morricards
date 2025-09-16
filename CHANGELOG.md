@@ -2,7 +2,7 @@
 
 This document tracks the major versions and completed features for the Store Mobile Ultra application.
 
-## v0.6 - AI Guidance & Documentation (Current)
+## v0.6 - Guidance & Documentation (Current)
 -   Implemented an interactive chat feature on the Product Assistant page.
 -   Updated the Amazon Picker Assistant to handle single-image analysis, use a more robust card-based layout for results, allow camera capture for images, and show a detailed product modal on-click for every result item.
 -   Updated planogram validator to handle single-image analysis (listing items from a planogram), use a more robust card-based layout for results, allow camera capture for images, and show a detailed product modal on-click for every result item.
@@ -21,7 +21,7 @@ This document tracks the major versions and completed features for the Store Mob
 -   Improved component styling across the application.
 -   Added responsive layouts for better mobile usability.
 
-## v0.2 - AI Integration
+## v0.2 - Assistant Integration
 -   Added Genkit flows for product insights, price validation, and aisle finding.
 
 ## v0.1 - Initial Setup

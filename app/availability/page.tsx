@@ -501,20 +501,20 @@ export default function AvailabilityPage() {
     if (!imageDataUri) return;
 
     setIsOcrLoading(true);
-    toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
+    toast({ title: 'Reading Label', description: 'Reading numbers from the label...' });
     try {
         const result = await ocrFlow({ imageDataUri });
         if (result.eanOrSku) {
-            toast({ title: 'AI OCR Success', description: `Found number: ${result.eanOrSku}` });
+            toast({ title: 'Read Success', description: `Found number: ${result.eanOrSku}` });
             await handleScanSuccess(result.eanOrSku);
         } else {
             playError();
-            toast({ variant: 'destructive', title: 'AI OCR Failed', description: 'Could not find a valid SKU or EAN on the label.' });
+            toast({ variant: 'destructive', title: 'Read Failed', description: 'Could not find a valid SKU or EAN on the label.' });
         }
     } catch (e) {
         console.error("OCR flow failed", e);
         playError();
-        toast({ variant: 'destructive', title: 'AI OCR Error', description: 'An error occurred while reading the image.' });
+        toast({ variant: 'destructive', title: 'Read Error', description: 'An error occurred while reading the image.' });
     } finally {
         setIsOcrLoading(false);
     }
@@ -763,7 +763,7 @@ export default function AvailabilityPage() {
             />
             <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full">
               {isOcrLoading ? <Loader2 className="animate-spin" /> : <ScanSearch />}
-              {isOcrLoading ? 'Reading...' : 'Read with AI'}
+              {isOcrLoading ? 'Reading...' : 'Read with Assistant'}
             </Button>
             <Button
               variant="ghost"
@@ -1109,5 +1109,3 @@ export default function AvailabilityPage() {
     </>
   );
 }
-
-    
