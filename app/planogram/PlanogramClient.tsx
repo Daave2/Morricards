@@ -321,7 +321,7 @@ export default function PlanogramClient() {
 
     setIsLoading(true);
     setResults(null);
-    toast({ title: 'Starting Analysis...', description: 'The AI is analyzing the images.' });
+    toast({ title: 'Starting Analysis...', description: 'Analyzing the images.' });
     
     try {
         const planogramImageDataUri = await toDataUri(planogramImage);
@@ -399,7 +399,7 @@ export default function PlanogramClient() {
       <div className="space-y-8 max-w-6xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>AI Planogram Validator</CardTitle>
+            <CardTitle>Planogram Validator</CardTitle>
             <CardDescription>
               Upload an image of the planogram. Optionally, add a photo of the shelf to find differences. You can also share an image from your phone directly to this page.
             </CardDescription>
@@ -428,7 +428,7 @@ export default function PlanogramClient() {
         {isLoading && (
             <div className="text-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">AI is analyzing, this may take a moment...</p>
+                <p className="text-muted-foreground">Analyzing, this may take a moment...</p>
             </div>
         )}
 
@@ -438,3 +438,5 @@ export default function PlanogramClient() {
     </>
   );
 }
+
+    

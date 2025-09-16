@@ -481,7 +481,7 @@ export default function AssistantPageClient() {
     updateRecentItems(completeProduct);
     setIsFetchingProduct(false);
     playSuccess();
-    toast({ title: 'Product Found', description: `Generating AI insights for ${completeProduct.name}...` });
+    toast({ title: 'Product Found', description: `Generating insights for ${completeProduct.name}...` });
     form.setValue('sku', '');
 
     // Step 3: Generate insights with the complete data
@@ -491,7 +491,7 @@ export default function AssistantPageClient() {
       setInsights(insightResult);
     } catch (e) {
       console.error("Insight generation failed:", e);
-      toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate product insights.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not generate product insights.' });
     } finally {
       setIsGeneratingInsights(false);
     }
@@ -517,20 +517,20 @@ export default function AssistantPageClient() {
     if (!imageDataUri) return;
 
     setIsOcrLoading(true);
-    toast({ title: 'AI OCR', description: 'Reading numbers from the label...' });
+    toast({ title: 'Reading Label', description: 'Reading numbers from the label...' });
     try {
         const result = await ocrFlow({ imageDataUri });
         if (result.eanOrSku) {
-            toast({ title: 'AI OCR Success', description: `Found number: ${result.eanOrSku}` });
+            toast({ title: 'Success', description: `Found number: ${result.eanOrSku}` });
             await handleScanSuccess(result.eanOrSku);
         } else {
             playError();
-            toast({ variant: 'destructive', title: 'AI OCR Failed', description: 'Could not find a valid SKU or EAN on the label.' });
+            toast({ variant: 'destructive', title: 'Read Failed', description: 'Could not find a valid SKU or EAN on the label.' });
         }
     } catch (e) {
         console.error("OCR flow failed", e);
         playError();
-        toast({ variant: 'destructive', title: 'AI OCR Error', description: 'An error occurred while reading the image.' });
+        toast({ variant: 'destructive', title: 'Read Error', description: 'An error occurred while reading the image.' });
     } finally {
         setIsOcrLoading(false);
     }
@@ -577,7 +577,7 @@ export default function AssistantPageClient() {
             />
             <Button onClick={handleOcrRequest} disabled={isOcrLoading} className="w-full">
               {isOcrLoading ? <Loader2 className="animate-spin" /> : <ScanSearch />}
-              {isOcrLoading ? 'Reading...' : 'Read with AI'}
+              {isOcrLoading ? 'Reading...' : 'Read Label'}
             </Button>
             <Button
               variant="ghost"
@@ -594,8 +594,8 @@ export default function AssistantPageClient() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         <Card className="max-w-2xl mx-auto mb-8">
           <CardHeader>
-            <CardTitle>AI Product Assistant</CardTitle>
-            <CardDescription>Search for a product by name or SKU/EAN, or scan its barcode to get details and AI-powered insights.</CardDescription>
+            <CardTitle>Product Assistant</CardTitle>
+            <CardDescription>Search for a product by name or SKU/EAN, or scan its barcode to get details and insights.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
             <div className="space-y-4">
@@ -688,7 +688,7 @@ export default function AssistantPageClient() {
                         </InsightSection>
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="item-1">
-                                <AccordionTrigger>More AI Insights</AccordionTrigger>
+                                <AccordionTrigger>More Insights</AccordionTrigger>
                                 <AccordionContent className="space-y-6 pt-4">
                                     <InsightSection title="Key Selling Points" icon={<ThumbsUp />} content={insights.sellingPoints} />
                                     <InsightSection title="Recipe Ideas" icon={<Lightbulb />} content={insights.recipeIdeas} />
@@ -861,7 +861,7 @@ export default function AssistantPageClient() {
                             <Bot className="h-4 w-4" />
                             <AlertTitle>Insights Failed</AlertTitle>
                             <AlertDescription>
-                                The AI assistant could not generate insights for this product. Please try again.
+                                The assistant could not generate insights for this product. Please try again.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -919,7 +919,7 @@ export default function AssistantPageClient() {
           <Card>
               <CardContent className="p-12 text-center">
                   <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">Search or scan a product to get started with the AI assistant.</p>
+                  <p className="text-muted-foreground">Search or scan a product to get started with the assistant.</p>
               </CardContent>
           </Card>
         )}
@@ -927,3 +927,5 @@ export default function AssistantPageClient() {
     </div>
   );
 }
+
+    

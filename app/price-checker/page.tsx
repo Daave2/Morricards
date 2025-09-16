@@ -235,14 +235,14 @@ export default function PriceCheckerPage() {
     const imageDataUri = canvas.toDataURL('image/jpeg', 0.9);
 
     setIsCameraMode(false);
-    toast({ title: 'Reading Image with AI...', description: 'Identifying all price tickets on the shelf.' });
+    toast({ title: 'Reading Image...', description: 'Identifying all price tickets on the shelf.' });
 
     try {
       const ocrResults = await priceTicketOcrFlow({ imageDataUri });
 
       if (!ocrResults || ocrResults.length === 0) {
         playError();
-        toast({ variant: 'destructive', title: 'No Tickets Found', description: 'The AI could not read any price tickets in the image.' });
+        toast({ variant: 'destructive', title: 'No Tickets Found', description: 'Could not read any price tickets in the image.' });
         setIsProcessing(false);
         return;
       }
@@ -299,7 +299,7 @@ export default function PriceCheckerPage() {
       console.error("Validation process failed", e);
       playError();
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-      toast({ variant: 'destructive', title: 'AI Error', description: `Could not validate the price ticket. ${errorMessage}` });
+      toast({ variant: 'destructive', title: 'Error', description: `Could not validate the price ticket. ${errorMessage}` });
     } finally {
       setIsProcessing(false);
     }
@@ -382,8 +382,8 @@ export default function PriceCheckerPage() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         <Card className="max-w-2xl mx-auto mb-8">
            <CardHeader>
-             <CardTitle>AI Shelf Edge Validator</CardTitle>
-             <CardDescription>Use your camera to capture an entire shelf edge and the AI will validate every price ticket it sees.</CardDescription>
+             <CardTitle>Shelf Edge Validator</CardTitle>
+             <CardDescription>Use your camera to capture an entire shelf edge and the tool will validate every price ticket it sees.</CardDescription>
            </CardHeader>
           <CardContent className="p-4">
                 <Button
@@ -405,7 +405,7 @@ export default function PriceCheckerPage() {
         {isProcessing && (
           <div className="text-center p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">AI is analyzing the shelf image...</p>
+            <p className="text-muted-foreground">Analyzing the shelf image...</p>
           </div>
         )}
 
@@ -510,3 +510,5 @@ export default function PriceCheckerPage() {
     </>
   );
 }
+
+    

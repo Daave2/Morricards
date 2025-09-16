@@ -323,7 +323,7 @@ const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: numb
                 {item.diagnosticSummary && (
                      <Alert>
                         <Bot className="h-4 w-4" />
-                        <AlertTitle>AI Diagnosis</AlertTitle>
+                        <AlertTitle>Diagnosis</AlertTitle>
                         <AlertDescription>
                             {item.diagnosticSummary}
                         </AlertDescription>
@@ -537,7 +537,7 @@ export default function AmazonClient() {
     setAnalysisResults([]);
     toast({
       title: 'Starting Analysis...',
-      description: 'AI is reading the list. This may take a moment.',
+      description: 'Reading the list. This may take a moment.',
     });
 
     try {
@@ -615,9 +615,8 @@ export default function AmazonClient() {
               <PackageSearch /> Amazon Picker Assistant
             </CardTitle>
             <CardDescription>
-              Stuck on a pick? Upload a screenshot of your Amazon picking list.
-              The AI will analyze it and provide insights to help you find the
-              items.
+              Stuck on a pick? Upload a screenshot of your Amazon picking list
+              for analysis.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -647,7 +646,7 @@ export default function AmazonClient() {
           <div className="text-center p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
             <p className="text-muted-foreground">
-              AI is analyzing, this may take a moment...
+              Analyzing, this may take a moment...
             </p>
           </div>
         )}
@@ -664,3 +663,5 @@ export default function AmazonClient() {
     </>
   );
 }
+
+    
