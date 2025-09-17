@@ -608,7 +608,7 @@ export const storeLayout = {
     },
     {
       "id": "33",
-      "label": "Cheese/pies",
+      "label": "Ready meals",
       "type": "chilled",
       "p1": [
         160,
@@ -784,5 +784,3 @@ export const storeLayout = {
     "H": 1092
   }
 }
-
-    
