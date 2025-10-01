@@ -27,7 +27,7 @@ You have been given two images:
 Your tasks are:
 1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU, and EAN (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost).
 
-2.  **Analyze the Shelf Photo**: Identify every product on the shelf by reading their **shelf-edge price tickets**. For each ticket you identify, extract the product name, SKU, and EAN, and determine its shelf and position.
+2.  **Analyze the Shelf Photo**: Identify every product on the shelf by its **packaging and appearance**. For each product you identify, extract its name, SKU, and EAN (if you can discern it), and determine its shelf and position.
 
 3.  **Compare and Consolidate**: Compare the list from the planogram to the list from the shelf. You must intelligently match products even if the names are slightly different (e.g., 'GU Hot Choc Puds 2x80G' on the planogram and 'GU Hot Chocolate Puddings' on the shelf are the same). The SKU or EAN is the best unique identifier. Generate a single 'comparisonResults' list with a status for each item:
     - **Correct**: The product is on the correct shelf and position.
