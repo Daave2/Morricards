@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera, List, PoundSterling } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera, List, PoundSterling, Eye } from 'lucide-react';
 import Image from 'next/image';
 import { planogramFlow } from '@/ai/flows/planogram-flow';
 import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-types';
@@ -147,7 +147,7 @@ const ProductDetailModal = ({ product, open, onOpenChange }: { product: FullProd
     );
 }
 
-const ResultsDisplay = ({ results, onShowDetails }: { results: PlanogramOutput; onShowDetails: (item: ComparisonResult) => void }) => {
+const ResultsDisplay = ({ results, onShowDetails, onGenerateVisualPlan, isGeneratingVisualPlan }: { results: PlanogramOutput; onShowDetails: (item: ComparisonResult) => void; onGenerateVisualPlan: () => void; isGeneratingVisualPlan: boolean; }) => {
     const { comparisonResults } = results;
 
     const correctItems = comparisonResults.filter(r => r.status === 'Correct');
@@ -204,10 +204,20 @@ const ResultsDisplay = ({ results, onShowDetails }: { results: PlanogramOutput; 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Analysis Results</CardTitle>
-                <CardDescription>
-                    {isComparison ? "Comparison of the planogram against the physical shelf. Click any item for details." : "Items extracted from the planogram. Click any item for details."}
-                </CardDescription>
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div>
+                        <CardTitle>Analysis Results</CardTitle>
+                        <CardDescription>
+                            {isComparison ? "Comparison of the planogram against the physical shelf. Click any item for details." : "Items extracted from the planogram. Click any item for details."}
+                        </CardDescription>
+                    </div>
+                    {listedItems.length > 0 && (
+                         <Button onClick={onGenerateVisualPlan} disabled={isGeneratingVisualPlan}>
+                            {isGeneratingVisualPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
+                            {isGeneratingVisualPlan ? 'Generating...' : 'Create Visual Plan'}
+                        </Button>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="space-y-6">
                 {renderResultList(listedItems, "Items on Planogram", "listed")}
@@ -215,6 +225,56 @@ const ResultsDisplay = ({ results, onShowDetails }: { results: PlanogramOutput; 
                 {renderResultList(misplacedItems, "Misplaced Items", "misplaced")}
                 {renderResultList(missingItems, "Missing from Shelf", "missing")}
                 {renderResultList(extraItems, "Extra on Shelf (Not on Plan)", "extra")}
+            </CardContent>
+        </Card>
+    )
+}
+
+type VisualPlanItem = FullProductInfo & {
+    shelf: number;
+    position: number;
+};
+
+const VisualPlan = ({ items, onShowDetails }: { items: VisualPlanItem[]; onShowDetails: (sku: string) => void }) => {
+    if (items.length === 0) return null;
+
+    const shelves = items.reduce((acc, item) => {
+        if (!acc[item.shelf]) {
+            acc[item.shelf] = [];
+        }
+        acc[item.shelf].push(item);
+        return acc;
+    }, {} as Record<number, VisualPlanItem[]>);
+
+    Object.values(shelves).forEach(shelf => shelf.sort((a, b) => a.position - b.position));
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Visual Planogram</CardTitle>
+                <CardDescription>A visual representation of the products based on the planogram layout.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {Object.entries(shelves).sort(([a], [b]) => Number(a) - Number(b)).map(([shelfNumber, shelfItems]) => (
+                    <div key={shelfNumber}>
+                        <h3 className="font-bold text-lg mb-2 border-b pb-1">Shelf {shelfNumber}</h3>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+                            {shelfItems.map(item => (
+                                <div key={item.sku} className="flex flex-col items-center gap-2 text-center cursor-pointer" onClick={() => onShowDetails(item.sku)}>
+                                    <Image
+                                        src={item.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                        alt={item.name}
+                                        width={100}
+                                        height={100}
+                                        className="rounded-md border object-contain w-full aspect-square"
+                                    />
+                                    <p className="text-xs font-medium line-clamp-2">{item.name}</p>
+                                    <p className="text-xs text-muted-foreground">Pos: {item.position}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
             </CardContent>
         </Card>
     )
@@ -229,6 +289,8 @@ export default function PlanogramClient() {
   const [cameraTarget, setCameraTarget] = useState<'planogram' | 'shelf' | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<FullProductInfo | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [visualPlanData, setVisualPlanData] = useState<VisualPlanItem[]>([]);
+  const [isGeneratingVisualPlan, setIsGeneratingVisualPlan] = useState(false);
   
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -321,6 +383,7 @@ export default function PlanogramClient() {
 
     setIsLoading(true);
     setResults(null);
+    setVisualPlanData([]);
     toast({ title: 'Starting Analysis...', description: 'Analyzing the images.' });
     
     try {
@@ -348,8 +411,7 @@ export default function PlanogramClient() {
     setIsLoading(false);
   };
   
-  const handleShowDetails = async (item: ComparisonResult) => {
-    const sku = item.sku || item.ean;
+  const handleShowDetails = async (sku: string | null) => {
     if (!sku) {
         toast({ variant: 'destructive', title: 'No SKU/EAN', description: 'This item does not have an identifier to look up.' });
         return;
@@ -369,6 +431,48 @@ export default function PlanogramClient() {
         setSelectedProduct(data[0]);
         setIsModalOpen(true);
     }
+  }
+
+  const handleGenerateVisualPlan = async () => {
+      if (!results) return;
+
+      const listedItems = results.comparisonResults.filter(r => r.status === 'Listed' && r.sku && r.expectedShelf && r.expectedPosition);
+      if (listedItems.length === 0) {
+          toast({ variant: 'destructive', title: 'No Items to Visualize', description: 'Could not find any items with location data on the planogram.' });
+          return;
+      }
+      
+      setIsGeneratingVisualPlan(true);
+      toast({ title: 'Generating Visual Plan...', description: `Fetching images for ${listedItems.length} products.` });
+
+      const skus = listedItems.map(item => item.sku!);
+      
+      const { data, error } = await getProductData({
+          locationId: settings.locationId,
+          skus,
+          bearerToken: settings.bearerToken,
+          debugMode: settings.debugMode,
+      });
+      
+      if (error) {
+          toast({ variant: 'destructive', title: 'Could not fetch product data', description: error });
+          setIsGeneratingVisualPlan(false);
+          return;
+      }
+
+      if (data) {
+          const enrichedItems: VisualPlanItem[] = data.map(product => {
+              const planogramInfo = listedItems.find(item => item.sku === product.sku);
+              return {
+                  ...product,
+                  shelf: planogramInfo!.expectedShelf!,
+                  position: planogramInfo!.expectedPosition!,
+              };
+          });
+          setVisualPlanData(enrichedItems);
+      }
+      
+      setIsGeneratingVisualPlan(false);
   }
 
   const buttonText = shelfImage ? 'Find Differences' : 'Analyze Planogram';
@@ -432,7 +536,8 @@ export default function PlanogramClient() {
             </div>
         )}
 
-        {results && <ResultsDisplay results={results} onShowDetails={handleShowDetails} />}
+        {results && <ResultsDisplay results={results} onShowDetails={(item) => handleShowDetails(item.sku)} onGenerateVisualPlan={handleGenerateVisualPlan} isGeneratingVisualPlan={isGeneratingVisualPlan} />}
+        {visualPlanData.length > 0 && <VisualPlan items={visualPlanData} onShowDetails={handleShowDetails} />}
       </div>
     </main>
     </>
