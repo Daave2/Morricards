@@ -32,7 +32,7 @@ Your tasks are:
 3.  **Compare and Consolidate**: Compare the list from the planogram to the list from the shelf. You must intelligently match products even if the names are slightly different (e.g., 'GU Hot Choc Puds 2x80G' on the planogram and 'GU Hot Chocolate Puddings' on the shelf are the same). The SKU or EAN is the best unique identifier. Generate a single 'comparisonResults' list with a status for each item:
     - **Correct**: The product is on the correct shelf and position.
     - **Misplaced**: The product is on the shelf, but on the wrong shelf or in the wrong position.
-    - **Missing**: The product is on the planogram but cannot be found on the shelf.
+    - **Missing**: The product is on the planogram but cannot be found on the shelf. If you identify a gap where a product should be, you must use the planogram data to determine which product is missing and include its name and SKU in the result.
     - **Extra**: The product is on the shelf but is not on the planogram.
 
 4. For each item in your result, provide the product name, SKU, EAN (if available), expected location (if any), and actual location (if any).
