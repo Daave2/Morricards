@@ -53,7 +53,7 @@ Your tasks are:
 2.  **Extract Products**:
     - **If items are circled**: Identify *only* the products that are circled.
     - **If NO items are circled**: Identify *all* products on the entire planogram.
-3.  **Generate Results**: For each product you identify, extract its name, SKU, and EAN. Return this as a 'comparisonResults' list. For every item, set the 'status' field to **'Listed'**.
+3.  **Generate Results**: For each product you identify, extract its name, SKU, EAN, and its location (which shelf it's on, and its position from the left). Return this as a 'comparisonResults' list. For every item, set the 'status' field to **'Listed'**.
 
 Planogram Image:
 {{media url=planogramImageDataUri}}
