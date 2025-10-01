@@ -380,7 +380,7 @@ export default function PlanogramClient() {
             <video ref={videoRef} autoPlay playsInline className="w-full max-w-4xl h-auto rounded-lg border aspect-video object-cover" />
             <canvas ref={canvasRef} className="hidden" />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-11/12 max-w-2xl h-1/2 border-4 border-dashed border-white/50 rounded-xl" />
+                <div className="w-4/5 max-w-sm h-5/6 border-4 border-dashed border-white/50 rounded-xl" />
             </div>
             <div className="mt-6 flex gap-4">
                 <Button size="lg" onClick={handleCapture} className="h-16 w-16 rounded-full">
@@ -438,5 +438,3 @@ export default function PlanogramClient() {
     </>
   );
 }
-
-    
