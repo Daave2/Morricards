@@ -10,6 +10,7 @@ const LOCAL_STORAGE_KEY_PRODUCTS = 'morricards-products';
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 const LOCAL_STORAGE_KEY_CUSTOM_BG = 'morricards-custom-background';
 const LOCAL_STORAGE_KEY_RECENT_AI = 'morricards-assistant-recent';
+const LOCAL_STORAGE_KEY_MISSING_HISTORY = 'morricards-planogram-missing-history';
 const DB_NAME = 'smu';
 
 export interface ApiSettings {
@@ -28,18 +29,63 @@ export function useApiSettings() {
   const [settings, setSettings] = useState<ApiSettings>(DEFAULT_SETTINGS);
   const [isMounted, setIsMounted] = useState(false);
 
+  const fetchAndUpdateToken = useCallback(async () => {
+    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/';
+    toast({ title: 'Fetching latest token...' });
+    try {
+      const response = await fetch(tokenUrl, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch token: ${response.statusText}`);
+      }
+      const token = await response.text();
+      const trimmedToken = token.trim();
+
+      if (!trimmedToken) {
+          throw new Error('Fetched token is empty.');
+      }
+
+      // Use setSettings to update state and localStorage
+      setSettings(prev => {
+        const newSettings = { ...prev, bearerToken: trimmedToken };
+        window.localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(newSettings));
+        return newSettings;
+      });
+
+      toast({
+        title: 'Token Updated',
+        description: 'The latest bearer token has been fetched and saved.',
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: 'Fetch Failed',
+        description: `Could not fetch the token. ${errorMessage}`,
+      });
+      console.error(error);
+    }
+  }, []);
+
   useEffect(() => {
     setIsMounted(true);
+    let settingsFound = false;
     try {
       const item = window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
       if (item) {
+        settingsFound = true;
         const parsed = JSON.parse(item);
         setSettings(prev => ({...prev, ...parsed}));
       }
     } catch (error) {
       console.error("Failed to load settings from localStorage", error);
     }
-  }, []);
+
+    if (!settingsFound) {
+      // It's the first run, so fetch the token
+      fetchAndUpdateToken();
+    }
+  }, [fetchAndUpdateToken]);
 
   const updateSettings = useCallback((newSettings: Partial<ApiSettings>) => {
     setSettings(prev => {
@@ -60,6 +106,7 @@ export function useApiSettings() {
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_AVAILABILITY);
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_CUSTOM_BG);
       window.localStorage.removeItem(LOCAL_STORAGE_KEY_RECENT_AI);
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY_MISSING_HISTORY);
 
 
       // Clear IndexedDB stores
@@ -82,38 +129,6 @@ export function useApiSettings() {
        console.error("Failed to clear application data", error);
     }
   }, []);
-
-  const fetchAndUpdateToken = useCallback(async () => {
-    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/';
-    toast({ title: 'Fetching latest token...' });
-    try {
-      const response = await fetch(tokenUrl, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch token: ${response.statusText}`);
-      }
-      const token = await response.text();
-      const trimmedToken = token.trim();
-
-      if (!trimmedToken) {
-          throw new Error('Fetched token is empty.');
-      }
-
-      updateSettings({ bearerToken: trimmedToken });
-      toast({
-        title: 'Token Updated',
-        description: 'The latest bearer token has been fetched and saved.',
-      });
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      toast({
-        variant: 'destructive',
-        title: 'Fetch Failed',
-        description: `Could not fetch the token. ${errorMessage}`,
-      });
-      console.error(error);
-    }
-  }, [updateSettings]);
 
   return { 
     settings: isMounted ? settings : DEFAULT_SETTINGS, 

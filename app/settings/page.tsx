@@ -45,7 +45,7 @@ const FormSchema = z.object({
 
 
 export default function SettingsPage() {
-  const { settings, setSettings, clearAllData } = useApiSettings();
+  const { settings, setSettings, clearAllData, fetchAndUpdateToken } = useApiSettings();
   const { theme, setTheme } = useTheme();
   const [isFetchingToken, setIsFetchingToken] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -93,38 +93,8 @@ export default function SettingsPage() {
   
   async function handleFetchToken() {
     setIsFetchingToken(true);
-    const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/fede6ee0bcb19abb99baa7e46b9c44c4d3e09b0d/gistfile1.txt';
-
-    try {
-      const response = await fetch(tokenUrl, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch token: ${response.statusText}`);
-      }
-      const token = await response.text();
-      const trimmedToken = token.trim();
-
-      if (!trimmedToken) {
-          throw new Error('Fetched token is empty.');
-      }
-
-      form.setValue('bearerToken', trimmedToken);
-      setSettings({ ...settings, bearerToken: trimmedToken });
-      toast({
-        title: 'Token Updated',
-        description: 'The latest bearer token has been fetched and saved.',
-      });
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      toast({
-        variant: 'destructive',
-        title: 'Fetch Failed',
-        description: `Could not fetch the token. ${errorMessage}`,
-      });
-      console.error(error);
-    } finally {
-      setIsFetchingToken(false);
-    }
+    await fetchAndUpdateToken();
+    setIsFetchingToken(false);
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
