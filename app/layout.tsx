@@ -42,7 +42,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="theme-glass"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
           themes={['light', 'dark', 'theme-glass', 'theme-dark-gradient']}
