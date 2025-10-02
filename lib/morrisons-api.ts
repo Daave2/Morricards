@@ -323,9 +323,18 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
             rawData.orderInfo = orderInfo;
             if (orderInfoResult.status === 'rejected') cumulativeError += `Order Info API Error: ${orderInfoResult.reason}\n`;
             
-            const spaceInfo = spaceInfoResult.status === 'fulfilled' ? spaceInfoResult.value : null;
-            rawData.spaceInfo = spaceInfo;
+            let spaceInfo = spaceInfoResult.status === 'fulfilled' ? spaceInfoResult.value : null;
             if (spaceInfoResult.status === 'rejected') cumulativeError += `Space Info API Error: ${spaceInfoResult.reason}\n`;
+            
+            // Inject startOfDayQty from stock payload if it exists
+            const startOfDayQty = stockPayload?.startingPosition?.[0]?.qty;
+            if (startOfDayQty !== undefined) {
+                if (!spaceInfo) {
+                    spaceInfo = {} as SpaceInfo;
+                }
+                spaceInfo.startOfDayQty = startOfDayQty;
+            }
+            rawData.spaceInfo = spaceInfo;
 
 
             // 6. Assemble the final, merged object
@@ -415,3 +424,4 @@ export async function fetchMorrisonsData(input: FetchMorrisonsDataInput): Promis
 
   return rows.filter((r): r is Exclude<typeof r, { name: string; proxyError: string }> => 'name' in r && !r.name.startsWith('Error'));
 }
+

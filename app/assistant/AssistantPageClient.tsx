@@ -13,7 +13,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send, ShoppingBasket } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -553,6 +553,10 @@ export default function AssistantPageClient() {
   const bws = productDetails?.beersWinesSpirits;
   const hasBwsDetails = bws && (bws.alcoholByVolume || bws.tastingNotes || bws.volumeInLitres);
   const productLocation = product ? parseLocationString(product.location.standard) : null;
+  
+  const startOfDayStock = product?.spaceInfo?.startOfDayQty;
+  const currentStock = product?.stockQuantity;
+  const todaysSales = (startOfDayStock !== undefined && currentStock !== undefined) ? startOfDayStock - currentStock : null;
 
   return (
     <div className="min-h-screen">
@@ -717,6 +721,7 @@ export default function AssistantPageClient() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.primaryEan13 || product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                                             <DataRow icon={<Info />} label="Status" value={product.status} />
+                                            {todaysSales !== null && <DataRow icon={<ShoppingBasket />} label="Today's Sales" value={todaysSales} />}
                                             <DataRow icon={<Footprints />} label="Walk Sequence" value={productDetails?.legacyItemNumbers?.[0]} />
                                             <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
                                             <DataRow icon={<Crown />} label="Brand" value={productDetails?.brand} />
