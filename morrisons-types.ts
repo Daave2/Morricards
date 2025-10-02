@@ -137,6 +137,12 @@ export interface components {
           /** @example "each" */
           unitofMeasure?: string;
         })[];
+      startingPosition?: ({
+          /** @example 7 */
+          qty?: number;
+          /** @example "each" */
+          unitofMeasure?: string;
+        })[];
     };
     Location: {
       /** @example "14" */
@@ -167,6 +173,7 @@ export interface components {
       promotions?: ({
           marketingAttributes?: {
             offerValue?: string;
+            name?: string;
           };
         })[];
     };
@@ -379,3 +386,5 @@ export interface SpaceLocation {
 }
 
     
+
+  
