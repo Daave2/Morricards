@@ -178,6 +178,11 @@ const ResultsDisplay = ({ results, onShowDetails, onGenerateVisualPlan, isGenera
                 <div className="space-y-3">
                     {items.map((item, index) => (
                         <Card key={index} className="flex flex-col sm:flex-row items-start gap-4 p-3 cursor-pointer hover:bg-accent/50" onClick={() => onShowDetails(item)}>
+                             {item.sku && (
+                                <div className="hidden sm:block">
+                                    <SkuQrCode sku={item.sku} size={64} />
+                                </div>
+                            )}
                             <div className="flex-grow">
                                 <p className="font-semibold text-sm">{item.productName}</p>
                                 <p className="text-xs text-muted-foreground">SKU: {item.sku || 'N/A'}</p>
@@ -192,6 +197,11 @@ const ResultsDisplay = ({ results, onShowDetails, onGenerateVisualPlan, isGenera
                                     </div>
                                 ) : null}
                             </div>
+                            {item.sku && (
+                                <div className="block sm:hidden self-center">
+                                    <SkuQrCode sku={item.sku} size={64} />
+                                </div>
+                            )}
                         </Card>
                     ))}
                 </div>
@@ -543,3 +553,5 @@ export default function PlanogramClient() {
     </>
   );
 }
+
+    
