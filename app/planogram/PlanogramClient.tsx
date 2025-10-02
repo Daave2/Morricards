@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera, List, PoundSterling, Eye } from 'lucide-react';
+import { Loader2, UploadCloud, Bot, Check, X, ArrowRightLeft, AlertTriangle, Camera, List, PoundSterling, Eye, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { planogramFlow } from '@/ai/flows/planogram-flow';
 import type { PlanogramOutput, ComparisonResult } from '@/ai/flows/planogram-types';
@@ -16,6 +16,9 @@ import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTrigger, 
 import { getProductData } from '@/app/actions';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
+
+
+const LOCAL_STORAGE_KEY_MISSING_HISTORY = 'morricards-planogram-missing-history';
 
 
 const ImageUpload = ({ title, onImageSelect, onCameraClick, selectedImage, disabled }: { title:string, onImageSelect: (file: File) => void, onCameraClick: () => void, selectedImage: File | null, disabled?: boolean }) => {
@@ -290,6 +293,40 @@ const VisualPlan = ({ items, onShowDetails }: { items: VisualPlanItem[]; onShowD
     )
 }
 
+const MissingItemsReport = ({ items, onClear }: { items: ComparisonResult[], onClear: () => void }) => {
+    if (items.length === 0) return null;
+
+    return (
+        <Card className="border-destructive/50">
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle>Missing Items Report ({items.length})</CardTitle>
+                    <Button variant="destructive" size="sm" onClick={onClear}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Clear Report
+                    </Button>
+                </div>
+                <CardDescription>
+                    A consolidated list of all items marked as "Missing" across all your scans.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {items.map((item, index) => (
+                    <div key={`${item.sku}-${index}`} className="flex items-center justify-between p-2 rounded-md hover:bg-accent">
+                        <div>
+                            <p className="font-semibold">{item.productName}</p>
+                            <p className="text-sm text-muted-foreground">SKU: {item.sku || 'N/A'}</p>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                            Shelf {item.expectedShelf}, Pos {item.expectedPosition}
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    )
+}
+
 export default function PlanogramClient() {
   const [planogramImage, setPlanogramImage] = useState<File | null>(null);
   const [shelfImage, setShelfImage] = useState<File | null>(null);
@@ -301,6 +338,7 @@ export default function PlanogramClient() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [visualPlanData, setVisualPlanData] = useState<VisualPlanItem[]>([]);
   const [isGeneratingVisualPlan, setIsGeneratingVisualPlan] = useState(false);
+  const [missingItemsHistory, setMissingItemsHistory] = useState<ComparisonResult[]>([]);
   
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -308,6 +346,25 @@ export default function PlanogramClient() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
+  useEffect(() => {
+    try {
+      const savedItems = localStorage.getItem(LOCAL_STORAGE_KEY_MISSING_HISTORY);
+      if (savedItems) {
+        setMissingItemsHistory(JSON.parse(savedItems));
+      }
+    } catch (error) {
+      console.error("Failed to load missing items history from local storage", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY_MISSING_HISTORY, JSON.stringify(missingItemsHistory));
+    } catch (error) {
+      console.error("Failed to save missing items history to local storage", error);
+    }
+  }, [missingItemsHistory]);
+
 
   const startCamera = async () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -403,10 +460,24 @@ export default function PlanogramClient() {
         const flowResult = await planogramFlow({ planogramImageDataUri: planogramImageDataUri!, shelfImageDataUri });
         setResults(flowResult);
 
-        toast({
-            title: 'Analysis Complete',
-            description: 'The results are displayed below.',
-        });
+        // Update missing items history
+        const newMissingItems = flowResult.comparisonResults.filter(item => item.status === 'Missing');
+        if (newMissingItems.length > 0) {
+            setMissingItemsHistory(prev => {
+                const existingSkus = new Set(prev.map(p => p.sku));
+                const uniqueNewItems = newMissingItems.filter(item => !existingSkus.has(item.sku));
+                return [...prev, ...uniqueNewItems];
+            });
+             toast({
+                title: 'Missing Items Found',
+                description: `${newMissingItems.length} missing item(s) were added to the report.`,
+            });
+        } else {
+             toast({
+                title: 'Analysis Complete',
+                description: 'The results are displayed below.',
+            });
+        }
 
     } catch (error) {
          toast({
@@ -485,6 +556,11 @@ export default function PlanogramClient() {
       setIsGeneratingVisualPlan(false);
   }
 
+  const handleClearMissingHistory = () => {
+      setMissingItemsHistory([]);
+      toast({ title: 'Report Cleared', description: 'The missing items report has been cleared.' });
+  }
+
   const buttonText = shelfImage ? 'Find Differences' : 'Analyze Planogram';
 
   return (
@@ -545,7 +621,8 @@ export default function PlanogramClient() {
                 <p className="text-muted-foreground">Analyzing, this may take a moment...</p>
             </div>
         )}
-
+        
+        {missingItemsHistory.length > 0 && <MissingItemsReport items={missingItemsHistory} onClear={handleClearMissingHistory} />}
         {results && <ResultsDisplay results={results} onShowDetails={(item) => handleShowDetails(item.sku)} onGenerateVisualPlan={handleGenerateVisualPlan} isGeneratingVisualPlan={isGeneratingVisualPlan} />}
         {visualPlanData.length > 0 && <VisualPlan items={visualPlanData} onShowDetails={handleShowDetails} />}
       </div>
@@ -553,5 +630,3 @@ export default function PlanogramClient() {
     </>
   );
 }
-
-    
