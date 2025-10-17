@@ -41,6 +41,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import SkuQrCode from '@/components/SkuQrCode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { generateTOTP } from '@/lib/totp';
 
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
@@ -68,38 +69,22 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
 const OtpDisplay = () => {
     const [otp, setOtp] = useState<string>('------');
     const [progress, setProgress] = useState(100);
+    const secret = "7EF4D6RSNMXU7GZ3HVM4CTSAPJMCK5L3QW5KW42H5LVASIBPNENA";
 
     useEffect(() => {
-        const generateOtp = () => {
-            const secret = '7EF4D6RSNMXU7GZ3HVM4CTSA'; // A portion of the key for simulation
-            const timeStep = 30;
-            const epoch = 0;
-            const counter = Math.floor((Date.now() / 1000 - epoch) / timeStep);
-            
-            // A more standard (but still simulated) hash generation
-            let hash = counter;
-            for (let i = 0; i < secret.length; i++) {
-                hash = (hash << 5) - hash + secret.charCodeAt(i);
-                hash |= 0; // Convert to 32bit integer
-            }
-
-            const otpNumber = Math.abs(hash) % 1000000;
-            setOtp(otpNumber.toString().padStart(6, '0'));
-        };
-
-        const updateTimer = () => {
-            const now = new Date();
-            const seconds = now.getSeconds();
-            const remaining = 30 - (seconds % 30);
-            setProgress((remaining / 30) * 100);
-
-            if (seconds % 30 === 0) {
-                generateOtp();
+        const updateOtp = async () => {
+             try {
+                const { otp: newOtp, remaining, period } = await generateTOTP(secret);
+                setOtp(newOtp);
+                setProgress((remaining / period) * 100);
+            } catch (error) {
+                console.error("Failed to generate TOTP:", error);
+                setOtp("Error");
             }
         };
 
-        generateOtp();
-        const interval = setInterval(updateTimer, 1000);
+        updateOtp();
+        const interval = setInterval(updateOtp, 1000);
 
         return () => clearInterval(interval);
     }, []);
@@ -108,7 +93,7 @@ const OtpDisplay = () => {
         <div className="relative">
             <p className="text-sm font-mono tracking-widest text-muted-foreground">{otp}</p>
             <div className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-border/50">
-                <div className="h-full bg-primary" style={{ width: `${progress}%`, transition: 'width 0.5s linear' }}></div>
+                <div className="h-full bg-primary" style={{ width: `${progress}%`, transition: progress > 95 ? 'none' : 'width 1s linear' }}></div>
             </div>
         </div>
     );
@@ -720,7 +705,3 @@ export default function AmazonClient() {
     </>
   );
 }
-
-    
-
-    
