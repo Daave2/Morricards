@@ -65,6 +65,62 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
   return null;
 }
 
+const OtpDisplay = () => {
+    const [otp, setOtp] = useState<string>('------');
+    const [progress, setProgress] = useState(100);
+
+    useEffect(() => {
+        const generateOtp = () => {
+            const secret = '7EF4D6RSNMXU7GZ3HVM4CTSA'.slice(0, 16); // Use a portion as a simple key
+            const timeStep = 30;
+            const epoch = 0;
+            const counter = Math.floor((Date.now() / 1000 - epoch) / timeStep);
+            
+            // Simple pseudo-HMAC logic for deterministic generation
+            let hash = 0;
+            for (let i = 0; i < secret.length; i++) {
+                hash = (hash << 5) - hash + secret.charCodeAt(i);
+                hash |= 0; 
+            }
+
+            let timeHash = counter;
+            timeHash = ((timeHash >> 16) ^ timeHash) * 0x45d9f3b;
+            timeHash = ((timeHash >> 16) ^ timeHash) * 0x45d9f3b;
+            timeHash = (timeHash >> 16) ^ timeHash;
+
+            const combinedHash = hash ^ timeHash;
+            const otpNumber = Math.abs(combinedHash) % 1000000;
+            
+            setOtp(otpNumber.toString().padStart(6, '0'));
+        };
+
+        const updateTimer = () => {
+            const now = new Date();
+            const seconds = now.getSeconds();
+            const remaining = 30 - (seconds % 30);
+            setProgress((remaining / 30) * 100);
+
+            if (seconds % 30 === 0) {
+                generateOtp();
+            }
+        };
+
+        generateOtp();
+        const interval = setInterval(updateTimer, 1000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="relative">
+            <p className="text-sm font-mono tracking-widest text-muted-foreground">{otp}</p>
+            <div className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-border/50">
+                <div className="h-full bg-primary" style={{ width: `${progress}%`, transition: 'width 0.5s linear' }}></div>
+            </div>
+        </div>
+    );
+};
+
 const ImageUpload = ({
   onImageSelect,
   selectedImage,
@@ -611,13 +667,21 @@ export default function AmazonClient() {
       <div className="space-y-8 max-w-4xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PackageSearch /> Amazon Picker Assistant
-            </CardTitle>
-            <CardDescription>
-              Stuck on a pick? Upload a screenshot of your Amazon picking list
-              for analysis.
-            </CardDescription>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <PackageSearch /> Amazon Picker Assistant
+                </CardTitle>
+                <CardDescription>
+                  Stuck on a pick? Upload a screenshot of your Amazon picking list
+                  for analysis.
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Driver OTP</p>
+                <OtpDisplay />
+              </div>
+            </div>
           </CardHeader>
         </Card>
 
@@ -663,5 +727,7 @@ export default function AmazonClient() {
     </>
   );
 }
+
+    
 
     
