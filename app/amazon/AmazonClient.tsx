@@ -71,26 +71,19 @@ const OtpDisplay = () => {
 
     useEffect(() => {
         const generateOtp = () => {
-            const secret = '7EF4D6RSNMXU7GZ3HVM4CTSA'.slice(0, 16); // Use a portion as a simple key
+            const secret = '7EF4D6RSNMXU7GZ3HVM4CTSA'; // A portion of the key for simulation
             const timeStep = 30;
             const epoch = 0;
             const counter = Math.floor((Date.now() / 1000 - epoch) / timeStep);
             
-            // Simple pseudo-HMAC logic for deterministic generation
-            let hash = 0;
+            // A more standard (but still simulated) hash generation
+            let hash = counter;
             for (let i = 0; i < secret.length; i++) {
                 hash = (hash << 5) - hash + secret.charCodeAt(i);
-                hash |= 0; 
+                hash |= 0; // Convert to 32bit integer
             }
 
-            let timeHash = counter;
-            timeHash = ((timeHash >> 16) ^ timeHash) * 0x45d9f3b;
-            timeHash = ((timeHash >> 16) ^ timeHash) * 0x45d9f3b;
-            timeHash = (timeHash >> 16) ^ timeHash;
-
-            const combinedHash = hash ^ timeHash;
-            const otpNumber = Math.abs(combinedHash) % 1000000;
-            
+            const otpNumber = Math.abs(hash) % 1000000;
             setOtp(otpNumber.toString().padStart(6, '0'));
         };
 
