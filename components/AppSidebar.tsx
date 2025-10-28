@@ -21,7 +21,7 @@ export const navItems = [
     { href: '/planogram', label: 'Planogram', icon: CheckSquare },
     { href: '/map', label: 'Store Map', icon: Map },
     { href: '/amazon', label: 'Amazon', icon: PackageSearch },
-    { href: '/storemapper', label: 'Store Mapper', icon: AppWindow },
+    { href: 'https://storemapper-ai-584939250419.us-west1.run.app', label: 'Store Mapper', icon: AppWindow, external: true },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -54,16 +54,21 @@ export default function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {navItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                <Link href={item.href} onClick={handleLinkClick}>
-                  <item.icon />
-                  {item.label}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {navItems.map((item) => {
+            const isExternal = item.external;
+            const linkProps = isExternal ? { href: item.href, target: '_blank', rel: 'noopener noreferrer' } : { href: item.href };
+            
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton asChild isActive={!isExternal && isActive(item.href)}>
+                  <a {...linkProps} onClick={handleLinkClick}>
+                    <item.icon />
+                    {item.label}
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarContent>
     </>

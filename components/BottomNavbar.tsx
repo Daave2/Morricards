@@ -29,7 +29,7 @@ export default function BottomNavbar() {
     return pathname.startsWith(path);
   };
   
-  const isMoreActive = moreNavItems.some(item => isActive(item.href));
+  const isMoreActive = moreNavItems.some(item => !item.external && isActive(item.href));
 
   return (
     <nav className={cn(
@@ -72,22 +72,28 @@ export default function BottomNavbar() {
                     <SheetTitle>More Options</SheetTitle>
                 </SheetHeader>
                 <div className="grid grid-cols-2 gap-4">
-                    {moreNavItems.map((item) => (
+                    {moreNavItems.map((item) => {
+                       const isExternal = item.external;
+                       const linkProps = isExternal ? { href: item.href, target: '_blank', rel: 'noopener noreferrer' } : { href: item.href };
+                       const Component = isExternal ? 'a' : Link;
+
+                       return (
                         <SheetTrigger asChild key={item.href}>
-                             <Link
-                                href={item.href}
+                             <Component
+                                {...linkProps}
                                 className={cn(
                                 'flex flex-col items-center justify-center gap-2 text-muted-foreground transition-colors hover:text-primary rounded-lg p-4 bg-secondary',
-                                isActive(item.href) && 'text-primary ring-2 ring-primary',
+                                !isExternal && isActive(item.href) && 'text-primary ring-2 ring-primary',
                                 'theme-glass:bg-white/10 theme-glass:text-white/80',
-                                isActive(item.href) && 'theme-glass:text-white theme-glass:bg-white/20'
+                                !isExternal && isActive(item.href) && 'theme-glass:text-white theme-glass:bg-white/20'
                                 )}
                             >
                                 <item.icon className="h-6 w-6" />
                                 <span className="truncate font-semibold">{item.label}</span>
-                            </Link>
+                            </Component>
                         </SheetTrigger>
-                    ))}
+                       )
+                    })}
                 </div>
             </SheetContent>
         </Sheet>
