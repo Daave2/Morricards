@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanLine, CheckSquare, PackageSearch } from 'lucide-react';
+import { Home, ListChecks, Bot, Map, Settings, ShoppingBasket, ScanLine, CheckSquare, PackageSearch, AppWindow } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -21,6 +21,7 @@ export const navItems = [
     { href: '/planogram', label: 'Planogram', icon: CheckSquare },
     { href: '/map', label: 'Store Map', icon: Map },
     { href: '/amazon', label: 'Amazon', icon: PackageSearch },
+    { href: '/storemapper', label: 'Store Mapper', icon: AppWindow },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
