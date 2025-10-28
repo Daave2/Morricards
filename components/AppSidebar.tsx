@@ -21,7 +21,7 @@ export const navItems = [
     { href: '/planogram', label: 'Planogram', icon: CheckSquare },
     { href: '/map', label: 'Store Map', icon: Map },
     { href: '/amazon', label: 'Amazon', icon: PackageSearch },
-    { href: 'https://storemapper-ai-584939250419.us-west1.run.app', label: 'Store Mapper', icon: AppWindow, external: true },
+    { href: 'https://storemapper-ai-584939250419.us-west1.run.app', label: 'Promo layout', icon: AppWindow, external: true },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
