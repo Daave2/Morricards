@@ -29,6 +29,7 @@ import {
   Package,
   Camera,
   X,
+  Link as LinkIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -66,7 +67,7 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
   return null;
 }
 
-const OtpDisplay = () => {
+const OtpDisplay = ({ onCorrected }: { onCorrected: () => void }) => {
     const [otp, setOtp] = useState<string>('------');
     const [progress, setProgress] = useState(100);
     const secret = "7EF4D6RSNMXU7GZ3HVM4CTSAPJMCK5L3QW5KW42H5LVASIBPNENA";
@@ -321,6 +322,7 @@ const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: numb
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [isQrOpen, setIsQrOpen] = useState(false);
     const productLocation = item.product ? parseLocationString(item.product.location.standard) : null;
+    const stockColor = item.product ? (item.product.stockQuantity > 20 ? 'bg-green-500' : item.product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500') : 'bg-gray-500';
   
     return (
       <Card key={item.product?.sku || index}>
@@ -364,11 +366,15 @@ const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: numb
                     </Alert>
                 )}
                 <div className="space-y-4 text-sm pt-4">
-                  <DataRow
-                    icon={<Boxes />}
-                    label="Stock"
-                    value={`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}
-                  />
+                  <a href={`https://action.focal.systems/ims/product/${item.product.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 group hover:underline">
+                      <div className="w-5 h-5 text-primary flex-shrink-0 pt-0.5"><Boxes /></div>
+                      <div className='flex-grow min-w-0 flex items-center gap-2'>
+                          <span className="font-semibold">Stock:</span>
+                          <span className='break-words font-bold'>{`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}</span>
+                          <div className={`h-2.5 w-2.5 rounded-full ${stockColor}`} title={`Stock level: ${item.product.stockQuantity}`}></div>
+                          <LinkIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                  </a>
                   <DataRow
                     icon={<MapPin />}
                     label="Location"
@@ -464,6 +470,7 @@ export default function AmazonClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<EnrichedAnalysis[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isOtpCorrect, setIsOtpCorrect] = useState(false);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -657,7 +664,7 @@ export default function AmazonClient() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Driver OTP</p>
-                <OtpDisplay />
+                <OtpDisplay onCorrected={() => setIsOtpCorrect(true)} />
               </div>
             </div>
           </CardHeader>
