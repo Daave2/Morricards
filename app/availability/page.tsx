@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -13,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2, DownloadCloud } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2, DownloadCloud, Boxes } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import {
@@ -808,7 +809,10 @@ export default function AvailabilityPage() {
                                     <Badge variant="destructive" className="bg-accent text-accent-foreground">{productForModal.price.promotional}</Badge>
                                   </div>
                                 )}
-                              <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{productForModal.stockQuantity}</span></p>
+                                <a href={`https://action.focal.systems/ims/product/${productForModal.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 group hover:underline">
+                                    <p className="text-lg">Stock: <span className="font-extrabold text-3xl text-primary">{productForModal.stockQuantity}</span></p>
+                                    <LinkIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </a>
                               <div>Location: <span className="font-semibold">{productForModal.location.standard || 'N/A'}</span></div>
                               {productForModal.location.secondary && <div>Secondary: <span className="font-semibold">{productForModal.location.secondary}</span></div>}
                                <DeliveryInfoRow deliveryInfo={productForModal.deliveryInfo} allOrders={productForModal.allOrders} productName={productForModal.name} />
@@ -1109,3 +1113,4 @@ export default function AvailabilityPage() {
     </>
   );
 }
+

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -13,7 +14,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send, ShoppingBasket } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send, ShoppingBasket, Link as LinkIcon } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -642,7 +643,12 @@ export default function AssistantPageClient() {
                     </div>
                     <div className='flex-grow'>
                         <CardTitle>{product.name}</CardTitle>
-                        <CardDescription>SKU: {product.sku} | Stock: {product.stockQuantity}</CardDescription>
+                        <CardDescription>
+                          <a href={`https://action.focal.systems/ims/product/${product.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 group hover:underline">
+                            SKU: {product.sku} | Stock: {product.stockQuantity}
+                            <LinkIcon className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </a>
+                        </CardDescription>
                         <div className="mt-2 flex items-baseline gap-2">
                              <span className={cn("text-lg font-semibold", product.price.promotional && "line-through text-muted-foreground text-base")}>
                                 £{product.price.regular?.toFixed(2) || 'N/A'}
@@ -932,4 +938,5 @@ export default function AssistantPageClient() {
     </div>
   );
 }
+
 

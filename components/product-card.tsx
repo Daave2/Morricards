@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck, History } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck, History, Link as LinkIcon } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -303,11 +303,12 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
               </div>
             </CardHeader>
             <CardContent className={cn('flex-grow', layout === 'list' ? 'p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-start' : 'p-6 pt-0 space-y-3')}>
-                <div className="flex items-center gap-3 text-sm">
+                <a href={`https://action.focal.systems/ims/product/${product.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm group hover:underline">
                     <Boxes className="h-5 w-5 text-primary" />
                     <span>Stock: <strong>{product.stockQuantity} {product.stockUnit}</strong></span>
                     <div className={`h-2.5 w-2.5 rounded-full ${stockColor}`} title={`Stock level: ${product.stockQuantity}`}></div>
-                </div>
+                    <LinkIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
                 <div className="flex items-start gap-3 text-sm">
                     <MapPin className="h-5 w-5 text-primary mt-0.5" />
                     <div className="flex-grow">
