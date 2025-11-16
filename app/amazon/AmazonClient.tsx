@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -475,36 +475,8 @@ export default function AmazonClient() {
     setIsCameraOpen(false);
   };
 
-
-  useEffect(() => {
-    const handleSharedImage = async () => {
-      // @ts-ignore
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.addEventListener('message', event => {
-          if (event.data.action === 'load-image' && event.data.file) {
-            setListImage(event.data.file);
-            toast({
-              title: "Image Received",
-              description: "The shared image has been loaded for analysis."
-            });
-            // Clean up the history so the user can use the back button.
-            window.history.replaceState({}, '', '/amazon');
-          }
-        });
-        // Let the service worker know we're ready.
-        navigator.serviceWorker.controller.postMessage('share-ready');
-      }
-    };
-    handleSharedImage();
-  }, [toast]);
-
-  const handleAnalysis = async () => {
+  const handleAnalysis = useCallback(async () => {
     if (!listImage) {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Image',
-        description: 'Please upload a screenshot of the picking list.',
-      });
       return;
     }
 
@@ -560,7 +532,38 @@ export default function AmazonClient() {
     }
 
     setIsLoading(false);
-  };
+  }, [listImage, settings.bearerToken, settings.debugMode, settings.locationId, toast]);
+
+
+  useEffect(() => {
+    const handleSharedImage = async () => {
+      // @ts-ignore
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('message', event => {
+          if (event.data.action === 'load-image' && event.data.file) {
+            setListImage(event.data.file);
+            toast({
+              title: "Image Received",
+              description: "The shared image has been loaded for analysis."
+            });
+            // Clean up the history so the user can use the back button.
+            window.history.replaceState({}, '', '/amazon');
+          }
+        });
+        // Let the service worker know we're ready.
+        navigator.serviceWorker.controller.postMessage('share-ready');
+      }
+    };
+    handleSharedImage();
+  }, [toast]);
+  
+  useEffect(() => {
+    if (listImage) {
+        handleAnalysis();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listImage]);
+
   
   const handleReset = () => {
       setAnalysisResults([]);
@@ -588,7 +591,7 @@ export default function AmazonClient() {
     )}
 
     <main className="container mx-auto px-0 py-0 md:py-12">
-        {analysisResults.length > 0 ? (
+        {analysisResults.length > 0 || isLoading ? (
            <div className="bg-white dark:bg-zinc-900">
              <header className="flex items-center justify-between p-4 h-16 bg-[#00A2E8] text-white sticky top-0 z-10">
                 <Button variant="ghost" size="icon" className="text-white" onClick={handleReset}>
@@ -609,11 +612,20 @@ export default function AmazonClient() {
                     </DropdownMenuContent>
                 </DropdownMenu>
              </header>
-             <div className="divide-y">
-                {analysisResults.map((item, index) => (
-                    <AmazonListItem item={item} key={item.product?.sku || index} />
-                ))}
-             </div>
+             {isLoading ? (
+                <div className="text-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                    Analyzing, this may take a moment...
+                    </p>
+                </div>
+             ) : (
+                <div className="divide-y">
+                    {analysisResults.map((item, index) => (
+                        <AmazonListItem item={item} key={item.product?.sku || index} />
+                    ))}
+                </div>
+             )}
            </div>
         ) : (
           <div className="space-y-8 max-w-4xl mx-auto px-4 py-8">
@@ -639,29 +651,6 @@ export default function AmazonClient() {
               disabled={isLoading}
               onCameraClick={() => setIsCameraOpen(true)}
             />
-
-            <Button
-              onClick={handleAnalysis}
-              disabled={isLoading || !listImage}
-              className="w-full"
-              size="lg"
-            >
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Bot className="mr-2 h-4 w-4" />
-              )}
-              Analyze Picking List
-            </Button>
-
-            {isLoading && (
-              <div className="text-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Analyzing, this may take a moment...
-                </p>
-              </div>
-            )}
           </div>
         )}
     </main>
