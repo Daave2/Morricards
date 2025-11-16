@@ -26,8 +26,8 @@ The user needs a direct, actionable hypothesis. Your entire response should be a
 Use the provided raw data:
 - **stock**: Contains current stock quantity ('qty') and start of day quantity ('startOfDayQty').
 - **orderInfo**: Contains 'next' and 'last' delivery information, including dates and quantities.
-- **productDetails**: Contains the product's temperature type ('temperatureRegime') - Ambient, Chilled, or Produce.
-- **priceIntegrity**: Contains location information, including promotional locations.
+- **productDetails**: Contains the product's temperature type ('temperatureRegime') - Ambient, Chilled, or Frozen/Produce.
+- **location**: Contains the product's standard and promotional locations.
 
 **Here is the required logic and output format:**
 
@@ -39,7 +39,7 @@ Use the provided raw data:
     - If the product is 'Chilled' or 'Frozen', your response MUST be: "High stock and no recent delivery; check the backup chiller/freezer."
     - If the product is 'Produce', your response MUST be: "High stock and no recent delivery; check under the tables in the produce section."
 
-3.  **If the product has a promotional location:**
+3.  **If the product has a promotional location (check the 'location.promotional' field):**
     - Your response MUST be in this format: "This item has high stock records and an additional location at {INSERT PROMOTIONAL LOCATION HERE}, so make sure promo locations have been checked."
 
 **Do not be conversational. Provide only the single, actionable sentence.**
