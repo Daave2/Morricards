@@ -333,7 +333,7 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                     {item.diagnosticSummary && (
                          <Alert>
                             <Bot className="h-4 w-4" />
-                            <AlertTitle>Diagnosis</AlertTitle>
+                            <AlertTitle>Insight</AlertTitle>
                             <AlertDescription>
                                 {item.diagnosticSummary}
                             </AlertDescription>
@@ -657,3 +657,5 @@ export default function AmazonClient() {
     </>
   );
 }
+
+    

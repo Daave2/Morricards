@@ -19,22 +19,32 @@ const pickerDiagnosisPrompt = ai.definePrompt({
     name: 'pickerDiagnosisPrompt',
     input: { schema: z.object({ rawData: z.any() }) },
     output: { schema: z.object({ diagnosticSummary: z.string() }) },
-    prompt: `You are an expert stock investigator for a UK supermarket. Your task is to analyze raw API data for a single product and provide a concise, helpful diagnosis for a store colleague who cannot find it on the shelf.
+    prompt: `You are an expert stock investigator for a UK supermarket. Your task is to analyze raw API data for a single product and provide a concise, helpful insight for a store colleague who cannot find it on the shelf.
 
-The user needs to understand *why* the item might be missing and *where to look next*.
+The user needs a direct, actionable hypothesis. Your entire response should be a single, direct sentence.
 
-You will be given a '_raw' object containing several nested API responses. Use all of this information to form your hypothesis.
-- **priceIntegrity**: Contains the product name and location information (standard, promo).
-- **stock**: Contains the current electronic stock quantity ('qty').
+Use the provided raw data:
+- **stock**: Contains current stock quantity ('qty') and start of day quantity ('startOfDayQty').
 - **orderInfo**: Contains 'next' and 'last' delivery information, including dates and quantities.
-- **stockHistory**: Shows the last stock movement (e.g., 'delivery receipt', 'inventory adjustment').
-- **productProxy**: The full rich product details.
+- **productDetails**: Contains the product's temperature type ('temperatureRegime') - Ambient, Chilled, or Produce.
+- **priceIntegrity**: Contains location information, including promotional locations.
 
-**Your diagnosis should be a single, helpful paragraph. For example:**
-"The system shows 5 units in stock, but the last delivery of 12 units was only last night. Since no sales are recorded, the missing stock is likely in the warehouse, possibly on a delivery cage that hasn't been worked yet. Also, check promo end-aisle 97, as this item is on promotion."
-"Stock is zero and the last delivery was over a week ago. This is a genuine out-of-stock. Check for a newer version of the product or a direct substitute."
+**Here is the required logic and output format:**
 
-Analyze this raw data and provide your diagnosis in the 'diagnosticSummary' field of your response.
+1.  **If a delivery was recent (e.g., 'last' delivery was today or yesterday) and sales are low or zero (current stock matches start-of-day stock):**
+    - Your entire response MUST be in this format: "X units were due last night and no sales have been recorded today so check for unworked delivery."
+
+2.  **If stock is high, but there have been NO RECENT deliveries:**
+    - If the product is 'Ambient', your response MUST be: "Stock records are high at X units but no delivery recently so check capping shelfs."
+    - If the product is 'Chilled' or 'Frozen', your response MUST be: "High stock and no recent delivery; check the backup chiller/freezer."
+    - If the product is 'Produce', your response MUST be: "High stock and no recent delivery; check under the tables in the produce section."
+
+3.  **If the product has a promotional location:**
+    - Your response MUST be: "This item has high stock records and an additional location (e.g., 'Front of store') so make sure promo locations have been checked."
+
+**Do not be conversational. Provide only the single, actionable sentence.**
+
+Analyze this raw data and provide your insight in the 'diagnosticSummary' field.
 \`\`\`json
 {{{json rawData}}}
 \`\`\`
@@ -119,3 +129,5 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
   // This guarantees that only plain objects are returned from the flow.
   return JSON.parse(JSON.stringify(results));
 }
+
+    
