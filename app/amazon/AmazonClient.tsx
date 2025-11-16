@@ -30,6 +30,8 @@ import {
   Camera,
   X,
   Link as LinkIcon,
+  MoreVertical,
+  ArrowLeft,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -42,8 +44,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import SkuQrCode from '@/components/SkuQrCode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { generateTOTP } from '@/lib/totp';
-
+import { Separator } from '@/components/ui/separator';
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
   if (!location) return null;
@@ -66,39 +67,6 @@ function parseLocationString(location: string | undefined): ProductLocation | nu
   
   return null;
 }
-
-const OtpDisplay = ({ onCorrected }: { onCorrected: () => void }) => {
-    const [otp, setOtp] = useState<string>('------');
-    const [progress, setProgress] = useState(100);
-    const secret = "7EF4D6RSNMXU7GZ3HVM4CTSAPJMCK5L3QW5KW42H5LVASIBPNENA";
-
-    useEffect(() => {
-        const updateOtp = async () => {
-             try {
-                const { otp: newOtp, remaining, period } = await generateTOTP(secret);
-                setOtp(newOtp);
-                setProgress((remaining / period) * 100);
-            } catch (error) {
-                console.error("Failed to generate TOTP:", error);
-                setOtp("Error");
-            }
-        };
-
-        updateOtp();
-        const interval = setInterval(updateOtp, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    return (
-        <div className="relative">
-            <p className="text-sm font-mono tracking-widest text-muted-foreground">{otp}</p>
-            <div className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-border/50">
-                <div className="h-full bg-primary" style={{ width: `${progress}%`, transition: progress > 95 ? 'none' : 'width 1s linear' }}></div>
-            </div>
-        </div>
-    );
-};
 
 const ImageUpload = ({
   onImageSelect,
@@ -318,159 +286,123 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     )
 }
 
-const AmazonResultCard = ({ item, index }: { item: EnrichedAnalysis, index: number }) => {
-    const [isMapOpen, setIsMapOpen] = useState(false);
-    const [isQrOpen, setIsQrOpen] = useState(false);
+const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
+    const [isOpen, setIsOpen] = useState(false);
     const productLocation = item.product ? parseLocationString(item.product.location.standard) : null;
-    const stockColor = item.product ? (item.product.stockQuantity > 20 ? 'bg-green-500' : item.product.stockQuantity > 0 ? 'bg-yellow-500' : 'bg-red-500') : 'bg-gray-500';
-  
+    const stockColor = item.product ? (item.product.stockQuantity > 20 ? 'text-green-500' : item.product.stockQuantity > 0 ? 'text-yellow-500' : 'text-red-500') : 'text-gray-500';
+
+    if (!item.product) {
+        return (
+             <div className="flex items-center p-4 border-b">
+                 <div className="w-16 h-16 bg-muted rounded-md flex-shrink-0"></div>
+                 <div className="ml-4 flex-grow">
+                     <p className="font-semibold text-destructive">Unknown Product</p>
+                     <p className="text-sm text-destructive">{item.error || 'Could not fetch data.'}</p>
+                 </div>
+             </div>
+        );
+    }
+
     return (
-      <Card key={item.product?.sku || index}>
-        <CardHeader>
-           <div className='flex items-start gap-4'>
-                <div className={cn("rounded-lg p-2 flex-shrink-0", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
+        <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-b">
+            <CollapsibleTrigger className="w-full text-left p-4">
+                 <div className="flex items-center">
                     <Image
                         src={item.product?._raw?.productProxy?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                         alt={item.product?.name || 'Unknown'}
-                        width={100}
-                        height={100}
-                        className="rounded-md object-cover"
+                        width={64}
+                        height={64}
+                        className="rounded-md object-cover border"
                     />
+                    <div className="ml-4 flex-grow min-w-0">
+                        <p className="font-semibold truncate">{item.product.name}</p>
+                        <p className="text-sm text-muted-foreground">SKU: {item.product.sku}</p>
+                        <p className="text-sm text-muted-foreground">Unit price: £{item.product.price.regular?.toFixed(2) || 'N/A'}</p>
+                        <p className="text-sm text-muted-foreground">Ambient</p>
+                    </div>
+                    <div className="ml-4 text-2xl font-bold">
+                        {item.product.stockQuantity >= 0 ? '1' : '?'}
+                    </div>
                 </div>
-                <div className='flex-grow'>
-                    <CardTitle>{item.product?.name || 'Unknown Product'}</CardTitle>
-                    <CardDescription>
-                        SKU: {item.product?.sku || 'Not Found'}
-                    </CardDescription>
-                     {item.product && <div className="mt-2 flex items-baseline gap-2">
-                         <span className={cn("text-lg font-semibold", item.product.price.promotional && "line-through text-muted-foreground text-base")}>
-                            £{item.product.price.regular?.toFixed(2) || 'N/A'}
-                        </span>
-                        {item.product.price.promotional && (
-                            <Badge variant="destructive">{item.product.price.promotional}</Badge>
-                        )}
-                    </div>}
-                </div>
-            </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {item.product && !item.error ? (
-            <div className="space-y-4">
-                {item.diagnosticSummary && (
-                     <Alert>
-                        <Bot className="h-4 w-4" />
-                        <AlertTitle>Diagnosis</AlertTitle>
-                        <AlertDescription>
-                            {item.diagnosticSummary}
-                        </AlertDescription>
-                    </Alert>
-                )}
-                <div className="space-y-4 text-sm pt-4">
-                  <a href={`https://action.focal.systems/ims/product/${item.product.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 group hover:underline">
-                      <div className="w-5 h-5 text-primary flex-shrink-0 pt-0.5"><Boxes /></div>
-                      <div className='flex-grow min-w-0 flex items-center gap-2'>
-                          <span className="font-semibold">Stock:</span>
-                          <span className='break-words font-bold'>{`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}</span>
-                          <div className={`h-2.5 w-2.5 rounded-full ${stockColor}`} title={`Stock level: ${item.product.stockQuantity}`}></div>
-                          <LinkIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                  </a>
-                  <DataRow
-                    icon={<MapPin />}
-                    label="Location"
-                    value={item.product.location.standard || 'N/A'}
-                  />
-                  {item.product.location.promotional && (
-                    <DataRow
-                      icon={<MapPin />}
-                      label="Promo Location"
-                      value={item.product.location.promotional}
-                    />
-                  )}
-                  {productLocation && (
-                      <Collapsible open={isMapOpen} onOpenChange={setIsMapOpen}>
-                        <CollapsibleTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                                <Map className="mr-2 h-4 w-4" />
-                                {isMapOpen ? 'Hide Map' : 'Show on Map'}
-                                <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isMapOpen && "rotate-180")} />
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-4 pt-0 space-y-4">
+                <Separator />
+                <div className="space-y-4 pt-4">
+                    {item.diagnosticSummary && (
+                         <Alert>
+                            <Bot className="h-4 w-4" />
+                            <AlertTitle>Diagnosis</AlertTitle>
+                            <AlertDescription>
+                                {item.diagnosticSummary}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    <div className="space-y-4 text-sm pt-4">
+                      <a href={`https://action.focal.systems/ims/product/${item.product.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 group hover:underline">
+                          <div className="w-5 h-5 text-primary flex-shrink-0 pt-0.5"><Boxes /></div>
+                          <div className='flex-grow min-w-0 flex items-center gap-2'>
+                              <span className="font-semibold">Stock:</span>
+                              <span className={cn('break-words font-bold', stockColor)}>{`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}</span>
+                              <LinkIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                      </a>
+                      <DataRow
+                        icon={<MapPin />}
+                        label="Location"
+                        value={item.product.location.standard || 'N/A'}
+                      />
+                      {item.product.location.promotional && (
+                        <DataRow
+                          icon={<MapPin />}
+                          label="Promo Location"
+                          value={item.product.location.promotional}
+                        />
+                      )}
+                      {productLocation && (
                           <div className="w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
                               <StoreMap productLocations={[{ sku: item.product.sku, location: productLocation }]} />
                           </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                   )}
-                  <DeliveryInfoRow
-                    deliveryInfo={item.product.deliveryInfo}
-                    allOrders={item.product.allOrders}
-                    productName={item.product.name}
-                  />
-                   {item.product.lastStockChange?.lastCountDateTime && item.product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
-                      <DataRow
-                          icon={<History />}
-                          label="Last Stock Event"
-                          value={`${item.product.lastStockChange.inventoryAction} of ${item.product.lastStockChange.qty} by ${item.product.lastStockChange.createdBy} at ${item.product.lastStockChange.lastCountDateTime}`}
+                       )}
+                      <DeliveryInfoRow
+                        deliveryInfo={item.product.deliveryInfo}
+                        allOrders={item.product.allOrders}
+                        productName={item.product.name}
                       />
-                    ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
-                    
-                    <Collapsible open={isQrOpen} onOpenChange={setIsQrOpen}>
-                        <CollapsibleTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                                <Barcode className="mr-2 h-4 w-4" />
-                                {isQrOpen ? 'Hide SKU Barcode' : 'Show SKU Barcode'}
-                                <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", isQrOpen && "rotate-180")} />
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                            <div className="flex justify-center py-4">
-                                <SkuQrCode sku={item.product.sku} />
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
+                       {item.product.lastStockChange?.lastCountDateTime && item.product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
+                          <DataRow
+                              icon={<History />}
+                              label="Last Stock Event"
+                              value={`${item.product.lastStockChange.inventoryAction} of ${item.product.lastStockChange.qty} by ${item.product.lastStockChange.createdBy} at ${item.product.lastStockChange.lastCountDateTime}`}
+                          />
+                        ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
+                        
+                        <div className="flex justify-center py-4">
+                            <SkuQrCode sku={item.product.sku} />
+                        </div>
 
-                    <details className="pt-2 text-xs">
-                        <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                        {item.product.proxyError && (
-                          <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
-                              <strong>Proxy Error:</strong> {item.product.proxyError}
-                          </div>
-                        )}
-                        <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
-                            {JSON.stringify(item.product, null, 2)}
-                        </pre>
-                    </details>
+                        <details className="pt-2 text-xs">
+                            <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                            {item.product.proxyError && (
+                              <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
+                                  <strong>Proxy Error:</strong> {item.product.proxyError}
+                              </div>
+                            )}
+                            <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                                {JSON.stringify(item.product, null, 2)}
+                            </pre>
+                        </details>
+                    </div>
                 </div>
-            </div>
-          ) : (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Could Not Analyze Product</AlertTitle>
-              <AlertDescription>
-                {item.error ||
-                  `Could not fetch data for SKU ${item.product?.sku}.`}
-              </AlertDescription>
-               <details className="pt-2 text-xs">
-                  <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                  <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
-                      {JSON.stringify(item, null, 2)}
-                  </pre>
-              </details>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+            </CollapsibleContent>
+        </Collapsible>
     );
-}
+};
 
 export default function AmazonClient() {
   const [listImage, setListImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<EnrichedAnalysis[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isOtpCorrect, setIsOtpCorrect] = useState(false);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -648,67 +580,76 @@ export default function AmazonClient() {
         </div>
     )}
 
-    <main className="container mx-auto px-4 py-8 md:py-12">
-      <div className="space-y-8 max-w-4xl mx-auto">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <PackageSearch /> Amazon Picker Assistant
-                </CardTitle>
-                <CardDescription>
-                  Stuck on a pick? Upload a screenshot of your Amazon picking list
-                  for analysis.
-                </CardDescription>
+    <main className="container mx-auto px-0 py-0 md:py-12">
+        {analysisResults.length > 0 ? (
+           <div className="bg-white dark:bg-zinc-900">
+             <header className="flex items-center justify-between p-4 h-16 bg-[#00A2E8] text-white sticky top-0 z-10">
+                <Button variant="ghost" size="icon" className="text-white" onClick={() => setAnalysisResults([])}>
+                    <ArrowLeft />
+                </Button>
+                <h1 className="text-xl font-semibold">Completed items</h1>
+                <Button variant="ghost" size="icon" className="text-white">
+                    <MoreVertical />
+                </Button>
+             </header>
+             <div className="divide-y">
+                {analysisResults.map((item, index) => (
+                    <AmazonListItem item={item} key={item.product?.sku || index} />
+                ))}
+             </div>
+           </div>
+        ) : (
+          <div className="space-y-8 max-w-4xl mx-auto px-4 py-8">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <PackageSearch /> Amazon Picker Assistant
+                    </CardTitle>
+                    <CardDescription>
+                      Stuck on a pick? Upload a screenshot of your Amazon picking list
+                      for analysis.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <ImageUpload
+              onImageSelect={setListImage}
+              selectedImage={listImage}
+              disabled={isLoading}
+              onCameraClick={() => setIsCameraOpen(true)}
+            />
+
+            <Button
+              onClick={handleAnalysis}
+              disabled={isLoading || !listImage}
+              className="w-full"
+              size="lg"
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Bot className="mr-2 h-4 w-4" />
+              )}
+              Analyze Picking List
+            </Button>
+
+            {isLoading && (
+              <div className="text-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  Analyzing, this may take a moment...
+                </p>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Driver OTP</p>
-                <OtpDisplay onCorrected={() => setIsOtpCorrect(true)} />
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
-        <ImageUpload
-          onImageSelect={setListImage}
-          selectedImage={listImage}
-          disabled={isLoading}
-          onCameraClick={() => setIsCameraOpen(true)}
-        />
-
-        <Button
-          onClick={handleAnalysis}
-          disabled={isLoading || !listImage}
-          className="w-full"
-          size="lg"
-        >
-          {isLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Bot className="mr-2 h-4 w-4" />
-          )}
-          Analyze Picking List
-        </Button>
-
-        {isLoading && analysisResults.length === 0 && (
-          <div className="text-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              Analyzing, this may take a moment...
-            </p>
+            )}
           </div>
         )}
-
-        {analysisResults.length > 0 && (
-          <div className="space-y-6">
-            {analysisResults.map((item, index) => (
-              <AmazonResultCard item={item} index={index} key={item.product?.sku || index} />
-            ))}
-          </div>
-        )}
-      </div>
     </main>
     </>
   );
 }
+
+    
