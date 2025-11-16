@@ -40,7 +40,7 @@ Use the provided raw data:
     - If the product is 'Produce', your response MUST be: "High stock and no recent delivery; check under the tables in the produce section."
 
 3.  **If the product has a promotional location:**
-    - Your response MUST be: "This item has high stock records and an additional location (e.g., 'Front of store') so make sure promo locations have been checked."
+    - Your response MUST be in this format: "This item has high stock records and an additional location at {INSERT PROMOTIONAL LOCATION HERE}, so make sure promo locations have been checked."
 
 **Do not be conversational. Provide only the single, actionable sentence.**
 
