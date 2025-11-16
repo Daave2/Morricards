@@ -331,10 +331,11 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
             });
         } catch (error) {
             console.error("Failed to update availability report:", error);
+            console.error("Data that failed to save:", item.product);
             toast({
                 variant: 'destructive',
-                title: 'Error',
-                description: 'Could not add the item to the availability report.'
+                title: 'Error Saving Item',
+                description: 'Could not add the item to the report. Check the console for details.'
             });
         }
     };
@@ -709,13 +710,5 @@ export default function AmazonClient() {
     </>
   );
 }
-
-    
-
-    
-
-
-
-    
 
     
