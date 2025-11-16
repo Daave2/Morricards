@@ -315,7 +315,6 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                 return;
             }
             
-            // This is the fix: create the correct object structure for the availability page.
             const newReportedItem: ReportedItem = {
                 ...item.product,
                 reportId: `${item.product.sku}-${Date.now()}`,
@@ -715,3 +714,6 @@ export default function AmazonClient() {
 
     
 
+
+
+    
