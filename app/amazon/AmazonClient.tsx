@@ -32,6 +32,7 @@ import {
   Link as LinkIcon,
   MoreVertical,
   ArrowLeft,
+  RefreshCcw,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -45,6 +46,7 @@ import StoreMap, { type ProductLocation } from '@/components/StoreMap';
 import SkuQrCode from '@/components/SkuQrCode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
   if (!location) return null;
@@ -559,6 +561,11 @@ export default function AmazonClient() {
 
     setIsLoading(false);
   };
+  
+  const handleReset = () => {
+      setAnalysisResults([]);
+      setListImage(null);
+  }
 
   return (
     <>
@@ -584,13 +591,23 @@ export default function AmazonClient() {
         {analysisResults.length > 0 ? (
            <div className="bg-white dark:bg-zinc-900">
              <header className="flex items-center justify-between p-4 h-16 bg-[#00A2E8] text-white sticky top-0 z-10">
-                <Button variant="ghost" size="icon" className="text-white" onClick={() => setAnalysisResults([])}>
+                <Button variant="ghost" size="icon" className="text-white" onClick={handleReset}>
                     <ArrowLeft />
                 </Button>
-                <h1 className="text-xl font-semibold">Completed items</h1>
-                <Button variant="ghost" size="icon" className="text-white">
-                    <MoreVertical />
-                </Button>
+                <h1 className="text-xl font-semibold">Identified Items</h1>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-white">
+                            <MoreVertical />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleReset}>
+                           <RefreshCcw className="mr-2 h-4 w-4" />
+                           <span>Start New Analysis</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
              </header>
              <div className="divide-y">
                 {analysisResults.map((item, index) => (
@@ -651,5 +668,3 @@ export default function AmazonClient() {
     </>
   );
 }
-
-    
