@@ -820,7 +820,7 @@ export default function AvailabilityPage() {
                         </div>
                         <div className="px-1 space-y-3 text-xs text-muted-foreground">
                             <DataRow icon={<Barcode />} label="SKU" value={`${productForModal.sku} (EAN: ${productForModal.scannedSku}) ${productForModal.stockSkuUsed ? `(Stock SKU: ${productForModal.stockSkuUsed})` : ''}`} />
-                            <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.productDetails.legacyItemNumbers} />
+                            <DataRow icon={<Footprints />} label="Walk Sequence" value={productForModal.productDetails.legacyItemNumbers?.[0]} />
                             <DataRow icon={<Tag />} label="Promo Location" value={productForModal.location.promotional} />
 
                             <div className="flex justify-center py-2">
