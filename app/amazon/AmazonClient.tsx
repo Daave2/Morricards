@@ -40,7 +40,7 @@ import { useApiSettings } from '@/hooks/use-api-settings';
 import { cn } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { amazonAnalysisFlow, EnrichedAnalysis } from '@/ai/flows/amazon-analysis-flow';
-import type { DeliveryInfo, Order } from '@/lib/morrisons-api';
+import type { DeliveryInfo, Order, FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import StoreMap, { type ProductLocation } from '@/components/StoreMap';
@@ -50,7 +50,7 @@ import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
-type ReportedItem = EnrichedAnalysis['product'] & { reason: string; comment?: string; reportId: string };
+type ReportedItem = FetchMorrisonsDataOutput[0] & { reason: string; comment?: string; reportId: string };
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
   if (!location) return null;
@@ -715,5 +715,7 @@ export default function AmazonClient() {
     
 
 
+
+    
 
     
