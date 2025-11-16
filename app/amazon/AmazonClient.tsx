@@ -33,6 +33,7 @@ import {
   MoreVertical,
   ArrowLeft,
   RefreshCcw,
+  ListChecks,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -47,6 +48,9 @@ import SkuQrCode from '@/components/SkuQrCode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
+const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
+type ReportedItem = EnrichedAnalysis['product'] & { reason: string; comment?: string; reportId: string };
 
 function parseLocationString(location: string | undefined): ProductLocation | null {
   if (!location) return null;
@@ -290,8 +294,51 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
 
 const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const { toast } = useToast();
     const productLocation = item.product ? parseLocationString(item.product.location.standard) : null;
     const stockColor = item.product ? (item.product.stockQuantity > 20 ? 'text-green-500' : item.product.stockQuantity > 0 ? 'text-yellow-500' : 'text-red-500') : 'text-gray-500';
+
+    const handleReportMissing = () => {
+        if (!item.product) return;
+
+        try {
+            const savedItemsRaw = localStorage.getItem(LOCAL_STORAGE_KEY_AVAILABILITY);
+            const savedItems: ReportedItem[] = savedItemsRaw ? JSON.parse(savedItemsRaw) : [];
+
+            const isAlreadyReported = savedItems.some(i => i.sku === item.product!.sku);
+            if (isAlreadyReported) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Already Reported',
+                    description: `${item.product.name} is already on the availability report.`
+                });
+                return;
+            }
+
+            const newReportedItem: ReportedItem = {
+                ...item.product,
+                reportId: `${item.product.sku}-${Date.now()}`,
+                reason: 'Amazon INF',
+                comment: `Reported from Amazon Assistant`,
+            };
+
+            const newReportList = [newReportedItem, ...savedItems];
+            localStorage.setItem(LOCAL_STORAGE_KEY_AVAILABILITY, JSON.stringify(newReportList));
+
+            toast({
+                title: 'Item Reported',
+                description: `${item.product.name} has been added to the availability report.`,
+            });
+        } catch (error) {
+            console.error("Failed to update availability report:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not add the item to the availability report.'
+            });
+        }
+    };
+
 
     if (!item.product) {
         return (
@@ -378,6 +425,11 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                           />
                         ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
                         
+                        <Button variant="outline" className="w-full" onClick={handleReportMissing}>
+                            <ListChecks className="mr-2 h-4 w-4" />
+                            Report as Missing (INF)
+                        </Button>
+
                         <div className="flex justify-center py-4">
                             <SkuQrCode sku={item.product.sku} />
                         </div>
@@ -657,5 +709,7 @@ export default function AmazonClient() {
     </>
   );
 }
+
+    
 
     

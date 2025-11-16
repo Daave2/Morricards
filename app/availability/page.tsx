@@ -888,6 +888,7 @@ export default function AvailabilityPage() {
                               <SelectItem value="Low Stock">Low Stock</SelectItem>
                               <SelectItem value="Early Sellout">Early Sellout</SelectItem>
                               <SelectItem value="Too Much Stock">Too Much Stock</SelectItem>
+                              <SelectItem value="Amazon INF">Amazon INF</SelectItem>
                               <SelectItem value="Other">Other</SelectItem>
                             </SelectContent>
                           </Select>
@@ -1052,7 +1053,7 @@ export default function AvailabilityPage() {
                                   <p className="font-semibold">{item.name}</p>
                                   <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                                 </div>
-                                <Badge variant={item.reason === 'Other' ? 'secondary' : 'default'} className="mr-8">{item.reason}</Badge>
+                                <Badge variant={item.reason === 'Other' || item.reason === 'Amazon INF' ? 'secondary' : 'default'} className="mr-8">{item.reason}</Badge>
                              </div>
                              <div className="text-sm mt-2">
                                <p><strong>Stock:</strong> {item.stockQuantity}</p>
@@ -1114,3 +1115,6 @@ export default function AvailabilityPage() {
   );
 }
 
+
+
+    
