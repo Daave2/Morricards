@@ -304,7 +304,7 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
         try {
             const savedItemsRaw = localStorage.getItem(LOCAL_STORAGE_KEY_AVAILABILITY);
             const savedItems: ReportedItem[] = savedItemsRaw ? JSON.parse(savedItemsRaw) : [];
-
+            
             const isAlreadyReported = savedItems.some(i => i.sku === item.product!.sku);
             if (isAlreadyReported) {
                 toast({
@@ -314,14 +314,14 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                 });
                 return;
             }
-            
+
             const newReportedItem: ReportedItem = {
                 ...item.product,
                 reportId: `${item.product.sku}-${Date.now()}`,
                 reason: 'Amazon INF',
                 comment: `Reported from Amazon Assistant`,
             };
-
+            
             const newReportList = [newReportedItem, ...savedItems];
             localStorage.setItem(LOCAL_STORAGE_KEY_AVAILABILITY, JSON.stringify(newReportList));
 
@@ -643,9 +643,9 @@ export default function AmazonClient() {
         </div>
     )}
 
-    <main className="container mx-auto px-0 py-0 md:py-12">
+    <main className="container mx-auto px-0 py-0">
         {analysisResults.length > 0 || isLoading ? (
-           <div className="bg-white dark:bg-zinc-900">
+           <div className="max-w-4xl mx-auto bg-white dark:bg-zinc-900">
              <header className="flex items-center justify-between p-4 h-16 bg-[#00A2E8] text-white sticky top-0 z-10">
                 <Button variant="ghost" size="icon" className="text-white" onClick={handleReset}>
                     <ArrowLeft />
@@ -710,5 +710,3 @@ export default function AmazonClient() {
     </>
   );
 }
-
-    
