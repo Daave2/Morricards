@@ -294,8 +294,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     )
 }
 
-const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
-    const [isOpen, setIsOpen] = useState(false);
+const AmazonListItem = ({ item, isOpen, onToggle }: { item: EnrichedAnalysis; isOpen: boolean; onToggle: () => void; }) => {
     const { toast } = useToast();
     const productLocation = item.product ? parseLocationString(item.product.location.standard) : null;
     const stockColor = item.product ? (item.product.stockQuantity > 20 ? 'text-green-500' : item.product.stockQuantity > 0 ? 'text-yellow-500' : 'text-red-500') : 'text-gray-500';
@@ -358,9 +357,9 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
     }
 
     return (
-        <Collapsible open={isOpen} onOpenChange={setIsOpen} className={cn("border-b transition-colors", isOpen && 'bg-accent')}>
+        <Collapsible open={isOpen} onOpenChange={onToggle} className={cn("border-b transition-colors", isOpen && 'bg-accent')}>
             <CollapsibleTrigger className="w-full text-left p-4">
-                 <div className="flex items-center">
+                 <div className="flex items-center gap-4">
                      <ImageModal src={imageUrl} alt={item.product.name}>
                         <div className="relative w-16 h-16 flex-shrink-0 cursor-pointer group/image">
                             <Image
@@ -376,7 +375,7 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                         </div>
                     </ImageModal>
 
-                    <div className="ml-4 flex-grow min-w-0">
+                    <div className="flex-grow min-w-0">
                         <p className="font-semibold truncate text-sm">{item.product.name}</p>
                         <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
                         <p className="text-xs text-muted-foreground">Unit price: £{item.product.price.regular?.toFixed(2) || 'N/A'}</p>
@@ -472,6 +471,7 @@ export default function AmazonClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<EnrichedAnalysis[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { settings } = useApiSettings();
@@ -635,6 +635,11 @@ export default function AmazonClient() {
   const handleReset = () => {
       setAnalysisResults([]);
       setListImage(null);
+      setOpenItemId(null);
+  }
+
+  const handleItemToggle = (id: string) => {
+    setOpenItemId(prevId => prevId === id ? null : id);
   }
 
   return (
@@ -659,7 +664,7 @@ export default function AmazonClient() {
 
     <main className="container mx-auto px-0">
         {analysisResults.length > 0 || isLoading ? (
-           <div className="max-w-4xl mx-auto bg-white dark:bg-zinc-900">
+           <div className="max-w-4xl mx-auto bg-card">
              <header className="flex items-center justify-between p-4 h-16 bg-[#00A2E8] text-white sticky top-0 z-10">
                 <Button variant="ghost" size="icon" className="text-white" onClick={handleReset}>
                     <ArrowLeft />
@@ -688,9 +693,17 @@ export default function AmazonClient() {
                 </div>
              ) : (
                 <div className="divide-y">
-                    {analysisResults.map((item, index) => (
-                        <AmazonListItem item={item} key={item.product?.sku || index} />
-                    ))}
+                    {analysisResults.map((item, index) => {
+                        const id = item.product?.sku || String(index);
+                        return (
+                            <AmazonListItem 
+                                item={item} 
+                                key={id} 
+                                isOpen={openItemId === id}
+                                onToggle={() => handleItemToggle(id)}
+                            />
+                        )
+                    })}
                 </div>
              )}
            </div>
