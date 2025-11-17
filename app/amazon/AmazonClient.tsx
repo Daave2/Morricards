@@ -34,6 +34,7 @@ import {
   ArrowLeft,
   RefreshCcw,
   ListChecks,
+  Expand,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -48,6 +49,7 @@ import SkuQrCode from '@/components/SkuQrCode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import ImageModal from '@/components/image-modal';
 
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 type ReportedItem = FetchMorrisonsDataOutput[0] & { reason: string; comment?: string; reportId: string };
@@ -297,6 +299,7 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
     const { toast } = useToast();
     const productLocation = item.product ? parseLocationString(item.product.location.standard) : null;
     const stockColor = item.product ? (item.product.stockQuantity > 20 ? 'text-green-500' : item.product.stockQuantity > 0 ? 'text-yellow-500' : 'text-red-500') : 'text-gray-500';
+    const imageUrl = item.product?._raw?.productProxy?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png';
 
     const handleReportMissing = () => {
         if (!item.product) return;
@@ -358,13 +361,21 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
         <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-b">
             <CollapsibleTrigger className="w-full text-left p-4">
                  <div className="flex items-center">
-                    <Image
-                        src={item.product?._raw?.productProxy?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                        alt={item.product?.name || 'Unknown'}
-                        width={64}
-                        height={64}
-                        className="rounded-md object-cover border flex-shrink-0"
-                    />
+                     <ImageModal src={imageUrl} alt={item.product.name}>
+                        <div className="relative w-16 h-16 flex-shrink-0 cursor-pointer group/image">
+                            <Image
+                                src={imageUrl}
+                                alt={item.product.name}
+                                width={64}
+                                height={64}
+                                className="rounded-md object-cover border"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                                <Expand className="h-6 w-6 text-white" />
+                            </div>
+                        </div>
+                    </ImageModal>
+
                     <div className="ml-4 flex-grow min-w-0">
                         <p className="font-semibold truncate text-sm">{item.product.name}</p>
                         <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>

@@ -15,7 +15,7 @@ export default function ImageModal({ src, alt, children }: ImageModalProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="p-0 border-0 max-w-2xl">
+      <DialogContent className="p-0 border-0 max-w-2xl bg-transparent shadow-none">
         <DialogTitle className="sr-only">{alt}</DialogTitle>
         <div className="relative aspect-square">
           <Image
@@ -31,5 +31,3 @@ export default function ImageModal({ src, alt, children }: ImageModalProps) {
     </Dialog>
   );
 }
-
-    
