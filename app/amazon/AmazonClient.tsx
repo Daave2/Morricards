@@ -331,7 +331,8 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
             });
         } catch (error) {
             console.error("Failed to update availability report:", error);
-            console.error("Data that failed to save:", item.product);
+            const dataToLog = { ...item.product }; // Create a plain object for logging
+            console.error("Data that failed to save:", dataToLog);
             toast({
                 variant: 'destructive',
                 title: 'Error Saving Item',
@@ -371,7 +372,7 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                         <p className="text-sm text-muted-foreground">{item.product.temperature}</p>
                     </div>
                     <div className="ml-4 text-2xl font-bold">
-                        {item.product.stockQuantity >= 0 ? '1' : '?'}
+                        1
                     </div>
                 </div>
             </CollapsibleTrigger>
@@ -710,5 +711,7 @@ export default function AmazonClient() {
     </>
   );
 }
+
+    
 
     
