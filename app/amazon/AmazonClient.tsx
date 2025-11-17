@@ -366,10 +366,10 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                         className="rounded-md object-cover border flex-shrink-0"
                     />
                     <div className="ml-4 flex-grow min-w-0">
-                        <p className="font-semibold truncate">{item.product.name}</p>
-                        <p className="text-sm text-muted-foreground">SKU: {item.product.sku}</p>
-                        <p className="text-sm text-muted-foreground">Unit price: £{item.product.price.regular?.toFixed(2) || 'N/A'}</p>
-                        <p className="text-sm text-muted-foreground">{item.product.temperature}</p>
+                        <p className="font-semibold truncate text-sm">{item.product.name}</p>
+                        <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
+                        <p className="text-xs text-muted-foreground">Unit price: £{item.product.price.regular?.toFixed(2) || 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground">{item.product.temperature}</p>
                     </div>
                     <div className="ml-4 text-2xl font-bold">
                         1
@@ -711,7 +711,3 @@ export default function AmazonClient() {
     </>
   );
 }
-
-    
-
-    
