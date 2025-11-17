@@ -316,7 +316,7 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
             }
 
             const newReportedItem: ReportedItem = {
-                ...item.product,
+                ...(item.product as FetchMorrisonsDataOutput[0]),
                 reportId: `${item.product.sku}-${Date.now()}`,
                 reason: 'Amazon INF',
                 comment: `Reported from Amazon Assistant`,
@@ -362,9 +362,9 @@ const AmazonListItem = ({ item }: { item: EnrichedAnalysis }) => {
                         alt={item.product?.name || 'Unknown'}
                         width={64}
                         height={64}
-                        className="rounded-md object-cover border"
+                        className="rounded-md object-cover border flex-shrink-0"
                     />
-                    <div className="ml-4 flex-grow min-w-0">
+                    <div className="ml-4 flex-grow block min-w-0">
                         <p className="font-semibold truncate">{item.product.name}</p>
                         <p className="text-sm text-muted-foreground">SKU: {item.product.sku}</p>
                         <p className="text-sm text-muted-foreground">Unit price: £{item.product.price.regular?.toFixed(2) || 'N/A'}</p>
@@ -643,7 +643,7 @@ export default function AmazonClient() {
         </div>
     )}
 
-    <main className="container mx-auto px-0 py-0">
+    <main className="container mx-auto px-0">
         {analysisResults.length > 0 || isLoading ? (
            <div className="max-w-4xl mx-auto bg-white dark:bg-zinc-900">
              <header className="flex items-center justify-between p-4 h-16 bg-[#00A2E8] text-white sticky top-0 z-10">
