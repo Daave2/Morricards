@@ -712,7 +712,7 @@ export default function AmazonClient() {
           <div className="space-y-8 max-w-4xl mx-auto px-4 py-8">
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-4">
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <PackageSearch /> Amazon Picker Assistant
@@ -722,6 +722,7 @@ export default function AmazonClient() {
                       for analysis.
                     </CardDescription>
                   </div>
+                  <TOTPGenerator />
                 </div>
               </CardHeader>
             </Card>
@@ -732,8 +733,6 @@ export default function AmazonClient() {
               disabled={isLoading}
               onCameraClick={() => setIsCameraOpen(true)}
             />
-
-            <TOTPGenerator />
           </div>
         )}
     </main>
