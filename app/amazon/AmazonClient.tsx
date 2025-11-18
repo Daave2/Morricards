@@ -722,7 +722,9 @@ export default function AmazonClient() {
                       for analysis.
                     </CardDescription>
                   </div>
-                  <TOTPGenerator />
+                  <div className="w-40 flex-shrink-0">
+                    <TOTPGenerator />
+                  </div>
                 </div>
               </CardHeader>
             </Card>
