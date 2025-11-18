@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 
 // This secret should ideally be stored securely or be user-configurable.
 // For this example, it's hardcoded as it was likely used before.
-const TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
+const TOTP_SECRET = 'TYX3MCRGZYWI7RKQFV55ATV7ATGB7LOOXSTF7YXO2EUKQEGOPV7Q';
 
 export default function TOTPGenerator() {
   const [otp, setOtp] = useState('------');
