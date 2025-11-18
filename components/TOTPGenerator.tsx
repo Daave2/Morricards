@@ -3,17 +3,16 @@
 
 import { useEffect, useState } from 'react';
 import { generateTOTP } from '@/lib/totp';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { KeyRound, ShieldCheck } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { KeyRound, Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
-// This secret should ideally be stored securely or be user-configurable.
-// For this example, it's hardcoded as it was likely used before.
 const TOTP_SECRET = 'TYX3MCRGZYWI7RKQFV55ATV7ATGB7LOOXSTF7YXO2EUKQEGOPV7Q';
 
 export default function TOTPGenerator() {
   const [otp, setOtp] = useState('------');
   const [remaining, setRemaining] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function updateOtp() {
@@ -28,34 +27,40 @@ export default function TOTPGenerator() {
       }
     }
 
-    // Update immediately and then set an interval
     updateOtp();
     const interval = setInterval(updateOtp, 1000);
 
     return () => clearInterval(interval);
   }, []);
+
+  const handleCopy = () => {
+    if (otp !== '------' && otp !== 'Error') {
+      navigator.clipboard.writeText(otp);
+      toast({
+        title: 'Copied to Clipboard',
+        description: `The code ${otp} has been copied.`,
+      });
+    }
+  };
   
   const progress = (remaining / 30) * 100;
 
   return (
-    <Card>
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-                <KeyRound /> One-Time Password
-            </CardTitle>
-            <CardDescription>
-                For logging into legacy account services.
-            </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="text-center bg-muted p-4 rounded-lg">
-                <p className="text-4xl font-bold tracking-widest font-mono">{otp}</p>
-            </div>
-            <Progress value={progress} className="h-2" />
-            <p className="text-xs text-center text-muted-foreground">
-                Expires in {remaining} seconds
-            </p>
-        </CardContent>
-    </Card>
+    <div 
+        className="relative w-full border rounded-lg p-4 flex items-center justify-between cursor-pointer hover:bg-accent transition-colors"
+        onClick={handleCopy}
+    >
+        <div className="flex items-center gap-3">
+            <KeyRound className="h-5 w-5 text-muted-foreground" />
+            <p className="text-2xl font-bold tracking-widest font-mono">{otp}</p>
+        </div>
+        <Copy className="h-5 w-5 text-muted-foreground" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/50 rounded-b-lg overflow-hidden">
+            <div 
+                className="h-full bg-primary transition-all duration-1000 linear"
+                style={{ width: `${progress}%` }}
+            />
+        </div>
+    </div>
   );
 }
