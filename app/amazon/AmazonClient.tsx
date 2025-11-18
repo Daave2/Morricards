@@ -50,6 +50,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ImageModal from '@/components/image-modal';
+import TOTPGenerator from '@/components/TOTPGenerator';
 
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 type ReportedItem = FetchMorrisonsDataOutput[0] & { reason: string; comment?: string; reportId: string };
@@ -731,11 +732,11 @@ export default function AmazonClient() {
               disabled={isLoading}
               onCameraClick={() => setIsCameraOpen(true)}
             />
+
+            <TOTPGenerator />
           </div>
         )}
     </main>
     </>
   );
 }
-
-    
