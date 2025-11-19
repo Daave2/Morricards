@@ -57,6 +57,7 @@ import type { AvailabilityReason } from '@/lib/idb';
 import Link from 'next/link';
 import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
+import { queueProductFetch } from '@/lib/offlineQueue';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -355,7 +356,7 @@ export default function AvailabilityPage() {
             description: `Item ${sku} was captured while offline and will be processed later when you reconnect.`,
             icon: <WifiOff className="h-5 w-5" />
         });
-        await queueAvailabilityCapture({ sku, locationId, reason: 'Other', comment: 'Offline Scan - details needed' });
+        await queueProductFetch({ sku, locationId });
         if (isSpeedMode) startScannerWithDelay();
         return;
     }
@@ -1194,3 +1195,6 @@ export default function AvailabilityPage() {
     
 
 
+
+
+    
