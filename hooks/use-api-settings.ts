@@ -17,12 +17,14 @@ export interface ApiSettings {
   bearerToken: string;
   debugMode: boolean;
   locationId: string;
+  chatWebhookUrl: string;
 }
 
 export const DEFAULT_SETTINGS: ApiSettings = {
   bearerToken: 'vAllJuJxckLtjMANPmS1Lps9btvF',
   debugMode: false,
   locationId: '218',
+  chatWebhookUrl: 'https://chat.googleapis.com/v1/spaces/AAQA0I44GoE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ScysZAnKmUOE3ZhkcTVP-9xL8RXYhJPYXW37kwY2wdw',
 };
 
 export function useApiSettings() {

@@ -45,7 +45,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import ZXingScanner from '@/components/ZXingScanner';
 import { ToastAction } from '@/components/ui/toast';
-import { useApiSettings } from '@/hooks/use-api-settings';
+import { useApiSettings, DEFAULT_SETTINGS } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
 import InstallPrompt from '@/components/InstallPrompt';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -735,7 +735,7 @@ export default function AvailabilityPage() {
         return;
     }
     
-    const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAQA0I44GoE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ScysZAnKmUOE3ZhkcTVP-9xL8RXYhJPYXW37kwY2wdw';
+    const webhookUrl = settings.chatWebhookUrl || DEFAULT_SETTINGS.chatWebhookUrl;
 
     toast({ title: 'Exporting to Chat...', description: `Sending ${reportedItems.length} items.` });
     

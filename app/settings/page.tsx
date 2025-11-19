@@ -41,6 +41,7 @@ const FormSchema = z.object({
   bearerToken: z.string(),
   debugMode: z.boolean(),
   locationId: z.string().min(1, { message: "Store ID cannot be empty." }),
+  chatWebhookUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 });
 
 
@@ -298,6 +299,24 @@ export default function SettingsPage() {
                             </FormItem>
                         )}
                         />
+                        
+                        <FormField
+                            control={form.control}
+                            name="chatWebhookUrl"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Google Chat Webhook URL</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="Enter Google Chat webhook URL..." {...field} />
+                                    </FormControl>
+                                    <FormDescription>
+                                    Used for the "Export to Chat" feature in the Availability Report. Leave blank to use default.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                         <FormField
                           control={form.control}
                           name="debugMode"
