@@ -636,26 +636,6 @@ export default function AvailabilityPage() {
     });
   }
 
-  const handleCopyData = () => {
-    const tsv = 'SKU\tName\tStock\tLocation\tReason\tComment\n' + reportedItems.map(p => {
-        const comment = p.comment === 'Added in Speed Mode' ? '' : p.comment || '';
-        return [
-            p.sku,
-            p.name.replace(/\s+/g, ' '),
-            p.stockQuantity,
-            p.location.standard,
-            p.reason,
-            comment,
-        ].join('\t');
-    }).join('\n');
-
-    navigator.clipboard.writeText(tsv).then(() => {
-        toast({ title: 'Copied to Clipboard', description: 'The report data has been copied in TSV format.'});
-    }).catch(err => {
-        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.'});
-    });
-  }
-
   const handleCopyHtml = async () => {
     function escapeHtml(s: string | number) {
       return String(s)
@@ -1093,17 +1073,6 @@ export default function AvailabilityPage() {
                               <p>Copy the list as a rich HTML table, ready to paste into an email.</p>
                             </TooltipContent>
                           </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={handleCopyData}>
-                                  <Copy className="mr-2 h-4 w-4" />
-                                  Copy TSV
-                              </Button>
-                            </TooltipTrigger>
-                             <TooltipContent>
-                              <p>Copy the list as Tab-Separated Values, ready for a spreadsheet.</p>
-                            </TooltipContent>
-                          </Tooltip>
                           <AlertDialog>
                            <Tooltip>
                               <TooltipTrigger asChild>
@@ -1223,3 +1192,5 @@ export default function AvailabilityPage() {
     
 
     
+
+
