@@ -494,7 +494,7 @@ export default function AvailabilityPage() {
         ),
       });
     }
-  }
+  };
 
   const handleOcrRequest = async () => {
     if (!scannerRef.current) return;
@@ -716,7 +716,10 @@ export default function AvailabilityPage() {
         return;
     }
     
-    const webhookUrl = settings.chatWebhookUrl || DEFAULT_SETTINGS.chatWebhookUrl;
+    // Fallback to a hardcoded default if the setting is empty.
+    const DEFAULT_WEBHOOK = 'https://chat.googleapis.com/v1/spaces/AAQA0I44GoE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ScysZAnKmUOE3ZhkcTVP-9xL8RXYhJPYXW37kwY2wdw';
+    const webhookUrl = settings.chatWebhookUrl || DEFAULT_WEBHOOK;
+
 
     toast({ title: 'Exporting to Chat...', description: `Sending ${reportedItems.length} items.` });
     
