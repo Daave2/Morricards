@@ -47,12 +47,12 @@ export default function TOTPGenerator() {
 
   return (
     <div 
-        className="relative w-full border rounded-lg p-2 flex items-center justify-between cursor-pointer hover:bg-accent transition-colors"
+        className="relative w-full border rounded-lg p-1.5 flex items-center justify-between cursor-pointer hover:bg-accent transition-colors"
         onClick={handleCopy}
     >
         <div className="flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xl font-bold tracking-widest font-mono">{otp}</p>
+            <p className="text-base font-bold tracking-wider font-mono">{otp}</p>
         </div>
         <Copy className="h-4 w-4 text-muted-foreground" />
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-muted/50 rounded-b-lg overflow-hidden">
