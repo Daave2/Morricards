@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2, DownloadCloud, Boxes } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2, DownloadCloud, Boxes, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import {
@@ -49,7 +49,7 @@ import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
 import { queueAvailabilityCapture } from '@/lib/offlineQueue';
 import InstallPrompt from '@/components/InstallPrompt';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import SkuQrCode from '@/components/SkuQrCode';
@@ -725,6 +725,99 @@ export default function AvailabilityPage() {
         toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
     }
   };
+
+  const handleExportToChat = async () => {
+    if (reportedItems.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'Report is empty',
+            description: 'Please add items to the report before exporting.',
+        });
+        return;
+    }
+    
+    const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAQA0I44GoE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ScysZAnKmUOE3ZhkcTVP-9xL8RXYhJPYXW37kwY2wdw';
+
+    toast({ title: 'Exporting to Chat...', description: `Sending ${reportedItems.length} items.` });
+    
+    try {
+        const widgets = reportedItems.flatMap(item => {
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(item.sku)}`;
+            const imageUrl = item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/200x200.png';
+
+            let text = `<b>${item.name}</b>`;
+            text += `<br><b>SKU:</b> ${item.sku}`;
+            text += `<br><b>Stock:</b> ${item.stockQuantity}`;
+            text += `<br><b>Reason:</b> ${item.reason}`;
+            if (item.comment) {
+                text += `<br><b>Comment:</b> <i>${item.comment}</i>`;
+            }
+
+            return [
+                {
+                    "columns": {
+                        "columnItems": [
+                            {
+                                "horizontalSizeStyle": "FILL_MINIMUM_SPACE",
+                                "horizontalAlignment": "CENTER",
+                                "verticalAlignment": "CENTER",
+                                "widgets": [{"image": {"imageUrl": qrCodeUrl}}],
+                            },
+                            {
+                                "horizontalSizeStyle": "FILL_AVAILABLE_SPACE",
+                                "widgets": [
+                                    {"textParagraph": {"text": text}},
+                                    {"image": {"imageUrl": imageUrl}},
+                                ],
+                            },
+                        ]
+                    }
+                },
+                {"divider": {}},
+            ];
+        });
+        
+        const payload = {
+            "cardsV2": [{
+                "cardId": `availability-report-${Date.now()}`,
+                "card": {
+                    "header": {
+                        "title": "Availability Report",
+                        "subtitle": `${reportedItems.length} item(s) reported from Store ${settings.locationId}`,
+                        "imageUrl": "https://cdn-icons-png.flaticon.com/512/2838/2838885.png",
+                        "imageType": "CIRCLE",
+                    },
+                    "sections": [{ "widgets": widgets }],
+                },
+            }]
+        };
+
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+            toast({
+                title: 'Export Successful',
+                description: 'The report was sent to Google Chat.',
+            });
+        } else {
+            const errorText = await response.text();
+            throw new Error(`Webhook failed with status ${response.status}: ${errorText}`);
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Failed to export to chat:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Export Failed',
+            description: `Could not send report to Google Chat. ${errorMessage}`,
+            duration: 10000,
+        });
+    }
+  };
   
   const productForModal = editingItem || scannedProduct;
 
@@ -979,6 +1072,17 @@ export default function AvailabilityPage() {
                   <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <CardTitle>Reported Items ({reportedItems.length})</CardTitle>
                       <div className="flex flex-wrap items-center gap-2">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={handleExportToChat}>
+                                  <MessageSquare className="mr-2 h-4 w-4" />
+                                  Export to Chat
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Send a formatted report to a Google Chat webhook.</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button variant="outline" size="sm" onClick={handleCopyHtml}>
