@@ -295,7 +295,7 @@ const DeliveryInfoRow = ({ deliveryInfo, allOrders, productName }: { deliveryInf
     )
 }
 
-const AmazonListItem = ({ item, isOpen, onToggle }: { item: EnrichedAnalysis; isOpen: boolean; onToggle: () => void; }) => {
+const AmazonListItem = React.forwardRef<HTMLDivElement, { item: EnrichedAnalysis; isOpen: boolean; onToggle: () => void; }>(({ item, isOpen, onToggle }, ref) => {
     const { toast } = useToast();
     const productLocation = item.product ? parseLocationString(item.product.location.standard) : null;
     const stockColor = item.product ? (item.product.stockQuantity > 20 ? 'text-green-500' : item.product.stockQuantity > 0 ? 'text-yellow-500' : 'text-red-500') : 'text-gray-500';
@@ -358,114 +358,118 @@ const AmazonListItem = ({ item, isOpen, onToggle }: { item: EnrichedAnalysis; is
     }
 
     return (
-        <Collapsible open={isOpen} onOpenChange={onToggle} className={cn("border-b transition-colors", isOpen && 'bg-accent')}>
-            <CollapsibleTrigger className="w-full text-left p-4">
-                 <div className="flex items-center gap-4">
-                     <ImageModal src={imageUrl} alt={item.product.name}>
-                        <div className="relative w-16 h-16 flex-shrink-0 cursor-pointer group/image">
-                            <Image
-                                src={imageUrl}
-                                alt={item.product.name}
-                                width={64}
-                                height={64}
-                                className="rounded-md object-cover border"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
-                                <Expand className="h-6 w-6 text-white" />
+        <div ref={ref}>
+            <Collapsible open={isOpen} onOpenChange={onToggle} className={cn("border-b transition-colors", isOpen && 'bg-accent')}>
+                <CollapsibleTrigger className="w-full text-left p-4">
+                     <div className="flex items-center gap-4">
+                         <ImageModal src={imageUrl} alt={item.product.name}>
+                            <div className="relative w-16 h-16 flex-shrink-0 cursor-pointer group/image">
+                                <Image
+                                    src={imageUrl}
+                                    alt={item.product.name}
+                                    width={64}
+                                    height={64}
+                                    className="rounded-md object-cover border"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                                    <Expand className="h-6 w-6 text-white" />
+                                </div>
                             </div>
+                        </ImageModal>
+
+                        <div className="flex-grow min-w-0">
+                            <p className="font-semibold truncate text-sm">{item.product.name}</p>
+                            <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
+                            <p className="text-xs text-muted-foreground">Unit price: £{item.product.price.regular?.toFixed(2) || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground">{item.product.temperature}</p>
                         </div>
-                    </ImageModal>
-
-                    <div className="flex-grow min-w-0">
-                        <p className="font-semibold truncate text-sm">{item.product.name}</p>
-                        <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
-                        <p className="text-xs text-muted-foreground">Unit price: £{item.product.price.regular?.toFixed(2) || 'N/A'}</p>
-                        <p className="text-xs text-muted-foreground">{item.product.temperature}</p>
+                        <div className="ml-4 text-2xl font-bold">
+                            1
+                        </div>
                     </div>
-                    <div className="ml-4 text-2xl font-bold">
-                        1
-                    </div>
-                </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-                <div className="p-4 pt-0 space-y-4">
-                    <Separator />
-                    <div className="space-y-4 pt-4">
-                        {item.diagnosticSummary && (
-                             <Alert>
-                                <Bot className="h-4 w-4" />
-                                <AlertTitle>Insight</AlertTitle>
-                                <AlertDescription>
-                                    {item.diagnosticSummary}
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        <div className="space-y-4 text-sm pt-4">
-                          <a href={`https://action.focal.systems/ims/product/${item.product.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 group hover:underline">
-                              <div className="w-5 h-5 text-primary flex-shrink-0 pt-0.5"><Boxes /></div>
-                              <div className='flex-grow min-w-0 flex items-center gap-2'>
-                                  <span className="font-semibold">Stock:</span>
-                                  <span className={cn('break-words font-bold', stockColor)}>{`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}</span>
-                                  <LinkIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </div>
-                          </a>
-                          <DataRow
-                            icon={<MapPin />}
-                            label="Location"
-                            value={item.product.location.standard || 'N/A'}
-                          />
-                          {item.product.location.promotional && (
-                            <DataRow
-                              icon={<MapPin />}
-                              label="Promo Location"
-                              value={item.product.location.promotional}
-                            />
-                          )}
-                          {productLocation && (
-                              <div className="w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
-                                  <StoreMap productLocations={[{ sku: item.product.sku, location: productLocation }]} />
-                              </div>
-                           )}
-                          <DeliveryInfoRow
-                            deliveryInfo={item.product.deliveryInfo}
-                            allOrders={item.product.allOrders}
-                            productName={item.product.name}
-                          />
-                           {item.product.lastStockChange?.lastCountDateTime && item.product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
-                              <DataRow
-                                  icon={<History />}
-                                  label="Last Stock Event"
-                                  value={`${item.product.lastStockChange.inventoryAction} of ${item.product.lastStockChange.qty} by ${item.product.lastStockChange.createdBy} at ${item.product.lastStockChange.lastCountDateTime}`}
-                              />
-                            ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
-                            
-                            <Button variant="outline" className="w-full" onClick={handleReportMissing}>
-                                <ListChecks className="mr-2 h-4 w-4" />
-                                Report as Missing (INF)
-                            </Button>
-
-                            <div className="flex justify-center py-4">
-                                <SkuQrCode sku={item.product.sku} />
-                            </div>
-
-                            <details className="pt-2 text-xs">
-                                <summary className="cursor-pointer font-semibold">Raw Data</summary>
-                                {item.product.proxyError && (
-                                  <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
-                                      <strong>Proxy Error:</strong> {item.product.proxyError}
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <div className="p-4 pt-0 space-y-4">
+                        <Separator />
+                        <div className="space-y-4 pt-4">
+                            {item.diagnosticSummary && (
+                                 <Alert>
+                                    <Bot className="h-4 w-4" />
+                                    <AlertTitle>Insight</AlertTitle>
+                                    <AlertDescription>
+                                        {item.diagnosticSummary}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            <div className="space-y-4 text-sm pt-4">
+                              <a href={`https://action.focal.systems/ims/product/${item.product.sku}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 group hover:underline">
+                                  <div className="w-5 h-5 text-primary flex-shrink-0 pt-0.5"><Boxes /></div>
+                                  <div className='flex-grow min-w-0 flex items-center gap-2'>
+                                      <span className="font-semibold">Stock:</span>
+                                      <span className={cn('break-words font-bold', stockColor)}>{`${item.product.stockQuantity} ${item.product.stockUnit || ''}`}</span>
+                                      <LinkIcon className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </div>
-                                )}
-                                <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
-                                    {JSON.stringify(item.product, null, 2)}
-                                </pre>
-                            </details>
+                              </a>
+                              <DataRow
+                                icon={<MapPin />}
+                                label="Location"
+                                value={item.product.location.standard || 'N/A'}
+                              />
+                              {item.product.location.promotional && (
+                                <DataRow
+                                  icon={<MapPin />}
+                                  label="Promo Location"
+                                  value={item.product.location.promotional}
+                                />
+                              )}
+                              {productLocation && (
+                                  <div className="w-full border rounded-lg bg-card/80 backdrop-blur-sm shadow-lg overflow-x-auto mt-4">
+                                      <StoreMap productLocations={[{ sku: item.product.sku, location: productLocation }]} />
+                                  </div>
+                               )}
+                              <DeliveryInfoRow
+                                deliveryInfo={item.product.deliveryInfo}
+                                allOrders={item.product.allOrders}
+                                productName={item.product.name}
+                              />
+                               {item.product.lastStockChange?.lastCountDateTime && item.product.lastStockChange?.lastCountDateTime !== 'N/A' ? (
+                                  <DataRow
+                                      icon={<History />}
+                                      label="Last Stock Event"
+                                      value={`${item.product.lastStockChange.inventoryAction} of ${item.product.lastStockChange.qty} by ${item.product.lastStockChange.createdBy} at ${item.product.lastStockChange.lastCountDateTime}`}
+                                  />
+                                ) : ( <DataRow icon={<History />} label="Last Stock Event" value="No data available" />)}
+                                
+                                <Button variant="outline" className="w-full" onClick={handleReportMissing}>
+                                    <ListChecks className="mr-2 h-4 w-4" />
+                                    Report as Missing (INF)
+                                </Button>
+
+                                <div className="flex justify-center py-4">
+                                    <SkuQrCode sku={item.product.sku} />
+                                </div>
+
+                                <details className="pt-2 text-xs">
+                                    <summary className="cursor-pointer font-semibold">Raw Data</summary>
+                                    {item.product.proxyError && (
+                                      <div className="my-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
+                                          <strong>Proxy Error:</strong> {item.product.proxyError}
+                                      </div>
+                                    )}
+                                    <pre className="mt-2 bg-muted p-2 rounded-md overflow-auto max-h-48 text-[10px] leading-tight whitespace-pre-wrap break-all">
+                                        {JSON.stringify(item.product, null, 2)}
+                                    </pre>
+                                </details>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
+                </CollapsibleContent>
+            </Collapsible>
+        </div>
     );
-};
+});
+AmazonListItem.displayName = 'AmazonListItem';
+
 
 export default function AmazonClient() {
   const [listImage, setListImage] = useState<File | null>(null);
@@ -479,6 +483,8 @@ export default function AmazonClient() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLDivElement | null>());
+
 
   const startCamera = async () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -640,7 +646,16 @@ export default function AmazonClient() {
   }
 
   const handleItemToggle = (id: string) => {
-    setOpenItemId(prevId => prevId === id ? null : id);
+    const newOpenId = openItemId === id ? null : id;
+    setOpenItemId(newOpenId);
+
+    if (newOpenId) {
+      // Use a short timeout to allow the collapsible content to start opening
+      setTimeout(() => {
+        const element = itemRefs.current.get(id);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   }
 
   return (
@@ -698,6 +713,7 @@ export default function AmazonClient() {
                         const id = item.product?.sku || String(index);
                         return (
                             <AmazonListItem 
+                                ref={(el) => itemRefs.current.set(id, el)}
                                 item={item} 
                                 key={id} 
                                 isOpen={openItemId === id}
@@ -741,3 +757,5 @@ export default function AmazonClient() {
     </>
   );
 }
+
+    
