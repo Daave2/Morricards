@@ -142,18 +142,9 @@ const parseOrderText = (text: string): Order[] => {
 
 const OrderSummary = ({ order, onShowDetails }: { order: Order, onShowDetails: (order: Order, title: string, products: OrderProduct[]) => void }) => {
     
-    const pickedProducts = order.products.filter(p => {
-        const originalPicked = p.pickedItems.filter(i => !i.isSubstitute).length;
-        return originalPicked >= p.quantity;
-    });
-    
-    const subbedProducts = order.products.filter(p => 
-        p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')
-    );
-
-    const missingProducts = order.products.filter(p => 
-        p.pickedItems.some(i => i.sku === 'MISSING')
-    );
+    const pickedProducts = order.products.filter(p => p.pickedItems.some(i => !i.isSubstitute));
+    const subbedProducts = order.products.filter(p => p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING'));
+    const missingProducts = order.products.filter(p => p.pickedItems.some(i => i.sku === 'MISSING'));
     
     const stats = [
         { label: 'Picked', count: pickedProducts.length, icon: <Check className="h-4 w-4 text-green-600"/>, products: pickedProducts },
@@ -168,7 +159,7 @@ const OrderSummary = ({ order, onShowDetails }: { order: Order, onShowDetails: (
                     <div 
                         key={stat.label} 
                         className="flex items-center gap-1.5 cursor-pointer hover:text-foreground"
-                        onClick={() => onShowDetails(order, stat.label, stat.products)}
+                        onClick={(e) => { e.stopPropagation(); onShowDetails(order, stat.label, stat.products); }}
                     >
                         {stat.icon} {stat.label}: <span className="font-bold">{stat.count}</span>
                     </div>
@@ -771,12 +762,13 @@ export default function PickingListClient() {
         body { font-family: sans-serif; font-size: 12px; }
         h1, h2 { color: #333; }
         table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
         th { background-color: #f2f2f2; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .status-picked { color: green; font-weight: bold; }
         .status-subbed { color: blue; font-weight: bold; }
         .status-missing { color: red; font-weight: bold; }
+        .status-partial { color: orange; font-weight: bold; }
     </style></head><body><h1>Picking Summary</h1>`;
 
     pickedOrders.forEach(order => {
@@ -799,19 +791,33 @@ export default function PickingListClient() {
         order.products.forEach(p => {
             const pickedOriginals = p.pickedItems.filter(item => !item.isSubstitute);
             const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
-            const isMissing = p.pickedItems.some(item => item.sku === 'MISSING');
-
+            const missingCount = p.pickedItems.filter(item => item.sku === 'MISSING').length;
+            
             let statusHtml = '';
             let detailsHtml = '';
 
-            if (isMissing) {
-                statusHtml = `<span class="status-missing">Missing</span>`;
-            } else if (substitutes.length > 0) {
-                statusHtml = `<span class="status-subbed">Substituted</span>`;
-                detailsHtml = substitutes.map(s => `Sub: ${escapeHtml(s.details?.name)} (SKU: ${s.sku})`).join('<br>');
-            } else {
+            if (pickedOriginals.length === p.quantity) {
                 statusHtml = `<span class="status-picked">Picked</span>`;
+            } else if (missingCount === p.quantity) {
+                statusHtml = `<span class="status-missing">Missing</span>`;
+            } else if (substitutes.length > 0 && (pickedOriginals.length + substitutes.length) >= p.quantity) {
+                statusHtml = `<span class="status-subbed">Substituted</span>`;
+            } else if (pickedOriginals.length > 0 || substitutes.length > 0) {
+                statusHtml = `<span class="status-partial">Partially Picked</span>`;
+            } else {
+                 statusHtml = `<span class="status-missing">Missing</span>`;
             }
+            
+            if (pickedOriginals.length > 0) {
+                 detailsHtml += `Picked: ${pickedOriginals.length}<br>`;
+            }
+            if (substitutes.length > 0) {
+                detailsHtml += substitutes.map(s => `Sub: ${escapeHtml(s.details?.name)} (SKU: ${s.sku})`).join('<br>');
+            }
+            if (missingCount > 0) {
+                detailsHtml += `Missing: ${missingCount}`;
+            }
+
 
             const imageUrl = p.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png';
 
@@ -855,7 +861,7 @@ export default function PickingListClient() {
     
     try {
         const sections = pickedOrders.map(order => {
-            const pickedCount = order.products.filter(p => p.pickedItems.filter(i => !i.isSubstitute).length >= p.quantity).length;
+            const pickedCount = order.products.filter(p => p.pickedItems.some(i => !i.isSubstitute)).length;
             const subbedCount = order.products.filter(p => p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')).length;
             const missingCount = order.products.filter(p => p.pickedItems.some(i => i.sku === 'MISSING')).length;
 
@@ -864,20 +870,16 @@ export default function PickingListClient() {
             const lineItemsWidgets = order.products.map(p => {
                 const pickedOriginals = p.pickedItems.filter(item => !item.isSubstitute);
                 const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
-                const isMissing = p.pickedItems.some(item => item.sku === 'MISSING');
+                const missingCount = p.pickedItems.filter(item => item.sku === 'MISSING').length;
                 
                 let status = ``;
-                if (pickedOriginals.length >= p.quantity) {
-                    status = `✓ Picked (x${p.quantity})`;
-                } else {
-                    if (pickedOriginals.length > 0) status += `✓ Picked (x${pickedOriginals.length}) `;
-                    if (substitutes.length > 0) {
-                        substitutes.forEach(sub => {
-                             status += `↪ Sub: ${sub.details?.name || sub.sku} `;
-                        });
-                    }
-                    if (isMissing) status += `✗ Missing`;
+                if (pickedOriginals.length > 0) status += `✓ Picked (x${pickedOriginals.length}) `;
+                if (substitutes.length > 0) {
+                    substitutes.forEach(sub => {
+                         status += `↪ Sub: ${sub.details?.name || sub.sku} `;
+                    });
                 }
+                if (missingCount > 0) status += `✗ Missing (x${missingCount})`;
 
                 return { "textParagraph": { "text": `• <b>${p.name}</b> (SKU: ${p.sku}) - <i>${status.trim()}</i>` } };
             });
@@ -914,7 +916,7 @@ export default function PickingListClient() {
         if (response.ok) {
             toast({ title: 'Export Successful', description: 'The order summary was sent to Google Chat.' });
         } else {
-            throw new Error(`Webhook failed with status ${response.status}: ${await response.text()}`);
+             throw new Error(`Webhook failed with status ${response.status}: ${await response.text()}`);
         }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1405,4 +1407,3 @@ export default function PickingListClient() {
     </>
   );
 }
-
