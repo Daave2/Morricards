@@ -139,7 +139,7 @@ const parseOrderText = (text: string): Order[] => {
     return orders;
 };
 
-const OrderSummary = ({ order, onShowDetails }: { order: Order, onShowDetails: (title: string, products: OrderProduct[]) => void }) => {
+const OrderSummary = ({ order, onShowDetails }: { order: Order, onShowDetails: (order: Order, title: string, products: OrderProduct[]) => void }) => {
     
     const pickedProducts = order.products.filter(p => {
         const originalPicked = p.pickedItems.filter(i => !i.isSubstitute).length;
@@ -167,7 +167,7 @@ const OrderSummary = ({ order, onShowDetails }: { order: Order, onShowDetails: (
                     <div 
                         key={stat.label} 
                         className="flex items-center gap-1.5 cursor-pointer hover:text-foreground"
-                        onClick={() => onShowDetails(stat.label, stat.products)}
+                        onClick={() => onShowDetails(order, stat.label, stat.products)}
                     >
                         {stat.icon} {stat.label}: <span className="font-bold">{stat.count}</span>
                     </div>
@@ -190,7 +190,7 @@ export default function PickingListClient() {
   const [substitutingFor, setSubstitutingFor] = useState<OrderProduct | null>(null);
   const [substituteDialogOpen, setSubstituteDialogOpen] = useState(false);
   const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
-  const [summaryDialogContent, setSummaryDialogContent] = useState<{title: string, products: OrderProduct[]}>({title: '', products: []});
+  const [summaryDialogContent, setSummaryDialogContent] = useState<{order: Order | null, title: string, products: OrderProduct[]}>({order: null, title: '', products: []});
 
 
   const { toast, dismiss } = useToast();
@@ -401,8 +401,8 @@ export default function PickingListClient() {
     setViewOrder(order);
   }
   
-  const handleShowSummaryDetails = (title: string, products: OrderProduct[]) => {
-    setSummaryDialogContent({ title, products });
+  const handleShowSummaryDetails = (order: Order, title: string, products: OrderProduct[]) => {
+    setSummaryDialogContent({ order, title, products });
     setSummaryDialogOpen(true);
   };
 
@@ -954,7 +954,7 @@ export default function PickingListClient() {
     <Dialog open={summaryDialogOpen} onOpenChange={setSummaryDialogOpen}>
         <DialogContent>
              <DialogHeader>
-                <DialogTitle>{summaryDialogContent.title} for {activeOrder?.customerName}</DialogTitle>
+                <DialogTitle>{summaryDialogContent.title} for {summaryDialogContent.order?.customerName}</DialogTitle>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto pr-4 space-y-3">
                  {summaryDialogContent.products.map(p => (
@@ -1150,6 +1150,7 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 
 
