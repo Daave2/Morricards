@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -40,6 +40,7 @@ import ProductCard from '@/components/product-card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
+import ImageModal from '@/components/image-modal';
 
 
 // TYPES
@@ -736,7 +737,20 @@ export default function PickingListClient() {
                                             </div>
                                             <CollapsibleTrigger asChild>
                                                 <div className="flex-grow flex items-center gap-4 min-w-0 cursor-pointer">
-                                                    <Image src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name} width={64} height={64} className="rounded-md border object-cover" />
+                                                     <ImageModal src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name}>
+                                                        <div className="relative w-16 h-16 flex-shrink-0 cursor-pointer group/image">
+                                                            <Image
+                                                                src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                                                alt={p.name}
+                                                                width={64}
+                                                                height={64}
+                                                                className="rounded-md border object-cover"
+                                                            />
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                                                                <Expand className="h-6 w-6 text-white" />
+                                                            </div>
+                                                        </div>
+                                                    </ImageModal>
                                                     <div className="flex-grow min-w-0">
                                                         <p className="font-semibold">{p.name}</p>
                                                         <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
@@ -957,4 +971,3 @@ export default function PickingListClient() {
     </>
   );
 }
-

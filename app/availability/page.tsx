@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2, DownloadCloud, Boxes, MessageSquare } from 'lucide-react';
+import { Loader2, PackageSearch, Search, ScanLine, Link as LinkIcon, ServerCrash, Trash2, Copy, FileUp, AlertTriangle, Mail, ChevronDown, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, Package, CalendarClock, Flag, Building2, Layers, Leaf, Shell, Beaker, History, CameraOff, Zap, X, Undo2, Settings, WifiOff, Wifi, CloudCog, Bolt, Bot, Truck, ScanSearch, CheckCircle2, DownloadCloud, Boxes, MessageSquare, Expand } from 'lucide-react';
 import Image from 'next/image';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import {
@@ -58,6 +58,7 @@ import Link from 'next/link';
 import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
 import { queueProductFetch } from '@/lib/offlineQueue';
+import ImageModal from '@/components/image-modal';
 
 
 type Product = FetchMorrisonsDataOutput[0];
@@ -868,16 +869,23 @@ export default function AvailabilityPage() {
                     {productForModal && (
                       <div className="space-y-4">
                         <div className="flex items-start gap-4 p-4 rounded-lg bg-card theme-glass:bg-white/10 theme-glass:backdrop-blur-lg">
-                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-lg")}>
-                                <Image
-                                  src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
-                                  alt={productForModal.name}
-                                  width={80}
-                                  height={80}
-                                  className="rounded-md object-cover flex-shrink-0"
-                                  data-ai-hint="product image"
-                                />
-                            </div>
+                             <ImageModal src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`} alt={productForModal.name}>
+                                <div className={cn(
+                                    "relative w-20 h-20 flex-shrink-0 cursor-pointer group/image rounded-lg overflow-hidden p-2",
+                                    "border theme-glass:border-white/20 theme-glass:bg-white/20 theme-glass:backdrop-blur-lg"
+                                )}>
+                                    <Image
+                                      src={(productForModal.productDetails.imageUrl?.[0]?.url && productForModal.productDetails.imageUrl?.[0]?.url.trim() !== '') ? productForModal.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
+                                      alt={productForModal.name}
+                                      fill
+                                      className="rounded-md object-cover"
+                                      data-ai-hint="product image"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                                        <Expand className="h-6 w-6 text-white" />
+                                    </div>
+                                </div>
+                            </ImageModal>
                             <div className="text-sm space-y-1 flex-grow min-w-0">
                               <p className="font-bold break-words">{productForModal.name}</p>
                                {productForModal.price.promotional && (
@@ -1113,16 +1121,23 @@ export default function AvailabilityPage() {
                           <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7 z-10" onClick={(e) => handleDeleteItem(e, item.reportId)}>
                             <X className="h-4 w-4" />
                           </Button>
-                            <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg")}>
-                               <Image
-                                  src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
-                                  alt={item.name}
-                                  width={64}
-                                  height={64}
-                                  className="rounded-md object-cover"
-                                  data-ai-hint="product image small"
-                              />
-                            </div>
+                            <ImageModal src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`} alt={item.name}>
+                                <div className={cn(
+                                    "relative w-16 h-16 flex-shrink-0 cursor-pointer group/image rounded-lg overflow-hidden p-2",
+                                    "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-lg"
+                                )}>
+                                   <Image
+                                      src={(item.productDetails.imageUrl?.[0]?.url && item.productDetails.imageUrl?.[0]?.url.trim() !== '') ? item.productDetails.imageUrl[0].url : `https://placehold.co/100x100.png`}
+                                      alt={item.name}
+                                      fill
+                                      className="rounded-md object-cover"
+                                      data-ai-hint="product image small"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                                        <Expand className="h-6 w-6 text-white" />
+                                    </div>
+                                </div>
+                            </ImageModal>
                           <div className="flex-grow">
                              <div className="flex justify-between items-start">
                                 <div>
@@ -1190,14 +1205,3 @@ export default function AvailabilityPage() {
     </>
   );
 }
-
-
-
-    
-
-    
-
-
-
-
-    
