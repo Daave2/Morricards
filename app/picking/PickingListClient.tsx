@@ -137,6 +137,34 @@ const parseOrderText = (text: string): Order[] => {
     return orders;
 };
 
+const OrderSummary = ({ order }: { order: Order }) => {
+    const totalItems = order.products.reduce((sum, p) => sum + p.quantity, 0);
+    
+    let pickedCount = 0;
+    let subbedCount = 0;
+    let missingCount = 0;
+
+    order.products.forEach(p => {
+        p.pickedItems.forEach(item => {
+            if (item.sku === 'MISSING') {
+                missingCount++;
+            } else if (item.isSubstitute) {
+                subbedCount++;
+            } else {
+                pickedCount++;
+            }
+        });
+    });
+
+    return (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-2">
+            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-green-600"/> Picked: <span className="font-bold">{pickedCount}</span></span>
+            <span className="flex items-center gap-1.5"><Replace className="h-4 w-4 text-blue-600"/> Subbed: <span className="font-bold">{subbedCount}</span></span>
+            <span className="flex items-center gap-1.5"><PackageX className="h-4 w-4 text-red-600"/> Missing: <span className="font-bold">{missingCount}</span></span>
+        </div>
+    )
+}
+
 
 export default function PickingListClient() {
   const [groupedOrders, setGroupedOrders] = useState<GroupedOrders>({});
@@ -491,7 +519,7 @@ export default function PickingListClient() {
       bearerToken: settings.bearerToken,
     });
 
-    if (error || !data || !data.length === 0) {
+    if (error || !data || data.length === 0) {
       playError();
       toast({ variant: 'destructive', title: 'Substitute Not Found', description: `Could not find product data for SKU: ${scannedSku}` });
       setSubstitutingFor(null);
@@ -512,7 +540,7 @@ export default function PickingListClient() {
         if (p.pickedItems.length < p.quantity) {
             // Mark remaining quantity as missing
             const missingCount = p.quantity - p.pickedItems.length;
-            const missingItems: PickedItem[] = Array(missingCount).fill({ sku: 'MISSING', isSubstitute: true });
+            const missingItems: PickedItem[] = Array.from({ length: missingCount }, () => ({ sku: 'MISSING', isSubstitute: true }));
             return { ...p, pickedItems: [...p.pickedItems, ...missingItems] };
         }
         return p;
@@ -869,11 +897,24 @@ export default function PickingListClient() {
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto pr-4">
                  <ul className="space-y-2 list-disc pl-5">
-                    {viewOrder?.products.map(p => (
-                        <li key={p.sku}>
-                            <span className='font-semibold'>{p.name}</span> (x{p.quantity})
-                        </li>
-                    ))}
+                    {viewOrder?.products.map(p => {
+                       const pickedOriginals = p.pickedItems.filter(item => !item.isSubstitute);
+                       const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
+                       const missingCount = p.quantity - pickedOriginals.length - substitutes.length;
+                       
+                       return (
+                            <li key={p.sku}>
+                                <span className='font-semibold'>{p.name}</span> (x{p.quantity})
+                                {p.pickedItems.length > 0 && p.quantity > 0 && (
+                                    <div className="pl-4 text-sm text-muted-foreground">
+                                        {pickedOriginals.length > 0 && <div>✓ Picked: {pickedOriginals.length}</div>}
+                                        {substitutes.map((sub, i) => <div key={i}>↪ Sub: {sub.details?.name || sub.sku}</div>)}
+                                        {missingCount > 0 && <div className="text-destructive">✗ Missing: {missingCount}</div>}
+                                    </div>
+                                )}
+                            </li>
+                       )
+                    })}
                 </ul>
             </div>
         </DialogContent>
@@ -930,54 +971,61 @@ export default function PickingListClient() {
                                             <div
                                                 key={order.id} 
                                                 className={cn(
-                                                    "p-4 flex justify-between items-center rounded-lg border",
-                                                    order.isPicked ? 'bg-green-50 dark:bg-green-900/20' : 'cursor-pointer hover:bg-accent'
+                                                    "p-4 rounded-lg border",
+                                                    !order.isPicked && 'cursor-pointer hover:bg-accent'
                                                 )}
                                                 onClick={() => !order.isPicked && handleSelectOrder(order)}
                                             >
-                                                <div className="space-y-1">
-                                                    <p className="font-semibold flex items-center gap-2">
-                                                        <User className="h-4 w-4" />
-                                                        {order.customerName}
-                                                    </p>
-                                                     <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                      <Hash className="h-4 w-4" />
-                                                      {order.id}
-                                                    </p>
-                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                        <ListOrdered className="h-4 w-4" />
-                                                        {order.products.length} unique items
-                                                    </p>
-                                                </div>
-                                                {order.isPicked ? (
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <MoreVertical />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent>
-                                                            {order.phoneNumber && (
-                                                                <DropdownMenuItem asChild>
-                                                                    <a href={`tel:${order.phoneNumber}`}>
-                                                                        <Phone className="mr-2 h-4 w-4" /> Call Customer
-                                                                    </a>
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div className="space-y-1 flex-grow">
+                                                        <p className="font-semibold flex items-center gap-2">
+                                                            <User className="h-4 w-4" />
+                                                            {order.customerName}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                        <Hash className="h-4 w-4" />
+                                                        {order.id}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                            <ListOrdered className="h-4 w-4" />
+                                                            {order.products.length} unique items
+                                                        </p>
+                                                    </div>
+                                                     {order.isPicked ? (
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
+                                                                    <MoreVertical />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent>
+                                                                {order.phoneNumber && (
+                                                                    <DropdownMenuItem asChild>
+                                                                        <a href={`tel:${order.phoneNumber}`}>
+                                                                            <Phone className="mr-2 h-4 w-4" /> Call Customer
+                                                                        </a>
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                                <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                                                                    <Eye className="mr-2 h-4 w-4" /> View Items
                                                                 </DropdownMenuItem>
-                                                            )}
-                                                            <DropdownMenuItem onClick={() => handleViewOrder(order)}>
-                                                                <Eye className="mr-2 h-4 w-4" /> View Items
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
-                                                                <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
-                                                                <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                ) : (
-                                                    <div className="text-sm text-primary font-semibold">
-                                                        {order.products.filter(p => p.pickedItems.length >= p.quantity).length} / {order.products.length} Picked
+                                                                <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
+                                                                    <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
+                                                                    <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    ) : (
+                                                        <div className="text-sm text-primary font-semibold">
+                                                            {order.products.filter(p => p.pickedItems.length >= p.quantity).length} / {order.products.length} Picked
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                 {order.isPicked && (
+                                                    <div className="mt-2 pt-2 border-t">
+                                                        <OrderSummary order={order} />
                                                     </div>
                                                 )}
                                             </div>
@@ -1001,4 +1049,5 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
