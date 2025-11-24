@@ -721,7 +721,7 @@ export default function AmazonClient() {
                         const id = item.product?.sku || String(index);
                         return (
                             <AmazonListItem 
-                                ref={(el) => getMap().set(id, el)}
+                                ref={(el) => { getMap().set(id, el) }}
                                 item={item} 
                                 key={id} 
                                 isOpen={openItemId === id}
@@ -765,5 +765,3 @@ export default function AmazonClient() {
     </>
   );
 }
-
-    
