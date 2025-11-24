@@ -483,7 +483,14 @@ export default function AmazonClient() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const itemRefs = useRef(new Map<string, HTMLDivElement | null>());
+  const itemRefs = useRef<Map<string, HTMLDivElement | null> | null>(null);
+
+  const getMap = () => {
+    if (!itemRefs.current) {
+        itemRefs.current = new Map();
+    }
+    return itemRefs.current;
+  };
 
 
   const startCamera = async () => {
@@ -652,7 +659,8 @@ export default function AmazonClient() {
     if (newOpenId) {
       // Use a short timeout to allow the collapsible content to start opening
       setTimeout(() => {
-        const element = itemRefs.current.get(id);
+        const map = getMap();
+        const element = map.get(id);
         element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     }
@@ -713,7 +721,7 @@ export default function AmazonClient() {
                         const id = item.product?.sku || String(index);
                         return (
                             <AmazonListItem 
-                                ref={(el) => itemRefs.current.set(id, el)}
+                                ref={(el) => getMap().set(id, el)}
                                 item={item} 
                                 key={id} 
                                 isOpen={openItemId === id}
@@ -757,7 +765,5 @@ export default function AmazonClient() {
     </>
   );
 }
-
-    
 
     
