@@ -829,15 +829,14 @@ export default function PickingListClient() {
     toast({ title: 'Exporting to Chat...', description: `Sending summary of ${pickedOrders.length} orders.` });
     
     try {
-        const widgets = pickedOrders.flatMap(order => {
+        const sections = pickedOrders.map(order => {
             const pickedCount = order.products.filter(p => p.pickedItems.filter(i => !i.isSubstitute).length >= p.quantity).length;
             const subbedCount = order.products.filter(p => p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')).length;
             const missingCount = order.products.filter(p => p.pickedItems.some(i => i.sku === 'MISSING')).length;
 
-            let summaryText = `<b>${order.customerName}</b> (${order.collectionSlot})`;
-            summaryText += `<br>Items: ${order.products.length} | Picked: ${pickedCount} | Subbed: ${subbedCount} | Missing: ${missingCount}`;
+            const headerSummary = `<b>${order.customerName}</b> (${order.collectionSlot})<br>Items: ${order.products.length} | Picked: ${pickedCount} | Subbed: ${subbedCount} | Missing: ${missingCount}`;
             
-            const lineItemsText = order.products.map(p => {
+            const lineItemsWidgets = order.products.map(p => {
                 const pickedOriginals = p.pickedItems.filter(item => !item.isSubstitute);
                 const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
                 const isMissing = p.pickedItems.some(item => item.sku === 'MISSING');
@@ -851,23 +850,15 @@ export default function PickingListClient() {
                     if (isMissing) status += `✗ Missing`;
                 }
 
-                return `• ${p.name} - <i>${status.trim()}</i>`;
-            }).join('<br>');
+                return { "textParagraph": { "text": `• ${p.name} - <i>${status.trim()}</i>` } };
+            });
 
-
-            return [
-                { "textParagraph": { "text": summaryText } },
-                 {
-                    "collapsible": {
-                      "uncollapsibleWidgetsCount": 1,
-                      "widgets": [
-                        { "textParagraph": { "text": "<b>Line Details</b>" } },
-                        { "textParagraph": { "text": lineItemsText } }
-                      ]
-                    }
-                },
-                { "divider": {} }
-            ];
+            return {
+                "header": headerSummary,
+                "collapsible": true,
+                "uncollapsibleWidgetsCount": 1,
+                "widgets": lineItemsWidgets
+            };
         });
 
         const payload = {
@@ -880,7 +871,7 @@ export default function PickingListClient() {
                         "imageUrl": "https://cdn-icons-png.flaticon.com/512/1319/1319818.png",
                         "imageType": "CIRCLE",
                     },
-                    "sections": [{ "widgets": widgets.slice(0, -1) }], // Remove last divider
+                    "sections": sections,
                 },
             }]
         };
@@ -1380,12 +1371,4 @@ export default function PickingListClient() {
     </>
   );
 }
-
-
-
-
-
-
-
-
 
