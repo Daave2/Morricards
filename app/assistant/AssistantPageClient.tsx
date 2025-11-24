@@ -14,7 +14,7 @@ import { getProductData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import ZXingScanner from '@/components/ZXingScanner';
-import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send, ShoppingBasket, Link as LinkIcon } from 'lucide-react';
+import { Bot, Loader2, Map, ScanLine, X, Truck, CalendarClock, Package, CheckCircle2, Shell, AlertTriangle, ScanSearch, Barcode, Footprints, Tag, Thermometer, Weight, Info, Crown, Globe, GlassWater, FileText, History, Layers, Flag, Leaf, Users, ThumbsUp, Lightbulb, PackageSearch, Search, ChevronDown, DownloadCloud, Send, ShoppingBasket, Link as LinkIcon, Expand } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -39,6 +39,7 @@ import { productChatFlow } from '@/ai/flows/product-chat-flow';
 import type { ChatMessage } from '@/ai/flows/product-chat-types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { components } from '@/morrisons-types';
+import ImageModal from '@/components/image-modal';
 
 
 type BaseProduct = FetchMorrisonsDataOutput[0];
@@ -632,15 +633,20 @@ export default function AssistantPageClient() {
             <Card>
                 <CardHeader>
                 <div className='flex items-start gap-4'>
-                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
-                        <Image
-                            src={productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                            alt={product.name}
-                            width={100}
-                            height={100}
-                            className="rounded-md object-cover"
-                        />
-                    </div>
+                    <ImageModal src={productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={product.name}>
+                        <div className={cn("relative rounded-lg p-2 cursor-pointer group/image", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
+                            <Image
+                                src={productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                alt={product.name}
+                                width={100}
+                                height={100}
+                                className="rounded-md object-cover"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                               <Expand className="h-6 w-6 text-white" />
+                           </div>
+                        </div>
+                    </ImageModal>
                     <div className='flex-grow'>
                         <CardTitle>{product.name}</CardTitle>
                         <CardDescription>
@@ -893,16 +899,21 @@ export default function AssistantPageClient() {
                   onClick={() => fetchProductAndInsights(item.sku)}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className={cn("rounded-lg p-2", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
-                        <Image
-                          src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                          alt={item.name}
-                          width={80}
-                          height={80}
-                          className="rounded-md object-cover"
-                          data-ai-hint="product image small"
-                        />
-                    </div>
+                    <ImageModal src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={item.name}>
+                      <div className={cn("relative rounded-lg p-2 cursor-pointer group/image", "border theme-glass:border-white/20 theme-glass:bg-white/10 theme-glass:backdrop-blur-xl")}>
+                          <Image
+                            src={item.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                            alt={item.name}
+                            width={80}
+                            height={80}
+                            className="rounded-md object-cover"
+                            data-ai-hint="product image small"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                             <Expand className="h-6 w-6 text-white" />
+                          </div>
+                      </div>
+                    </ImageModal>
                     <div className="flex-grow min-w-0">
                       <p className="font-semibold">{item.name}</p>
                       <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
@@ -938,5 +949,4 @@ export default function AssistantPageClient() {
     </div>
   );
 }
-
 
