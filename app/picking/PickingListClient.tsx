@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -404,13 +404,12 @@ export default function PickingListClient() {
      if (productIndex === -1) return;
 
      const product = activeOrder.products[productIndex];
-     const currentPickedCount = product.pickedItems.filter(p => !p.isSubstitute).length;
      
      let newPickedItems = [...product.pickedItems];
 
      if (amount > 0) { // Adding items
         for(let i = 0; i < amount; i++) {
-            if (newPickedItems.length < product.quantity) {
+            if (newPickedItems.filter(p => !p.isSubstitute).length < product.quantity) {
                  newPickedItems.push({ sku: product.sku, isSubstitute: false, details: product.details });
             }
         }
@@ -590,7 +589,35 @@ export default function PickingListClient() {
     });
 
     return result;
-}, [activeOrder, sortConfig]);
+  }, [activeOrder, sortConfig]);
+
+  const groupedAndSortedProducts = useMemo(() => {
+    if (!activeOrder) return {};
+
+    const grouped: { [aisle: string]: OrderProduct[] } = {};
+
+    sortedProducts.forEach(product => {
+      const aisleMatch = product.details?.location.standard?.match(/Aisle\s*(\d+)/i);
+      const aisle = aisleMatch ? `Aisle ${aisleMatch[1]}` : 'Uncategorized';
+      if (!grouped[aisle]) {
+        grouped[aisle] = [];
+      }
+      grouped[aisle].push(product);
+    });
+
+    return grouped;
+  }, [activeOrder, sortedProducts]);
+
+  const aisleKeys = useMemo(() => {
+    return Object.keys(groupedAndSortedProducts).sort((a, b) => {
+        if (a === 'Uncategorized') return 1;
+        if (b === 'Uncategorized') return -1;
+        const numA = parseInt(a.replace('Aisle ', ''), 10);
+        const numB = parseInt(b.replace('Aisle ', ''), 10);
+        return numA - numB;
+    });
+  }, [groupedAndSortedProducts]);
+
 
   const unpickedCount = activeOrder?.products.filter(p => p.pickedItems.length < p.quantity).length || 0;
   
@@ -676,86 +703,96 @@ export default function PickingListClient() {
                 </div>
             )}
             
-            <div className="space-y-4">
-                {sortedProducts.map(p => {
-                    const isFullyPicked = p.pickedItems.length >= p.quantity;
-                     if (!p.details) {
-                      return (
-                         <Card key={p.sku} className="flex items-start gap-4 p-4 transition-opacity bg-muted/50">
-                             <p className="text-sm text-muted-foreground">Details for {p.name} (SKU: {p.sku}) could not be loaded.</p>
-                         </Card>
-                      )
-                    }
-                    const isOpen = openItemId === p.sku;
+            <div className="space-y-8">
+                {aisleKeys.map(aisle => (
+                    <div key={aisle}>
+                        <h2 className="font-bold text-xl mb-4 border-b-2 border-primary pb-2">{aisle}</h2>
+                        <div className="space-y-4">
+                            {groupedAndSortedProducts[aisle].map(p => {
+                                const isFullyPicked = p.pickedItems.length >= p.quantity;
+                                if (!p.details) {
+                                return (
+                                    <Card key={p.sku} className="flex items-start gap-4 p-4 transition-opacity bg-muted/50">
+                                        <p className="text-sm text-muted-foreground">Details for {p.name} (SKU: {p.sku}) could not be loaded.</p>
+                                    </Card>
+                                )
+                                }
+                                const isOpen = openItemId === p.sku;
 
-                    const substitutes = p.pickedItems.filter(item => item.isSubstitute);
+                                const substitutes = p.pickedItems.filter(item => item.isSubstitute);
 
-                    return (
-                        <Collapsible key={p.sku} open={isOpen} onOpenChange={() => handleItemToggle(p.sku)} className={cn("rounded-lg border transition-opacity", isFullyPicked && 'opacity-50')}>
-                            <div className="flex items-center gap-4 p-4">
-                                <div className="flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                    <Checkbox
-                                        checked={isFullyPicked}
-                                        className="h-8 w-8"
-                                        onClick={() => handleManualPick(p.sku!, isFullyPicked ? -p.quantity : p.quantity)}
-                                    />
-                                    <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
-                                        <span className={cn(isFullyPicked && 'text-primary')}>{p.pickedItems.length}</span>/{p.quantity}
-                                    </div>
-                                </div>
-                                <CollapsibleTrigger asChild>
-                                    <div className="flex-grow flex items-center gap-4 min-w-0 cursor-pointer">
-                                        <Image src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name} width={64} height={64} className="rounded-md border object-cover" />
-                                        <div className="flex-grow min-w-0">
-                                            <p className="font-semibold">{p.name}</p>
-                                            <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
-                                             {substitutes.length > 0 && (
-                                                <div className="text-xs text-amber-600 font-semibold mt-1">
-                                                    {substitutes.length} substitute(s) picked
+                                return (
+                                    <Collapsible key={p.sku} open={isOpen} onOpenChange={() => handleItemToggle(p.sku)} className={cn("rounded-lg border transition-opacity", isFullyPicked && 'opacity-50')}>
+                                        <div className="flex items-center gap-4 p-4">
+                                            <div className="flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                <Checkbox
+                                                    checked={isFullyPicked}
+                                                    className="h-8 w-8"
+                                                    onClick={() => handleManualPick(p.sku!, isFullyPicked ? -p.quantity : p.quantity)}
+                                                />
+                                                <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
+                                                    <span className={cn(isFullyPicked && 'text-primary')}>{p.pickedItems.filter(i => !i.isSubstitute).length}</span>/{p.quantity}
                                                 </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </CollapsibleTrigger>
-                                <div className='flex flex-col items-center gap-2' onClick={(e) => e.stopPropagation()}>
-                                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, 1)} disabled={isFullyPicked}>+</Button>
-                                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, -1)} disabled={p.pickedItems.length === 0}>-</Button>
-                                </div>
-                            </div>
-                           <CollapsibleContent>
-                               <div className="px-4 pb-4 space-y-2">
-                                   {!isFullyPicked && (
-                                       <Button variant="outline" className="w-full" onClick={() => handleSubstitute(p)}>
-                                            <Replace className="mr-2 h-4 w-4" />
-                                            Substitute
-                                       </Button>
-                                   )}
-                                    {substitutes.length > 0 && (
-                                        <div className='space-y-2'>
-                                            <h4 className='font-semibold text-sm'>Substitutes Picked:</h4>
-                                            {substitutes.map((sub, i) => (
-                                                <Card key={`${sub.sku}-${i}`} className="p-2 flex items-center gap-2">
-                                                    <Image src={sub.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={sub.details?.name || 'sub'} width={40} height={40} className="rounded-md border object-cover" />
-                                                    <div className='text-sm'>
-                                                        <p className='font-medium'>{sub.details?.name}</p>
-                                                        <p className='text-xs text-muted-foreground'>SKU: {sub.sku}</p>
+                                            </div>
+                                            <CollapsibleTrigger asChild>
+                                                <div className="flex-grow flex items-center gap-4 min-w-0 cursor-pointer">
+                                                    <Image src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name} width={64} height={64} className="rounded-md border object-cover" />
+                                                    <div className="flex-grow min-w-0">
+                                                        <p className="font-semibold">{p.name}</p>
+                                                        <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
+                                                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><MapPin className='h-4 w-4' /> {p.details.location.standard}</p>
+                                                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><PoundSterling className='h-4 w-4' /> £{p.details.price.regular?.toFixed(2)}</p>
+                                                        {substitutes.length > 0 && (
+                                                            <div className="text-xs text-amber-600 font-semibold mt-1">
+                                                                {substitutes.length} substitute(s) picked
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </Card>
-                                            ))}
+                                                </div>
+                                            </CollapsibleTrigger>
+                                            <div className='flex flex-col items-center gap-2' onClick={(e) => e.stopPropagation()}>
+                                                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, 1)} disabled={p.pickedItems.filter(i => !i.isSubstitute).length >= p.quantity}>+</Button>
+                                                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, -1)} disabled={p.pickedItems.filter(i => !i.isSubstitute).length === 0}>-</Button>
+                                            </div>
                                         </div>
-                                    )}
-                                   <ProductCard
-                                     product={p.details}
-                                     layout="list"
-                                     isPicker={false} // Let the parent handle pick state
-                                     locationId={settings.locationId}
-                                   />
-                               </div>
-                           </CollapsibleContent>
-                        </Collapsible>
-                    )
-                })}
+                                    <CollapsibleContent>
+                                        <div className="px-4 pb-4 space-y-2">
+                                            {!isFullyPicked && (
+                                                <Button variant="outline" className="w-full" onClick={() => handleSubstitute(p)}>
+                                                        <Replace className="mr-2 h-4 w-4" />
+                                                        Substitute
+                                                </Button>
+                                            )}
+                                                {substitutes.length > 0 && (
+                                                    <div className='space-y-2'>
+                                                        <h4 className='font-semibold text-sm'>Substitutes Picked:</h4>
+                                                        {substitutes.map((sub, i) => (
+                                                            <Card key={`${sub.sku}-${i}`} className="p-2 flex items-center gap-2">
+                                                                <Image src={sub.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={sub.details?.name || 'sub'} width={40} height={40} className="rounded-md border object-cover" />
+                                                                <div className='text-sm'>
+                                                                    <p className='font-medium'>{sub.details?.name}</p>
+                                                                    <p className='text-xs text-muted-foreground'>SKU: {sub.sku}</p>
+                                                                </div>
+                                                            </Card>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            <ProductCard
+                                                product={p.details}
+                                                layout="list"
+                                                isPicker={false} // Let the parent handle pick state
+                                                locationId={settings.locationId}
+                                            />
+                                        </div>
+                                    </CollapsibleContent>
+                                    </Collapsible>
+                                )
+                            })}
+                        </div>
+                    </div>
+                ))}
             </div>
+
             <AlertDialog open={isCompletionAlertOpen} onOpenChange={setIsCompletionAlertOpen}>
                 <AlertDialogTrigger asChild>
                     <Button className="w-full mt-8" size="lg" onClick={handleMarkOrderComplete}>
@@ -920,3 +957,4 @@ export default function PickingListClient() {
     </>
   );
 }
+
