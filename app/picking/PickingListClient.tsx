@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand, PackageX } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -41,6 +41,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
 import ImageModal from '@/components/image-modal';
+import { Badge } from '@/components/ui/badge';
 
 
 // TYPES
@@ -393,7 +394,7 @@ export default function PickingListClient() {
     
     updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
 
-    toast({ title: 'Item Picked', description: `${product.name} (${product.pickedItems.length}/${product.quantity})`, icon: <Check /> });
+    toast({ title: 'Item Picked', description: `${product.name} (${product.pickedItems.filter(p => !p.isSubstitute).length}/${product.quantity})`, icon: <Check /> });
 
   }, [activeOrder, playError, playInfo, playSuccess, toast]);
 
@@ -490,7 +491,7 @@ export default function PickingListClient() {
       bearerToken: settings.bearerToken,
     });
 
-    if (error || !data || data.length === 0) {
+    if (error || !data || !data.length === 0) {
       playError();
       toast({ variant: 'destructive', title: 'Substitute Not Found', description: `Could not find product data for SKU: ${scannedSku}` });
       setSubstitutingFor(null);
@@ -505,13 +506,30 @@ export default function PickingListClient() {
   const finishOrderCompletion = () => {
     if (!activeOrder) return;
     
-    const updatedOrder = { ...activeOrder, isPicked: true };
+    const unpickedProducts = activeOrder.products.filter(p => p.pickedItems.length < p.quantity);
+
+    const productsWithMissingMarked = activeOrder.products.map(p => {
+        if (p.pickedItems.length < p.quantity) {
+            // Mark remaining quantity as missing
+            const missingCount = p.quantity - p.pickedItems.length;
+            const missingItems: PickedItem[] = Array(missingCount).fill({ sku: 'MISSING', isSubstitute: true });
+            return { ...p, pickedItems: [...p.pickedItems, ...missingItems] };
+        }
+        return p;
+    });
+
+    const updatedOrder = { 
+      ...activeOrder, 
+      products: productsWithMissingMarked,
+      isPicked: true 
+    };
+
     updateActiveOrderAndGroups(updatedOrder);
 
     setActiveOrder(null);
     setIsScannerActive(false);
     playSuccess();
-    toast({ title: 'Order Complete!', description: `Order for ${activeOrder.customerName} has been marked as picked.` });
+    toast({ title: 'Order Complete!', description: `Order for ${activeOrder.customerName} has been marked as picked. ${unpickedProducts.length > 0 ? `${unpickedProducts.length} item(s) were marked as missing.` : ''}` });
   };
   
   const handleMarkOrderComplete = () => {
@@ -711,6 +729,10 @@ export default function PickingListClient() {
                         <div className="space-y-4">
                             {groupedAndSortedProducts[aisle].map(p => {
                                 const isFullyPicked = p.pickedItems.length >= p.quantity;
+                                const pickedOriginalCount = p.pickedItems.filter(item => !item.isSubstitute).length;
+                                const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
+                                const missingCount = p.pickedItems.filter(item => item.sku === 'MISSING').length;
+
                                 if (!p.details) {
                                 return (
                                     <Card key={p.sku} className="flex items-start gap-4 p-4 transition-opacity bg-muted/50">
@@ -719,8 +741,6 @@ export default function PickingListClient() {
                                 )
                                 }
                                 const isOpen = openItemId === p.sku;
-
-                                const substitutes = p.pickedItems.filter(item => item.isSubstitute);
 
                                 return (
                                     <Collapsible key={p.sku} open={isOpen} onOpenChange={() => handleItemToggle(p.sku)} className={cn("rounded-lg border transition-opacity", isFullyPicked && 'opacity-50')}>
@@ -732,7 +752,7 @@ export default function PickingListClient() {
                                                     onClick={() => handleManualPick(p.sku!, isFullyPicked ? -p.quantity : p.quantity)}
                                                 />
                                                 <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
-                                                    <span className={cn(isFullyPicked && 'text-primary')}>{p.pickedItems.filter(i => !i.isSubstitute).length}</span>/{p.quantity}
+                                                    <span className={cn(isFullyPicked && 'text-primary')}>{pickedOriginalCount}</span>/{p.quantity}
                                                 </div>
                                             </div>
                                             <CollapsibleTrigger asChild>
@@ -756,17 +776,18 @@ export default function PickingListClient() {
                                                         <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
                                                         <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><MapPin className='h-4 w-4' /> {p.details.location.standard}</p>
                                                         <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><PoundSterling className='h-4 w-4' /> £{p.details.price.regular?.toFixed(2)}</p>
-                                                        {substitutes.length > 0 && (
-                                                            <div className="text-xs text-amber-600 font-semibold mt-1">
-                                                                {substitutes.length} substitute(s) picked
-                                                            </div>
+                                                         {substitutes.length > 0 && (
+                                                            <Badge variant="secondary" className="mt-1">{substitutes.length} substitute(s)</Badge>
+                                                        )}
+                                                        {missingCount > 0 && (
+                                                            <Badge variant="destructive" className="mt-1">{missingCount} missing</Badge>
                                                         )}
                                                     </div>
                                                 </div>
                                             </CollapsibleTrigger>
                                             <div className='flex flex-col items-center gap-2' onClick={(e) => e.stopPropagation()}>
-                                                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, 1)} disabled={p.pickedItems.filter(i => !i.isSubstitute).length >= p.quantity}>+</Button>
-                                                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, -1)} disabled={p.pickedItems.filter(i => !i.isSubstitute).length === 0}>-</Button>
+                                                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, 1)} disabled={pickedOriginalCount >= p.quantity}>+</Button>
+                                                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, -1)} disabled={pickedOriginalCount === 0}>-</Button>
                                             </div>
                                         </div>
                                     <CollapsibleContent>
@@ -789,6 +810,15 @@ export default function PickingListClient() {
                                                                 </div>
                                                             </Card>
                                                         ))}
+                                                    </div>
+                                                )}
+                                                {missingCount > 0 && (
+                                                    <div className='space-y-2'>
+                                                        <h4 className='font-semibold text-sm text-destructive'>Missing Items:</h4>
+                                                        <Card className="p-3 flex items-center gap-3 bg-destructive/10 border-destructive/20">
+                                                            <PackageX className="h-6 w-6 text-destructive" />
+                                                            <p className="font-medium text-destructive">{missingCount} unit(s) marked as missing.</p>
+                                                        </Card>
                                                     </div>
                                                 )}
                                             <ProductCard
@@ -971,3 +1001,4 @@ export default function PickingListClient() {
     </>
   );
 }
+
