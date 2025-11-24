@@ -38,6 +38,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProductCard from '@/components/product-card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import SearchComponent from '@/components/assistant/Search';
+import type { SearchHit } from '@/lib/morrisonsSearch';
 
 
 // TYPES
@@ -46,6 +48,7 @@ type Product = FetchMorrisonsDataOutput[0];
 interface PickedItem {
     sku: string;
     isSubstitute: boolean;
+    details?: Product;
 }
 
 interface OrderProduct {
@@ -143,6 +146,7 @@ export default function PickingListClient() {
   const [isCompletionAlertOpen, setIsCompletionAlertOpen] = useState(false);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [substitutingFor, setSubstitutingFor] = useState<OrderProduct | null>(null);
+  const [substituteDialogOpen, setSubstituteDialogOpen] = useState(false);
 
 
   const { toast, dismiss } = useToast();
@@ -359,11 +363,6 @@ export default function PickingListClient() {
   };
 
   const handleScanToPick = useCallback((text: string) => {
-    if (substitutingFor) {
-        handleScanToSubstitute(text);
-        return;
-    }
-
     const sku = text.split(',')[0].trim();
     if (!activeOrder || !sku) return;
 
@@ -377,7 +376,7 @@ export default function PickingListClient() {
     
     const product = activeOrder.products[productIndex];
 
-    if (product.pickedItems.length >= product.quantity) {
+    if (product.pickedItems.filter(p => !p.isSubstitute).length >= product.quantity) {
         playInfo();
         toast({ title: 'Already Picked', description: `All units of ${product.name} have been picked.`, icon: <Info /> });
         return;
@@ -388,14 +387,15 @@ export default function PickingListClient() {
     const newProducts = [...activeOrder.products];
     newProducts[productIndex] = {
         ...newProducts[productIndex],
-        pickedItems: [...newProducts[productIndex].pickedItems, { sku, isSubstitute: false }]
+        pickedItems: [...newProducts[productIndex].pickedItems, { sku, isSubstitute: false, details: product.details }]
     };
     
     updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
 
-    toast({ title: 'Item Picked', description: `${product.name} (${product.pickedItems.length + 1}/${product.quantity})`, icon: <Check /> });
+    toast({ title: 'Item Picked', description: `${product.name} (${product.pickedItems.length}/${product.quantity})`, icon: <Check /> });
 
-  }, [activeOrder, playError, playInfo, playSuccess, toast, substitutingFor]);
+  }, [activeOrder, playError, playInfo, playSuccess, toast]);
+
 
   const handleManualPick = (sku: string, amount: number) => {
      if (!activeOrder) return;
@@ -405,14 +405,13 @@ export default function PickingListClient() {
 
      const product = activeOrder.products[productIndex];
      const currentPickedCount = product.pickedItems.filter(p => !p.isSubstitute).length;
-     const newPickedCount = Math.max(0, Math.min(product.quantity, currentPickedCount + amount));
-
+     
      let newPickedItems = [...product.pickedItems];
 
      if (amount > 0) { // Adding items
         for(let i = 0; i < amount; i++) {
             if (newPickedItems.length < product.quantity) {
-                 newPickedItems.push({ sku: product.sku, isSubstitute: false });
+                 newPickedItems.push({ sku: product.sku, isSubstitute: false, details: product.details });
             }
         }
      } else { // Removing items
@@ -432,12 +431,55 @@ export default function PickingListClient() {
 
   const handleSubstitute = (product: OrderProduct) => {
       setSubstitutingFor(product);
-      setIsScannerActive(true);
+      setSubstituteDialogOpen(true);
   }
-  
-  const handleScanToSubstitute = async (scannedSku: string) => {
-    if (!activeOrder || !substitutingFor) return;
 
+  const addSubstituteToOrder = (subProduct: Product) => {
+     if (!activeOrder || !substitutingFor) return;
+
+     playSuccess();
+    
+    const newProducts = activeOrder.products.map(p => {
+        if (p.sku === substitutingFor.sku) {
+            const newPickedItems: PickedItem[] = [
+                ...p.pickedItems, 
+                { sku: subProduct.sku, isSubstitute: true, details: subProduct }
+            ];
+            return { ...p, pickedItems: newPickedItems };
+        }
+        return p;
+    });
+
+    updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
+
+    toast({ title: 'Substitute Added', description: `${subProduct.name} was added as a substitute for ${substitutingFor.name}.` });
+    setSubstituteDialogOpen(false);
+    setSubstitutingFor(null);
+  };
+
+  const handleSubSearchPick = (hit: SearchHit) => {
+    if (!hit.retailerProductId) {
+       toast({ variant: 'destructive', title: 'Selection Error', description: 'The selected product does not have a valid ID to look up.' });
+       return;
+    }
+    
+    toast({ title: 'Substitute Selected', description: `Looking up details for ${hit.title}...` });
+
+    getProductData({
+      locationId: settings.locationId,
+      skus: [hit.retailerProductId],
+      bearerToken: settings.bearerToken,
+    }).then(({ data, error }) => {
+       if (error || !data || data.length === 0) {
+            playError();
+            toast({ variant: 'destructive', title: 'Substitute Not Found', description: `Could not find product data for SKU: ${hit.retailerProductId}` });
+            return;
+       }
+       addSubstituteToOrder(data[0]);
+    });
+  };
+
+  const handleSubScan = async (scannedSku: string) => {
     setIsScannerActive(false);
     
     toast({ title: 'Substitute Scanned', description: `Looking up details for ${scannedSku}...` });
@@ -452,34 +494,12 @@ export default function PickingListClient() {
       playError();
       toast({ variant: 'destructive', title: 'Substitute Not Found', description: `Could not find product data for SKU: ${scannedSku}` });
       setSubstitutingFor(null);
+      setIsScannerActive(true); // Reactivate scanner if scan fails
       return;
     }
 
-    const subProduct = data[0];
-    playSuccess();
-    
-    const newProducts = activeOrder.products.map(p => {
-        if (p.sku === substitutingFor.sku) {
-            const newPickedItems = [...p.pickedItems, { sku: subProduct.sku, isSubstitute: true }];
-            return { ...p, pickedItems: newPickedItems };
-        }
-        return p;
-    });
-
-    // Also need to add the sub product details to the order for rendering
-    const updatedOrder = { 
-        ...activeOrder, 
-        products: newProducts.some(p => p.sku === subProduct.sku) 
-            ? newProducts
-            : [...newProducts, { sku: subProduct.sku, name: subProduct.name, quantity: 0, pickedItems: [], details: subProduct }]
-    };
-
-    updateActiveOrderAndGroups(updatedOrder);
-
-    toast({ title: 'Substitute Added', description: `${subProduct.name} was added as a substitute for ${substitutingFor.name}.` });
-    setSubstitutingFor(null);
-  };
-
+    addSubstituteToOrder(data[0]);
+  }
 
   
   const finishOrderCompletion = () => {
@@ -597,10 +617,47 @@ export default function PickingListClient() {
                 </CardHeader>
             </Card>
 
-            {isScannerActive && (
+            <Dialog open={substituteDialogOpen} onOpenChange={setSubstituteDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Substitute for {substitutingFor?.name}</DialogTitle>
+                        <DialogDescription>Search for a replacement item, or scan any product as a substitute.</DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-[70vh] overflow-y-auto p-1">
+                        <SearchComponent defaultQuery={substitutingFor?.name || ''} onPick={handleSubSearchPick} />
+                        <div className="relative my-4">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">
+                                Or
+                                </span>
+                            </div>
+                        </div>
+                        {isScannerActive ? (
+                             <div className="space-y-2">
+                                <ZXingScanner
+                                    ref={scannerRef}
+                                    onResult={handleSubScan}
+                                    onError={(e) => console.warn(e)}
+                                />
+                                <Button variant="outline" className="w-full" onClick={() => setIsScannerActive(false)}>Cancel Scan</Button>
+                            </div>
+                        ) : (
+                            <Button className="w-full" variant="outline" onClick={() => setIsScannerActive(true)}>
+                                <ScanLine className="mr-2 h-4 w-4" />
+                                Scan Your Own Substitute
+                            </Button>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {isScannerActive && !substituteDialogOpen && (
                 <div className="sticky top-0 z-40 p-2 shadow-md mb-4 bg-background/95 backdrop-blur-sm border rounded-lg">
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-semibold">{substitutingFor ? `Scan substitute for ${substitutingFor.name}` : "Scan to Pick"}</h3>
+                        <h3 className="font-semibold">Scan to Pick</h3>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setIsScannerActive(false); setSubstitutingFor(null); }}>
                             <X />
                         </Button>
@@ -625,6 +682,8 @@ export default function PickingListClient() {
                     }
                     const isOpen = openItemId === p.sku;
 
+                    const substitutes = p.pickedItems.filter(item => item.isSubstitute);
+
                     return (
                         <Collapsible key={p.sku} open={isOpen} onOpenChange={() => handleItemToggle(p.sku)} className={cn("rounded-lg border transition-opacity", isFullyPicked && 'opacity-50')}>
                             <div className="flex items-center gap-4 p-4">
@@ -644,9 +703,9 @@ export default function PickingListClient() {
                                         <div className="flex-grow min-w-0">
                                             <p className="font-semibold">{p.name}</p>
                                             <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
-                                             {p.pickedItems.filter(item => item.isSubstitute).length > 0 && (
+                                             {substitutes.length > 0 && (
                                                 <div className="text-xs text-amber-600 font-semibold mt-1">
-                                                    {p.pickedItems.filter(item => item.isSubstitute).length} substitute(s) picked
+                                                    {substitutes.length} substitute(s) picked
                                                 </div>
                                             )}
                                         </div>
@@ -665,6 +724,20 @@ export default function PickingListClient() {
                                             Substitute
                                        </Button>
                                    )}
+                                    {substitutes.length > 0 && (
+                                        <div className='space-y-2'>
+                                            <h4 className='font-semibold text-sm'>Substitutes Picked:</h4>
+                                            {substitutes.map((sub, i) => (
+                                                <Card key={`${sub.sku}-${i}`} className="p-2 flex items-center gap-2">
+                                                    <Image src={sub.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={sub.details?.name || 'sub'} width={40} height={40} className="rounded-md border object-cover" />
+                                                    <div className='text-sm'>
+                                                        <p className='font-medium'>{sub.details?.name}</p>
+                                                        <p className='text-xs text-muted-foreground'>SKU: {sub.sku}</p>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
                                    <ProductCard
                                      product={p.details}
                                      layout="list"
