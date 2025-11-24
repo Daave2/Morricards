@@ -80,10 +80,13 @@ const parseOrderText = (text: string): Order[] => {
 
         if (!customerNameMatch || !orderRefMatch) return;
         
-        const orderContentsMatch = section.split('Order contents');
-        if (orderContentsMatch.length < 2) return;
+        const orderContentsSplit = section.split('Order contents');
+        if (orderContentsSplit.length < 2) return;
         
-        const productLines = orderContentsMatch[1].split('\n').filter(l => /^\d{7,}/.test(l.trim()));
+        const productsSection = orderContentsSplit[1];
+        
+        const productLines = productsSection.split('\n').filter(l => /^\d{7,}\s/.test(l.trim()));
+        
         const productMap = new window.Map<string, { name: string; quantity: number }>();
 
         productLines.forEach(line => {
@@ -204,20 +207,19 @@ export default function PickingListClient() {
         products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
     }));
     
-    // Sort by collection slot
-    enrichedOrders.sort((a, b) => {
-        const parseSlot = (slot: string): number => {
-            if (slot === 'N/A') return Infinity;
-            // Matches DD-MM-YYYY HH:MM
-            const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
-            if (!parts) return Infinity;
-            const [, day, month, year, hour, minute] = parts;
-            return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
-        };
+    const parseSlot = (slot: string): number => {
+        if (slot === 'N/A') return Infinity;
+        // Matches DD-MM-YYYY HH:MM
+        const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
+        if (!parts) return Infinity;
+        const [, day, month, year, hour, minute] = parts;
+        // Month is 0-indexed in JS Date, so subtract 1
+        return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
+    };
 
+    enrichedOrders.sort((a, b) => {
         const timeA = parseSlot(a.collectionSlot);
         const timeB = parseSlot(b.collectionSlot);
-
         return timeA - timeB;
     });
 
@@ -373,6 +375,18 @@ export default function PickingListClient() {
     toast({ title: 'Order Complete!', description: `Order for ${activeOrder.customerName} has been marked as picked.` });
   }
 
+  const getSortedSlotKeys = () => {
+    const parseSlot = (slot: string): number => {
+        if (slot === 'N/A') return Infinity;
+        const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
+        if (!parts) return Infinity;
+        const [, day, month, year, hour, minute] = parts;
+        return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
+    };
+    return Object.keys(groupedOrders).sort((a, b) => parseSlot(a) - parseSlot(b));
+  };
+
+
   if (activeOrder) {
     const sortedProducts = [...activeOrder.products].sort((a, b) => {
         if (a.picked === a.quantity && b.picked < b.quantity) return 1;
@@ -508,13 +522,13 @@ export default function PickingListClient() {
                     <CardDescription>Select an order to begin picking.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {Object.entries(groupedOrders).map(([slot, orders]) => (
+                    {getSortedSlotKeys().map((slot) => (
                         <div key={slot}>
                             <h3 className="font-bold text-lg mb-2 border-b pb-1">
                                 Slot: {slot}
                             </h3>
                             <div className="space-y-4">
-                                {orders.map(order => (
+                                {groupedOrders[slot].map(order => (
                                     <div
                                         key={order.id} 
                                         className={cn(
