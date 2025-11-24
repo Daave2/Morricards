@@ -60,28 +60,38 @@ Contains shared libraries, data, and utility functions.
 
 ## 3. Key Interactions & Patterns
 
-- **Server Actions vs. API Routes**:
-  - **Server Actions** (`app/actions.ts`) are used for initial, straightforward data fetches that don't require complex merging (e.g., getting basic stock and price).
-  - **API Routes** (`app/api/*`) are used as server-side proxies to external APIs, especially those with CORS issues or when API keys must be hidden. The `/api/morrisons/product` route is a critical example.
+### Picking Page Architecture (v0.7+)
+The picking page (`app/picking/PickingListClient.tsx`) was refactored to support a more robust workflow.
+- **Data Structure**: Instead of a flat list, orders are stored in a nested state object: `GroupedOrders`. This object uses the collection date and time slot as keys, allowing for the management of multiple distinct orders.
+  ```typescript
+  // { "25-11-2025": { "16:00 - 17:00": [Order, ...] } }
+  type GroupedOrders = Record<string, Record<string, Order[]>>;
+  ```
+- **Order Lifecycle**:
+  1.  Orders are imported via text paste or file upload.
+  2.  They are parsed and merged into the `GroupedOrders` state.
+  3.  The UI renders these orders grouped by date and time.
+  4.  An order can be picked, after which it is marked as `isPicked: true`.
+  5.  Completed orders can be marked as `isCollected: true`, moving them to a separate, collapsible "Collected Orders" section for historical reference. This provides a clean separation between active and completed work.
 
-- **Successful Data Enrichment Pattern (AI Assistant)**:
-  - **Problem**: Fetching complete product data was challenging because rich details (ingredients, allergens) live in a separate API endpoint from basic data (stock, price). Attempts to merge this data server-side in a single function (`lib/morrisons-api.ts`) proved unreliable and difficult to debug.
-  - **Solution (The "Two-Step Fetch")**: The `app/assistant/AssistantPageClient.tsx` now implements a successful two-step, client-driven pattern:
-    1.  **Initial Fetch**: It calls the `getProductData` server action to get the basic product object, which includes stock, price, and location.
-    2.  **Enrichment Fetch**: Immediately after, it makes a *second*, direct `fetch` call from the client to the internal proxy at `/api/morrisons/product`. This route fetches the full, rich product JSON.
-    3.  **Client-Side Merge**: The client component then merges the results from both fetches into a single, complete product object and stores it in its state. This complete object is then used to render the UI and is passed to the AI flows.
-  - **Conclusion**: This pattern is now the standard for pages requiring a complete, multi-source view of a product. It is more robust and easier to debug than a complex, monolithic server-side fetching function.
+### Successful Data Enrichment Pattern (AI Assistant)
+- **Problem**: Fetching complete product data was challenging because rich details (ingredients, allergens) live in a separate API endpoint from basic data (stock, price).
+- **Solution (The "Two-Step Fetch")**: `app/assistant/AssistantPageClient.tsx` now implements a successful two-step, client-driven pattern:
+    1.  **Initial Fetch**: It calls the `getProductData` server action to get the basic product object.
+    2.  **Enrichment Fetch**: Immediately after, it makes a *second*, direct `fetch` call from the client to the internal proxy at `/api/morrisons/product`.
+    3.  **Client-Side Merge**: The client component merges the results from both fetches into a single, complete product object before rendering or passing to AI flows.
+- **Conclusion**: This pattern is the standard for pages requiring a complete, multi-source view of a product.
 
-- **AI Flows**: Client components directly import and call the server-side Genkit flow functions from `/ai/flows/*.ts`. With the successful data enrichment pattern, these flows now receive the complete product object, enabling them to provide accurate and detailed responses.
+### AI Flows
+Client components directly import and call the server-side Genkit flow functions from `/ai/flows/*.ts`. With the successful data enrichment pattern, these flows now receive the complete product object, enabling them to provide accurate and detailed responses.
 
-- **Offline**: When the app is offline (detected by `useNetworkSync`), actions are queued in IndexedDB via `lib/offlineQueue.ts`. The `useNetworkSync` hook automatically flushes this queue when the app comes back online.
+### Offline
+When the app is offline (detected by `useNetworkSync`), actions are queued in IndexedDB via `lib/offlineQueue.ts`. The `useNetworkSync` hook automatically flushes this queue when the app comes back online.
 
 ## 4. Key Examples (Golden Paths)
-
-To ensure consistency, refer to these files as the standard for common tasks.
 
 -   **Creating a New Page**: Follow the pattern in `app/picking/page.tsx` (for the Suspense wrapper) and `app/picking/PickingListClient.tsx` (for the interactive client logic).
 -   **Fetching and Displaying Complex Data**: Refer to `app/assistant/AssistantPageClient.tsx` for the canonical example of the "Two-Step Fetch" pattern.
 -   **Creating an AI Flow**: Use `ai/flows/product-insights-flow.ts` and its corresponding `*-types.ts` file as a template.
--   **Defining a Component**: `components/product-card.tsx` is a good example of a complex, data-driven component that correctly renders all nested product details.
+-   **Defining a Component**: `components/product-card.tsx` is a good example of a complex, data-driven component.
 -   **Handling Forms**: The forms in `app/picking/PickingListClient.tsx` and `app/settings/page.tsx` demonstrate the use of `react-hook-form` with Zod for validation.
