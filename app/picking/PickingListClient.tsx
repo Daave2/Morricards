@@ -35,7 +35,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { queueProductFetch } from '@/lib/offlineQueue';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '../ui/checkbox';
+import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
 
 // TYPES
