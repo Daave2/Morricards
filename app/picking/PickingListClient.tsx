@@ -177,20 +177,20 @@ export default function PickingListClient() {
     defaultValues: { rawOrderText: '' },
   });
   
-  const parseSlot = (slot: string): [Date, string] => {
-    const defaultDate = new Date(0);
-    const dateMatch = slot.match(/(\d{2})-(\d{2})-(\d{4})/);
-    const timeMatch = slot.match(/(\d{2}:\d{2})\s-\s(\d{2}:\d{2})/);
-    
-    if (dateMatch && timeMatch) {
-      const [, day, month, year] = dateMatch;
-      const [startTime] = timeMatch;
-      // Note: month is 0-indexed in JS Dates
-      const date = new Date(`${year}-${month}-${day}T${startTime}`);
-      return [date, `${day}-${month}-${year}`];
-    }
-    
-    return [defaultDate, "Unsorted"];
+  const parseSlot = (slot: string): [Date, string, string] => {
+      const defaultDate = new Date(0);
+      const dateMatch = slot.match(/(\d{2}-\d{2}-\d{4})/);
+      const timeMatch = slot.match(/(\d{2}:\d{2}\s-\s\d{2}:\d{2})/);
+
+      if (dateMatch && timeMatch) {
+          const [, day, month, year] = dateMatch[0].split('-');
+          const [startTime] = timeMatch[0].split(' - ');
+          // Note: month is 0-indexed in JS Dates
+          const date = new Date(`${year}-${month}-${day}T${startTime}`);
+          return [date, dateMatch[0], timeMatch[0]];
+      }
+      
+      return [defaultDate, "Unsorted", "N/A"];
   };
 
 
@@ -234,8 +234,7 @@ export default function PickingListClient() {
     const newGroups: GroupedOrders = { ...groupedOrders };
     enrichedOrders.forEach(order => {
         const slot = order.collectionSlot;
-        const [date, dateKey] = parseSlot(slot);
-        const timeKey = slot.replace(`${dateKey} `, '');
+        const [, dateKey, timeKey] = parseSlot(slot);
 
         if (!newGroups[dateKey]) {
             newGroups[dateKey] = {};
@@ -300,9 +299,7 @@ export default function PickingListClient() {
      
      setGroupedOrders(prev => {
          const newGroups = { ...prev };
-         const slot = resetOrder.collectionSlot;
-         const [date, dateKey] = parseSlot(slot);
-         const timeKey = slot.replace(`${dateKey} `, '');
+         const [, dateKey, timeKey] = parseSlot(resetOrder.collectionSlot);
 
          if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
              newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === orderId ? resetOrder : o);
@@ -339,9 +336,7 @@ export default function PickingListClient() {
      setActiveOrder(updatedOrder);
      setGroupedOrders(prev => {
         const newGroups = { ...prev };
-        const slot = updatedOrder.collectionSlot;
-        const [date, dateKey] = parseSlot(slot);
-        const timeKey = slot.replace(`${dateKey} `, '');
+        const [, dateKey, timeKey] = parseSlot(updatedOrder.collectionSlot);
 
         if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
             newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === updatedOrder.id ? updatedOrder : o);
@@ -551,29 +546,31 @@ export default function PickingListClient() {
 
                     return (
                         <Collapsible key={p.sku} open={isOpen} onOpenChange={() => handleItemToggle(p.sku)} className={cn("rounded-lg border transition-opacity", isFullyPicked && 'opacity-50')}>
-                           <CollapsibleTrigger className="w-full text-left p-4">
-                                <div className="flex items-center gap-4">
-                                   <div className="flex flex-col items-center gap-2">
-                                     <Checkbox
-                                          checked={isFullyPicked}
-                                          className="h-8 w-8"
-                                          onClick={(e) => { e.stopPropagation(); handleManualPick(p.sku!, isFullyPicked ? -p.quantity : p.quantity); }}
-                                      />
-                                      <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
+                            <div className="flex items-center gap-4 p-4">
+                                <div className="flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                        checked={isFullyPicked}
+                                        className="h-8 w-8"
+                                        onClick={() => handleManualPick(p.sku!, isFullyPicked ? -p.quantity : p.quantity)}
+                                    />
+                                    <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
                                         <span className={cn(isFullyPicked && 'text-primary')}>{p.picked}</span>/{p.quantity}
-                                      </div>
-                                   </div>
-                                   <Image src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name} width={64} height={64} className="rounded-md border object-cover" />
-                                   <div className="flex-grow min-w-0">
-                                       <p className="font-semibold">{p.name}</p>
-                                       <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
-                                   </div>
-                                   <div className='flex flex-col items-center gap-2'>
-                                      <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); handleManualPick(p.sku!, 1);}} disabled={isFullyPicked}>+</Button>
-                                      <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); handleManualPick(p.sku!, -1);}} disabled={p.picked === 0}>-</Button>
                                     </div>
                                 </div>
-                           </CollapsibleTrigger>
+                                <CollapsibleTrigger asChild>
+                                    <div className="flex-grow flex items-center gap-4 min-w-0 cursor-pointer">
+                                        <Image src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name} width={64} height={64} className="rounded-md border object-cover" />
+                                        <div className="flex-grow min-w-0">
+                                            <p className="font-semibold">{p.name}</p>
+                                            <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
+                                        </div>
+                                    </div>
+                                </CollapsibleTrigger>
+                                <div className='flex flex-col items-center gap-2' onClick={(e) => e.stopPropagation()}>
+                                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, 1)} disabled={isFullyPicked}>+</Button>
+                                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, -1)} disabled={p.picked === 0}>-</Button>
+                                </div>
+                            </div>
                            <CollapsibleContent>
                                <div className="px-4 pb-4">
                                    <ProductCard
@@ -694,10 +691,6 @@ export default function PickingListClient() {
                                                      <p className="text-sm text-muted-foreground flex items-center gap-2">
                                                       <Hash className="h-4 w-4" />
                                                       {order.id}
-                                                    </p>
-                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                        <CalendarClock className="h-4 w-4" />
-                                                        {order.collectionSlot}
                                                     </p>
                                                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                                                         <ListOrdered className="h-4 w-4" />
