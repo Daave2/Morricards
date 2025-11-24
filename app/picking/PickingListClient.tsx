@@ -23,7 +23,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils';
 import ZXingScanner from '@/components/ZXingScanner';
 import { useApiSettings } from '@/hooks/use-api-settings';
@@ -408,7 +409,25 @@ export default function PickingListClient() {
   };
 
   const getSortedDateKeys = () => {
-    return Object.keys(groupedOrders).sort((a, b) => parseDateKey(a) - parseDateKey(b));
+    const parseTime = (timeStr: string) => {
+        if (timeStr === 'N/A') return Infinity;
+        const match = timeStr.match(/(\d{2}):(\d{2})/);
+        if (!match) return Infinity;
+        return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+    };
+
+    return Object.keys(groupedOrders).sort((a, b) => {
+        const dateA = parseDateKey(a);
+        const dateB = parseDateKey(b);
+        if (dateA !== dateB) {
+            return dateA - dateB;
+        }
+
+        const timeKeysA = Object.keys(groupedOrders[a]).sort((ta, tb) => parseTime(ta) - parseTime(tb));
+        const timeKeysB = Object.keys(groupedOrders[b]).sort((ta, tb) => parseTime(ta) - parseTime(tb));
+        
+        return parseTime(timeKeysA[0]) - parseTime(timeKeysB[0]);
+    });
   };
   
   const getSortedTimeKeys = (dateKey: string) => {
