@@ -86,7 +86,7 @@ const parseOrderText = (text: string): Order[] => {
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
         const phoneMatch = section.match(/Phone number: ([+0-9\s]+)/);
 
-        if (!customerNameMatch || !orderRefMatch) return;
+        if (!customerNameMatch) return;
         
         const orderContentsSplit = section.split('Order contents');
         if (orderContentsSplit.length < 2) return;
@@ -109,10 +109,12 @@ const parseOrderText = (text: string): Order[] => {
                 }
             }
         });
+        
+        const finalOrderId = orderRefMatch ? orderRefMatch[1] : `manual-${Date.now()}`;
 
         if (productMap.size > 0) {
             orders.push({
-                id: orderRefMatch[1],
+                id: finalOrderId,
                 customerName: customerNameMatch[1].trim(),
                 collectionSlot: collectionSlotMatch ? collectionSlotMatch[1].trim() : 'N/A',
                 phoneNumber: phoneMatch ? phoneMatch[1].trim() : undefined,
@@ -140,6 +142,7 @@ export default function PickingListClient() {
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [isCompletionAlertOpen, setIsCompletionAlertOpen] = useState(false);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
+  const [substitutingFor, setSubstitutingFor] = useState<OrderProduct | null>(null);
 
 
   const { toast, dismiss } = useToast();
@@ -356,6 +359,11 @@ export default function PickingListClient() {
   };
 
   const handleScanToPick = useCallback((text: string) => {
+    if (substitutingFor) {
+        handleScanToSubstitute(text);
+        return;
+    }
+
     const sku = text.split(',')[0].trim();
     if (!activeOrder || !sku) return;
 
@@ -387,7 +395,7 @@ export default function PickingListClient() {
 
     toast({ title: 'Item Picked', description: `${product.name} (${product.pickedItems.length + 1}/${product.quantity})`, icon: <Check /> });
 
-  }, [activeOrder, playError, playInfo, playSuccess, toast]);
+  }, [activeOrder, playError, playInfo, playSuccess, toast, substitutingFor]);
 
   const handleManualPick = (sku: string, amount: number) => {
      if (!activeOrder) return;
@@ -421,6 +429,58 @@ export default function PickingListClient() {
 
      updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
   }
+
+  const handleSubstitute = (product: OrderProduct) => {
+      setSubstitutingFor(product);
+      setIsScannerActive(true);
+  }
+  
+  const handleScanToSubstitute = async (scannedSku: string) => {
+    if (!activeOrder || !substitutingFor) return;
+
+    setIsScannerActive(false);
+    
+    toast({ title: 'Substitute Scanned', description: `Looking up details for ${scannedSku}...` });
+
+    const { data, error } = await getProductData({
+      locationId: settings.locationId,
+      skus: [scannedSku],
+      bearerToken: settings.bearerToken,
+    });
+
+    if (error || !data || data.length === 0) {
+      playError();
+      toast({ variant: 'destructive', title: 'Substitute Not Found', description: `Could not find product data for SKU: ${scannedSku}` });
+      setSubstitutingFor(null);
+      return;
+    }
+
+    const subProduct = data[0];
+    playSuccess();
+    
+    const newProducts = activeOrder.products.map(p => {
+        if (p.sku === substitutingFor.sku) {
+            const newPickedItems = [...p.pickedItems, { sku: subProduct.sku, isSubstitute: true }];
+            return { ...p, pickedItems: newPickedItems };
+        }
+        return p;
+    });
+
+    // Also need to add the sub product details to the order for rendering
+    const updatedOrder = { 
+        ...activeOrder, 
+        products: newProducts.some(p => p.sku === subProduct.sku) 
+            ? newProducts
+            : [...newProducts, { sku: subProduct.sku, name: subProduct.name, quantity: 0, pickedItems: [], details: subProduct }]
+    };
+
+    updateActiveOrderAndGroups(updatedOrder);
+
+    toast({ title: 'Substitute Added', description: `${subProduct.name} was added as a substitute for ${substitutingFor.name}.` });
+    setSubstitutingFor(null);
+  };
+
+
   
   const finishOrderCompletion = () => {
     if (!activeOrder) return;
@@ -447,12 +507,20 @@ export default function PickingListClient() {
   }
 
   const getSortedDateKeys = () => {
-      return Object.keys(groupedOrders).sort((a, b) => parseSlot(a)[0].getTime() - parseSlot(b)[0].getTime());
+      return Object.keys(groupedOrders).sort((a, b) => {
+          const dateA = a.split('-').reverse().join('-');
+          const dateB = b.split('-').reverse().join('-');
+          return new Date(dateA).getTime() - new Date(dateB).getTime();
+      });
   };
   
   const getSortedTimeKeys = (dateKey: string) => {
       if (groupedOrders[dateKey]) {
-        return Object.keys(groupedOrders[dateKey]).sort((a, b) => parseSlot(a)[0].getTime() - parseSlot(b)[0].getTime());
+        return Object.keys(groupedOrders[dateKey]).sort((a, b) => {
+            const timeA = a.split(' - ')[0];
+            const timeB = b.split(' - ')[0];
+            return timeA.localeCompare(timeB);
+        });
       }
       return [];
   }
@@ -529,32 +597,21 @@ export default function PickingListClient() {
                 </CardHeader>
             </Card>
 
-            <div className="sticky top-0 z-40 p-2 shadow-md mb-4 bg-background/95 backdrop-blur-sm border rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-semibold">Scan to Pick</h3>
-                    <div className="w-48">
-                        <Select value={sortConfig} onValueChange={setSortConfig}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Sort by..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
-                                <SelectItem value="stock-desc">Stock (High-Low)</SelectItem>
-                                <SelectItem value="stock-asc">Stock (Low-High)</SelectItem>
-                                <SelectItem value="price-desc">Price (High-Low)</SelectItem>
-                                <SelectItem value="price-asc">Price (Low-High)</SelectItem>
-                                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                            </SelectContent>
-                        </Select>
+            {isScannerActive && (
+                <div className="sticky top-0 z-40 p-2 shadow-md mb-4 bg-background/95 backdrop-blur-sm border rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-semibold">{substitutingFor ? `Scan substitute for ${substitutingFor.name}` : "Scan to Pick"}</h3>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setIsScannerActive(false); setSubstitutingFor(null); }}>
+                            <X />
+                        </Button>
                     </div>
+                    <ZXingScanner
+                        ref={scannerRef}
+                        onResult={handleScanToPick}
+                        onError={(e) => console.warn(e)}
+                    />
                 </div>
-                <ZXingScanner
-                    ref={scannerRef}
-                    onResult={handleScanToPick}
-                    onError={(e) => console.warn(e)}
-                />
-            </div>
+            )}
             
             <div className="space-y-4">
                 {sortedProducts.map(p => {
@@ -587,6 +644,11 @@ export default function PickingListClient() {
                                         <div className="flex-grow min-w-0">
                                             <p className="font-semibold">{p.name}</p>
                                             <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
+                                             {p.pickedItems.filter(item => item.isSubstitute).length > 0 && (
+                                                <div className="text-xs text-amber-600 font-semibold mt-1">
+                                                    {p.pickedItems.filter(item => item.isSubstitute).length} substitute(s) picked
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </CollapsibleTrigger>
@@ -598,7 +660,7 @@ export default function PickingListClient() {
                            <CollapsibleContent>
                                <div className="px-4 pb-4 space-y-2">
                                    {!isFullyPicked && (
-                                       <Button variant="outline" className="w-full">
+                                       <Button variant="outline" className="w-full" onClick={() => handleSubstitute(p)}>
                                             <Replace className="mr-2 h-4 w-4" />
                                             Substitute
                                        </Button>
@@ -779,3 +841,4 @@ export default function PickingListClient() {
     </>
   );
 }
+
