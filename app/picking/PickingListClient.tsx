@@ -11,7 +11,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -441,7 +441,10 @@ export default function PickingListClient() {
                     </Button>
                     <div>
                         <CardTitle>Picking for {activeOrder.customerName}</CardTitle>
-                        <CardDescription>{activeOrder.collectionSlot}</CardDescription>
+                        <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <span className="flex items-center gap-2"><Hash className="h-4 w-4" />{activeOrder.id}</span>
+                          <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4" />{activeOrder.collectionSlot}</span>
+                        </CardDescription>
                     </div>
                 </CardHeader>
             </Card>
@@ -580,6 +583,10 @@ export default function PickingListClient() {
                                                     <p className="font-semibold flex items-center gap-2">
                                                         <User className="h-4 w-4" />
                                                         {order.customerName}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                      <Hash className="h-4 w-4" />
+                                                      {order.id}
                                                     </p>
                                                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                                                         <CalendarClock className="h-4 w-4" />
