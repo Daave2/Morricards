@@ -7,7 +7,7 @@ import { KeyRound, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const TOTP_SECRET = 'TYX3MCRGZYWI7RKQFV55ATV7ATGB7LOOXSTF7YXO2EUKQEGOPV7Q';
+const TOTP_SECRET = '7EF4D6RSNMXU7GZ3HVM4CTSAPJMCK5L3QW5KW42H5LVASIBPNENA';
 
 export default function TOTPGenerator() {
   const [otp, setOtp] = useState('------');
