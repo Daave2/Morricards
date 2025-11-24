@@ -606,9 +606,10 @@ export default function PickingListClient() {
     const unpickedProducts = activeOrder.products.filter(p => p.pickedItems.length < p.quantity);
 
     const productsWithMissingMarked = activeOrder.products.map(p => {
-        if (p.pickedItems.length < p.quantity) {
+        const pickedCount = p.pickedItems.length;
+        if (pickedCount < p.quantity) {
             // Mark remaining quantity as missing
-            const missingCount = p.quantity - p.pickedItems.length;
+            const missingCount = p.quantity - pickedCount;
             const missingItems: PickedItem[] = Array.from({ length: missingCount }, () => ({ sku: 'MISSING', isSubstitute: true }));
             return { ...p, pickedItems: [...p.pickedItems, ...missingItems] };
         }
@@ -833,12 +834,47 @@ export default function PickingListClient() {
             const subbedCount = order.products.filter(p => p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')).length;
             const missingCount = order.products.filter(p => p.pickedItems.some(i => i.sku === 'MISSING')).length;
 
-            let text = `<b>${order.customerName}</b> (${order.collectionSlot})`;
-            text += `<br>Items: ${order.products.length} | Picked: ${pickedCount} | Subbed: ${subbedCount} | Missing: ${missingCount}`;
+            let summaryText = `<b>${order.customerName}</b> (${order.collectionSlot})`;
+            summaryText += `<br>Items: ${order.products.length} | Picked: ${pickedCount} | Subbed: ${subbedCount} | Missing: ${missingCount}`;
+            
+            const lineItemsText = order.products.map(p => {
+                const pickedOriginals = p.pickedItems.filter(item => !item.isSubstitute);
+                const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
+                const isMissing = p.pickedItems.some(item => item.sku === 'MISSING');
+                
+                let status = ``;
+                if (pickedOriginals.length >= p.quantity) {
+                    status = `✓ Picked (x${p.quantity})`;
+                } else {
+                    if (pickedOriginals.length > 0) status += `✓ Picked (x${pickedOriginals.length}) `;
+                    if (substitutes.length > 0) status += `↪ Sub (x${substitutes.length}) `;
+                    if (isMissing) status += `✗ Missing`;
+                }
+
+                return `• ${p.name} - <i>${status.trim()}</i>`;
+            }).join('<br>');
+
 
             return [
-                {"textParagraph": {"text": text}},
-                {"divider": {}},
+                { "textParagraph": { "text": summaryText } },
+                {
+                    "collapsible": {
+                        "uncollapsedHeader": {
+                          "title": "Line Details",
+                           "hasDivider": true,
+                           "textStyle": "NORMAL"
+                        },
+                        "collapsedHeader": {
+                           "title": "Line Details",
+                           "hasDivider": true,
+                           "textStyle": "NORMAL"
+                        },
+                        "widgets": [
+                            { "textParagraph": { "text": lineItemsText } }
+                        ]
+                    }
+                },
+                { "divider": {} }
             ];
         });
 
@@ -1352,6 +1388,7 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 
 
