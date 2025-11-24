@@ -131,6 +131,8 @@ export default function PickingListClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [isScannerActive, setIsScannerActive] = useState(false);
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
+  const [isCompletionAlertOpen, setIsCompletionAlertOpen] = useState(false);
+
 
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -208,20 +210,6 @@ export default function PickingListClient() {
         ...order,
         products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
     }));
-    
-    const parseSlot = (slot: string): number => {
-        if (slot === 'N/A') return Infinity;
-        const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
-        if (!parts) return Infinity;
-        const [, day, month, year, hour, minute] = parts;
-        return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
-    };
-
-    enrichedOrders.sort((a, b) => {
-        const timeA = parseSlot(a.collectionSlot);
-        const timeB = parseSlot(b.collectionSlot);
-        return timeA - timeB;
-    });
 
     const groups: GroupedOrders = {};
     enrichedOrders.forEach(order => {
@@ -386,7 +374,7 @@ export default function PickingListClient() {
      updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
   }
   
-  const handleMarkOrderComplete = () => {
+  const finishOrderCompletion = () => {
     if (!activeOrder) return;
     
     const updatedOrder = { ...activeOrder, isPicked: true };
@@ -396,7 +384,20 @@ export default function PickingListClient() {
     setIsScannerActive(false);
     playSuccess();
     toast({ title: 'Order Complete!', description: `Order for ${activeOrder.customerName} has been marked as picked.` });
+  };
+  
+  const handleMarkOrderComplete = () => {
+    if (!activeOrder) return;
+
+    const unpickedItems = activeOrder.products.filter(p => p.picked < p.quantity).length;
+    
+    if (unpickedItems > 0) {
+      setIsCompletionAlertOpen(true);
+    } else {
+      finishOrderCompletion();
+    }
   }
+
 
   const getSortedDateKeys = () => {
     const parseDate = (dateStr: string): number => {
@@ -463,6 +464,8 @@ export default function PickingListClient() {
 
     return result;
 }, [activeOrder, sortConfig]);
+
+  const unpickedCount = activeOrder?.products.filter(p => p.picked < p.quantity).length || 0;
 
 
   if (activeOrder) {
@@ -549,10 +552,25 @@ export default function PickingListClient() {
                     )
                 })}
             </div>
-
-            <Button className="w-full mt-8" size="lg" onClick={handleMarkOrderComplete}>
-                <CheckCheck className="mr-2" /> Mark Order as Complete
-            </Button>
+            <AlertDialog open={isCompletionAlertOpen} onOpenChange={setIsCompletionAlertOpen}>
+                <AlertDialogTrigger asChild>
+                    <Button className="w-full mt-8" size="lg" onClick={handleMarkOrderComplete}>
+                        <CheckCheck className="mr-2" /> Mark Order as Complete
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Complete Order with Missing Items?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            There {unpickedCount === 1 ? 'is 1 item' : `are ${unpickedCount} items`} not fully picked. Completing the order will mark them as unavailable. Are you sure you want to proceed?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Go Back</AlertDialogCancel>
+                        <AlertDialogAction onClick={finishOrderCompletion}>Complete Order</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </main>
     );
   }
@@ -618,11 +636,11 @@ export default function PickingListClient() {
                                 {dateKey}
                             </h2>
                             {getSortedTimeKeys(dateKey).map(timeKey => (
-                                <div key={timeKey} className="ml-4">
+                                <div key={timeKey} className="ml-0 md:ml-4">
                                     <h3 className="font-semibold text-lg mb-2 border-b pb-1">
                                         Slot: {timeKey}
                                     </h3>
-                                    <div className="space-y-4 pl-4">
+                                    <div className="space-y-4 md:pl-4">
                                         {groupedOrders[dateKey][timeKey].map(order => (
                                             <div
                                                 key={order.id} 
@@ -637,7 +655,7 @@ export default function PickingListClient() {
                                                         <User className="h-4 w-4" />
                                                         {order.customerName}
                                                     </p>
-                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                                                       <Hash className="h-4 w-4" />
                                                       {order.id}
                                                     </p>
