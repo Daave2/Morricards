@@ -487,7 +487,7 @@ export default function AmazonClient() {
 
   const getMap = () => {
     if (!itemRefs.current) {
-        itemRefs.current = new Map();
+        itemRefs.current = new window.Map();
     }
     return itemRefs.current;
   };
@@ -746,7 +746,7 @@ export default function AmazonClient() {
                       for analysis.
                     </CardDescription>
                   </div>
-                  <div className="w-36 flex-shrink-0">
+                  <div className="w-24 flex-shrink-0">
                     <TOTPGenerator />
                   </div>
                 </div>
