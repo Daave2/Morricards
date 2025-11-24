@@ -69,10 +69,10 @@ const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
 
 const parseOrderText = (text: string): Order[] => {
     const orders: Order[] = [];
-    const orderSections = text.split(/Order reference: /).filter(s => s.trim() !== '' && !s.includes('COLLECTION POINT OPERATIONS'));
+    const orderSections = text.split('COLLECTION POINT OPERATIONS').filter(s => s.trim() !== '');
 
     orderSections.forEach((section, i) => {
-        const orderRefMatch = section.match(/^(\d+)/);
+        const orderRefMatch = section.match(/Order reference: (\d+)/);
         const customerNameMatch = section.match(/Order for (.*?)\n/);
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
         const phoneMatch = section.match(/Phone number: ([+0-9\s]+)/);
@@ -205,11 +205,11 @@ export default function PickingListClient() {
     
     // Sort by collection slot
     enrichedOrders.sort((a, b) => {
-        const parseSlot = (slot: string) => {
+        const parseSlot = (slot: string): number => {
             if (slot === 'N/A') return Infinity;
+            // Matches DD-MM-YYYY HH:MM
             const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
             if (!parts) return Infinity;
-            // Correctly parse DD-MM-YYYY format
             const [, day, month, year, hour, minute] = parts;
             return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
         };
