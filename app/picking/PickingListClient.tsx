@@ -759,61 +759,86 @@ export default function PickingListClient() {
     }
 
     function escapeHtml(s: string | number | undefined) {
-      if (s === undefined) return '';
-      return String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
+        if (s === undefined) return '';
+        return String(s)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;");
     }
     
-    let tableHtml = `<table border="1" cellspacing="0" cellpadding="8" style="border-collapse:collapse;width:100%;font:12px sans-serif;">
-        <thead style="background:#f2f2f2;font-weight:bold;text-align:left;">
-          <tr>
-            <th>Customer</th><th>Slot</th><th>Items</th><th>Picked</th><th>Subbed</th><th>Missing</th>
-          </tr>
-        </thead>
-        <tbody>`;
+    let fullHtml = `<html><head><style>
+        body { font-family: sans-serif; font-size: 12px; }
+        h1, h2 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .status-picked { color: green; font-weight: bold; }
+        .status-subbed { color: blue; font-weight: bold; }
+        .status-missing { color: red; font-weight: bold; }
+    </style></head><body><h1>Picking Summary</h1>`;
 
-    pickedOrders.forEach((order, i) => {
-        const pickedCount = order.products.filter(p => p.pickedItems.filter(i => !i.isSubstitute).length >= p.quantity).length;
-        const subbedCount = order.products.filter(p => p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')).length;
-        const missingCount = order.products.filter(p => p.pickedItems.some(i => i.sku === 'MISSING')).length;
-        
-        tableHtml += `<tr${i % 2 ? "" : ' bgcolor="#f9f9f9"'}>
-            <td>${escapeHtml(order.customerName)}</td>
-            <td>${escapeHtml(order.collectionSlot)}</td>
-            <td>${order.products.length}</td>
-            <td>${pickedCount}</td>
-            <td>${subbedCount}</td>
-            <td>${missingCount}</td>
-        </tr>`;
+    pickedOrders.forEach(order => {
+        fullHtml += `
+            <h2>Order for ${escapeHtml(order.customerName)}</h2>
+            <p><strong>Slot:</strong> ${escapeHtml(order.collectionSlot)} | <strong>ID:</strong> ${escapeHtml(order.id)}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>SKU</th>
+                        <th>Name</th>
+                        <th>Qty</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        order.products.forEach(p => {
+            const pickedOriginals = p.pickedItems.filter(item => !item.isSubstitute);
+            const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
+            const isMissing = p.pickedItems.some(item => item.sku === 'MISSING');
+
+            let statusHtml = '';
+            let detailsHtml = '';
+
+            if (isMissing) {
+                statusHtml = `<span class="status-missing">Missing</span>`;
+            } else if (substitutes.length > 0) {
+                statusHtml = `<span class="status-subbed">Substituted</span>`;
+                detailsHtml = substitutes.map(s => `Sub: ${escapeHtml(s.details?.name)} (SKU: ${s.sku})`).join('<br>');
+            } else {
+                statusHtml = `<span class="status-picked">Picked</span>`;
+            }
+
+            const imageUrl = p.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png';
+
+            fullHtml += `
+                <tr>
+                    <td><img src="${imageUrl}" width="60" height="60" style="object-fit:cover;border-radius:4px;"></td>
+                    <td>${escapeHtml(p.sku)}</td>
+                    <td>${escapeHtml(p.name)}</td>
+                    <td>${p.quantity}</td>
+                    <td>${statusHtml}</td>
+                    <td>${detailsHtml}</td>
+                </tr>
+            `;
+        });
+        fullHtml += `</tbody></table>`;
     });
 
-    tableHtml += `</tbody></table>`;
+    fullHtml += `</body></html>`;
     
     try {
-        const tmp = document.createElement("div");
-        tmp.style.position = "fixed";
-        tmp.style.left = "-9999px";
-        tmp.innerHTML = tableHtml;
-        document.body.appendChild(tmp);
-        
-        const range = document.createRange();
-        range.selectNodeContents(tmp);
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(range);
-        
-        document.execCommand("copy");
-        
-        sel?.removeAllRanges();
-        document.body.removeChild(tmp);
-
+        const blob = new Blob([fullHtml], { type: 'text/html' });
+        const data = [new ClipboardItem({ 'text/html': blob })];
+        await navigator.clipboard.write(data);
         toast({ title: "Copied for Email", description: `Summary of ${pickedOrders.length} orders copied to clipboard.` });
     } catch (copyError) {
         console.error("HTML copy failed:", copyError);
-        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard. Your browser may not support rich text copying.' });
     }
   };
 
@@ -1380,3 +1405,4 @@ export default function PickingListClient() {
     </>
   );
 }
+
