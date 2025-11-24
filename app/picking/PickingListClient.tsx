@@ -183,7 +183,7 @@ export default function PickingListClient() {
         toast({ variant: 'destructive', title: 'Product Fetch Error', description: error });
     }
 
-    const productMap = new Map<string, Product>();
+    const productMap = new window.Map<string, Product>();
     if (productDetails) {
         productDetails.forEach(p => productMap.set(p.sku, p));
     }
