@@ -209,12 +209,10 @@ export default function PickingListClient() {
     
     const parseSlot = (slot: string): number => {
         if (slot === 'N/A') return Infinity;
-        // Matches DD-MM-YYYY HH:MM
         const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
         if (!parts) return Infinity;
         const [, day, month, year, hour, minute] = parts;
-        // Month is 0-indexed in JS Date, so subtract 1
-        return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
+        return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
     };
 
     enrichedOrders.sort((a, b) => {
@@ -253,7 +251,6 @@ export default function PickingListClient() {
       }
       reader.readAsText(file);
     }
-    // Reset the file input so the same file can be re-uploaded
     if(fileInputRef.current) {
         fileInputRef.current.value = '';
     }
@@ -286,7 +283,7 @@ export default function PickingListClient() {
          newGroups[slot] = newGroups[slot].map(o => o.id === orderId ? resetOrder : o);
          return newGroups;
      });
-     handleSelectOrder(resetOrder); // Directly enter picking mode for this order
+     handleSelectOrder(resetOrder);
   }
 
   const handleMarkCollected = (orderId: string) => {
@@ -381,7 +378,7 @@ export default function PickingListClient() {
         const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
         if (!parts) return Infinity;
         const [, day, month, year, hour, minute] = parts;
-        return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
+        return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
     };
     return Object.keys(groupedOrders).sort((a, b) => parseSlot(a) - parseSlot(b));
   };
