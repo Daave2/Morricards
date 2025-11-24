@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -37,6 +37,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProductCard from '@/components/product-card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 
 // TYPES
@@ -133,6 +134,7 @@ export default function PickingListClient() {
   const [isScannerActive, setIsScannerActive] = useState(false);
   const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
   const [isCompletionAlertOpen, setIsCompletionAlertOpen] = useState(false);
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
 
 
   const { toast, dismiss } = useToast();
@@ -174,6 +176,23 @@ export default function PickingListClient() {
     resolver: zodResolver(FormSchema),
     defaultValues: { rawOrderText: '' },
   });
+  
+  const parseSlot = (slot: string): [Date, string] => {
+    const defaultDate = new Date(0);
+    const dateMatch = slot.match(/(\d{2})-(\d{2})-(\d{4})/);
+    const timeMatch = slot.match(/(\d{2}:\d{2})\s-\s(\d{2}:\d{2})/);
+    
+    if (dateMatch && timeMatch) {
+      const [, day, month, year] = dateMatch;
+      const [startTime] = timeMatch;
+      // Note: month is 0-indexed in JS Dates
+      const date = new Date(`${year}-${month}-${day}T${startTime}`);
+      return [date, `${day}-${month}-${year}`];
+    }
+    
+    return [defaultDate, "Unsorted"];
+  };
+
 
   const handleImportOrders = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
@@ -215,9 +234,8 @@ export default function PickingListClient() {
     const newGroups: GroupedOrders = { ...groupedOrders };
     enrichedOrders.forEach(order => {
         const slot = order.collectionSlot;
-        const slotParts = slot.match(/(\d{2}-\d{2}-\d{4})\s(.*?)$/);
-        const dateKey = slotParts ? slotParts[1] : 'Unsorted';
-        const timeKey = slotParts ? slotParts[2] : slot;
+        const [date, dateKey] = parseSlot(slot);
+        const timeKey = slot.replace(`${dateKey} `, '');
 
         if (!newGroups[dateKey]) {
             newGroups[dateKey] = {};
@@ -283,9 +301,8 @@ export default function PickingListClient() {
      setGroupedOrders(prev => {
          const newGroups = { ...prev };
          const slot = resetOrder.collectionSlot;
-         const slotParts = slot.match(/(\d{2}-\d{2}-\d{4})\s(.*?)$/);
-         const dateKey = slotParts ? slotParts[1] : 'Unsorted';
-         const timeKey = slotParts ? slotParts[2] : slot;
+         const [date, dateKey] = parseSlot(slot);
+         const timeKey = slot.replace(`${dateKey} `, '');
 
          if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
              newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === orderId ? resetOrder : o);
@@ -323,9 +340,8 @@ export default function PickingListClient() {
      setGroupedOrders(prev => {
         const newGroups = { ...prev };
         const slot = updatedOrder.collectionSlot;
-        const slotParts = slot.match(/(\d{2}-\d{2}-\d{4})\s(.*?)$/);
-        const dateKey = slotParts ? slotParts[1] : 'Unsorted';
-        const timeKey = slotParts ? slotParts[2] : slot;
+        const [date, dateKey] = parseSlot(slot);
+        const timeKey = slot.replace(`${dateKey} `, '');
 
         if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
             newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === updatedOrder.id ? updatedOrder : o);
@@ -407,27 +423,9 @@ export default function PickingListClient() {
     const [day, month, year] = dateStr.split('-').map(Number);
     return new Date(year, month - 1, day).getTime();
   };
-
+  
   const getSortedDateKeys = () => {
-    const parseTime = (timeStr: string) => {
-        if (timeStr === 'N/A') return Infinity;
-        const match = timeStr.match(/(\d{2}):(\d{2})/);
-        if (!match) return Infinity;
-        return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-    };
-
-    return Object.keys(groupedOrders).sort((a, b) => {
-        const dateA = parseDateKey(a);
-        const dateB = parseDateKey(b);
-        if (dateA !== dateB) {
-            return dateA - dateB;
-        }
-
-        const timeKeysA = Object.keys(groupedOrders[a]).sort((ta, tb) => parseTime(ta) - parseTime(tb));
-        const timeKeysB = Object.keys(groupedOrders[b]).sort((ta, tb) => parseTime(ta) - parseTime(tb));
-        
-        return parseTime(timeKeysA[0]) - parseTime(timeKeysB[0]);
-    });
+      return Object.keys(groupedOrders).sort((a, b) => parseDateKey(a) - parseDateKey(b));
   };
   
   const getSortedTimeKeys = (dateKey: string) => {
@@ -488,6 +486,10 @@ export default function PickingListClient() {
 }, [activeOrder, sortConfig]);
 
   const unpickedCount = activeOrder?.products.filter(p => p.picked < p.quantity).length || 0;
+  
+  const handleItemToggle = (id: string) => {
+    setOpenItemId(prev => prev === id ? null : id);
+  }
 
 
   if (activeOrder) {
@@ -538,36 +540,51 @@ export default function PickingListClient() {
             <div className="space-y-4">
                 {sortedProducts.map(p => {
                     const isFullyPicked = p.picked >= p.quantity;
-                    if (!p.details) {
+                     if (!p.details) {
                       return (
                          <Card key={p.sku} className="flex items-start gap-4 p-4 transition-opacity bg-muted/50">
                              <p className="text-sm text-muted-foreground">Details for {p.name} (SKU: {p.sku}) could not be loaded.</p>
                          </Card>
                       )
                     }
+                    const isOpen = openItemId === p.sku;
+
                     return (
-                        <div key={p.sku} className={cn("relative transition-opacity", isFullyPicked && 'opacity-50')}>
-                           <div className="absolute top-4 left-4 z-10 flex flex-col items-center gap-2">
-                             <Checkbox
-                                  checked={isFullyPicked}
-                                  className="h-8 w-8"
-                                  onClick={() => handleManualPick(p.sku, isFullyPicked ? -p.quantity : p.quantity)}
-                              />
-                              <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
-                                <span className={cn(isFullyPicked && 'text-primary')}>{p.picked}</span>/{p.quantity}
-                              </div>
-                              <div className='flex flex-col items-center gap-2'>
-                                  <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku, 1)} disabled={isFullyPicked}>+</Button>
-                                  <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku, -1)} disabled={p.picked === 0}>-</Button>
-                              </div>
-                           </div>
-                           <ProductCard
-                             product={p.details}
-                             layout="list"
-                             isPicker={true}
-                             locationId={settings.locationId}
-                           />
-                        </div>
+                        <Collapsible key={p.sku} open={isOpen} onOpenChange={() => handleItemToggle(p.sku)} className={cn("rounded-lg border transition-opacity", isFullyPicked && 'opacity-50')}>
+                           <CollapsibleTrigger className="w-full text-left p-4">
+                                <div className="flex items-center gap-4">
+                                   <div className="flex flex-col items-center gap-2">
+                                     <Checkbox
+                                          checked={isFullyPicked}
+                                          className="h-8 w-8"
+                                          onClick={(e) => { e.stopPropagation(); handleManualPick(p.sku!, isFullyPicked ? -p.quantity : p.quantity); }}
+                                      />
+                                      <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
+                                        <span className={cn(isFullyPicked && 'text-primary')}>{p.picked}</span>/{p.quantity}
+                                      </div>
+                                   </div>
+                                   <Image src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name} width={64} height={64} className="rounded-md border object-cover" />
+                                   <div className="flex-grow min-w-0">
+                                       <p className="font-semibold">{p.name}</p>
+                                       <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
+                                   </div>
+                                   <div className='flex flex-col items-center gap-2'>
+                                      <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); handleManualPick(p.sku!, 1);}} disabled={isFullyPicked}>+</Button>
+                                      <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); handleManualPick(p.sku!, -1);}} disabled={p.picked === 0}>-</Button>
+                                    </div>
+                                </div>
+                           </CollapsibleTrigger>
+                           <CollapsibleContent>
+                               <div className="px-4 pb-4">
+                                   <ProductCard
+                                     product={p.details}
+                                     layout="list"
+                                     isPicker={false} // Let the parent handle pick state
+                                     locationId={settings.locationId}
+                                   />
+                               </div>
+                           </CollapsibleContent>
+                        </Collapsible>
                     )
                 })}
             </div>
