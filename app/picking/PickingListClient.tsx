@@ -12,8 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck } from 'lucide-react';
-import ProductCard from '@/components/product-card';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -37,6 +36,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+
 
 // TYPES
 type Product = FetchMorrisonsDataOutput[0];
@@ -53,6 +55,7 @@ interface Order {
     id: string;
     customerName: string;
     collectionSlot: string;
+    phoneNumber?: string;
     products: OrderProduct[];
     isPicked: boolean;
 }
@@ -72,6 +75,7 @@ const parseOrderText = (text: string): Order[] => {
         const customerNameMatch = section.match(/(.*?)\n/);
         const orderRefMatch = section.match(/Order reference: (\d+)/);
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
+        const phoneMatch = section.match(/Phone number: ([+0-9\s]+)/);
 
         if (!customerNameMatch || !orderRefMatch) return;
 
@@ -96,6 +100,7 @@ const parseOrderText = (text: string): Order[] => {
                 id: orderRefMatch[1],
                 customerName: customerNameMatch[1].trim(),
                 collectionSlot: collectionSlotMatch ? collectionSlotMatch[1].trim() : 'N/A',
+                phoneNumber: phoneMatch ? phoneMatch[1].trim() : undefined,
                 products: Array.from(productMap.entries()).map(([sku, { name, quantity }]) => ({
                     sku,
                     name,
@@ -114,6 +119,7 @@ const parseOrderText = (text: string): Order[] => {
 export default function PickingListClient() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [viewOrder, setViewOrder] = useState<Order | null>(null); // For read-only view
   const [isLoading, setIsLoading] = useState(false);
   const [isScannerActive, setIsScannerActive] = useState(false);
 
@@ -202,6 +208,29 @@ export default function PickingListClient() {
   const handleSelectOrder = (order: Order) => {
     setActiveOrder(order);
     setIsScannerActive(true);
+  }
+  
+  const handleRepickOrder = (orderId: string) => {
+     const orderToRepick = orders.find(o => o.id === orderId);
+     if (!orderToRepick) return;
+
+     const resetOrder: Order = {
+        ...orderToRepick,
+        isPicked: false,
+        products: orderToRepick.products.map(p => ({ ...p, picked: 0 })),
+     };
+     
+     setOrders(prev => prev.map(o => o.id === orderId ? resetOrder : o));
+     handleSelectOrder(resetOrder); // Directly enter picking mode for this order
+  }
+
+  const handleMarkCollected = (orderId: string) => {
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+    toast({ title: 'Order Collected', description: 'The order has been removed from the list.' });
+  }
+
+  const handleViewOrder = (order: Order) => {
+    setViewOrder(order);
   }
 
   const handleScanToPick = useCallback((text: string) => {
@@ -356,6 +385,24 @@ export default function PickingListClient() {
   }
 
   return (
+    <>
+    <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Items for {viewOrder?.customerName}</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto pr-4">
+                 <ul className="space-y-2 list-disc pl-5">
+                    {viewOrder?.products.map(p => (
+                        <li key={p.sku}>
+                            <span className='font-semibold'>{p.name}</span> (x{p.quantity})
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </DialogContent>
+    </Dialog>
+
     <main className="container mx-auto px-4 py-8 md:py-12">
         <InstallPrompt />
         <Card className="max-w-4xl mx-auto mb-8">
@@ -386,11 +433,11 @@ export default function PickingListClient() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {orders.map(order => (
-                        <Card 
+                        <div
                             key={order.id} 
                             className={cn(
-                                "p-4 flex justify-between items-center cursor-pointer hover:bg-accent",
-                                order.isPicked && 'bg-green-50 dark:bg-green-900/20 opacity-70'
+                                "p-4 flex justify-between items-center rounded-lg border",
+                                order.isPicked ? 'bg-green-50 dark:bg-green-900/20' : 'cursor-pointer hover:bg-accent'
                             )}
                             onClick={() => !order.isPicked && handleSelectOrder(order)}
                         >
@@ -404,12 +451,39 @@ export default function PickingListClient() {
                                     {order.products.length} unique items
                                 </p>
                             </div>
-                             {order.isPicked && <CheckCheck className="h-6 w-6 text-primary" />}
-                        </Card>
+                             {order.isPicked && (
+                                 <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                            <MoreVertical />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        {order.phoneNumber && (
+                                            <DropdownMenuItem asChild>
+                                                <a href={`tel:${order.phoneNumber}`}>
+                                                    <Phone className="mr-2 h-4 w-4" /> Call Customer
+                                                </a>
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                                            <Eye className="mr-2 h-4 w-4" /> View Items
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
+                                            <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
+                                            <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                 </DropdownMenu>
+                             )}
+                        </div>
                     ))}
                 </CardContent>
             </Card>
         )}
     </main>
+    </>
   );
 }
