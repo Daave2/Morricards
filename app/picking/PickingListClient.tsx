@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -43,11 +43,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 // TYPES
 type Product = FetchMorrisonsDataOutput[0];
 
+interface PickedItem {
+    sku: string;
+    isSubstitute: boolean;
+}
+
 interface OrderProduct {
     sku: string;
     name: string;
     quantity: number;
-    picked: number;
+    pickedItems: PickedItem[];
     details?: Product;
 }
 
@@ -115,7 +120,7 @@ const parseOrderText = (text: string): Order[] => {
                     sku,
                     name,
                     quantity,
-                    picked: 0,
+                    pickedItems: [],
                 })),
                 isPicked: false,
             });
@@ -179,17 +184,22 @@ export default function PickingListClient() {
   
   const parseSlot = (slot: string): [Date, string, string] => {
       const defaultDate = new Date(0);
-      const dateMatch = slot.match(/(\d{2}-\d{2}-\d{4})/);
-      const timeMatch = slot.match(/(\d{2}:\d{2}\s-\s\d{2}:\d{2})/);
+      try {
+        const dateMatch = slot.match(/(\d{2}-\d{2}-\d{4})/);
+        const timeMatch = slot.match(/(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})/);
 
-      if (dateMatch && timeMatch) {
-          const [, day, month, year] = dateMatch[0].split('-');
-          const [startTime] = timeMatch[0].split(' - ');
-          // Note: month is 0-indexed in JS Dates
-          const date = new Date(`${year}-${month}-${day}T${startTime}`);
-          return [date, dateMatch[0], timeMatch[0]];
+        if (dateMatch && timeMatch) {
+            const [day, month, year] = dateMatch[0].split('-').map(Number);
+            const [startTime] = timeMatch[0].split(/\s*-\s*/);
+            // Note: month is 0-indexed in JS Dates
+            const date = new Date(year, month - 1, day, parseInt(startTime.split(':')[0]), parseInt(startTime.split(':')[1]));
+             if (!isNaN(date.getTime())) {
+              return [date, dateMatch[0], timeMatch[0]];
+            }
+        }
+      } catch (e) {
+        // Fallthrough on parsing error
       }
-      
       return [defaultDate, "Unsorted", "N/A"];
   };
 
@@ -294,7 +304,7 @@ export default function PickingListClient() {
      const resetOrder: Order = {
         ...orderToRepick,
         isPicked: false,
-        products: orderToRepick.products.map(p => ({ ...p, picked: 0 })),
+        products: orderToRepick.products.map(p => ({ ...p, pickedItems: [] })),
      };
      
      setGroupedOrders(prev => {
@@ -359,7 +369,7 @@ export default function PickingListClient() {
     
     const product = activeOrder.products[productIndex];
 
-    if (product.picked >= product.quantity) {
+    if (product.pickedItems.length >= product.quantity) {
         playInfo();
         toast({ title: 'Already Picked', description: `All units of ${product.name} have been picked.`, icon: <Info /> });
         return;
@@ -370,21 +380,44 @@ export default function PickingListClient() {
     const newProducts = [...activeOrder.products];
     newProducts[productIndex] = {
         ...newProducts[productIndex],
-        picked: newProducts[productIndex].picked + 1
+        pickedItems: [...newProducts[productIndex].pickedItems, { sku, isSubstitute: false }]
     };
     
     updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
 
-    toast({ title: 'Item Picked', description: `${product.name} (${product.picked + 1}/${product.quantity})`, icon: <Check /> });
+    toast({ title: 'Item Picked', description: `${product.name} (${product.pickedItems.length + 1}/${product.quantity})`, icon: <Check /> });
 
   }, [activeOrder, playError, playInfo, playSuccess, toast]);
 
   const handleManualPick = (sku: string, amount: number) => {
      if (!activeOrder) return;
      
-     const newProducts = activeOrder.products.map(p => 
-        p.sku === sku ? {...p, picked: Math.max(0, Math.min(p.quantity, p.picked + amount))} : p
-     );
+     const productIndex = activeOrder.products.findIndex(p => p.sku === sku);
+     if (productIndex === -1) return;
+
+     const product = activeOrder.products[productIndex];
+     const currentPickedCount = product.pickedItems.filter(p => !p.isSubstitute).length;
+     const newPickedCount = Math.max(0, Math.min(product.quantity, currentPickedCount + amount));
+
+     let newPickedItems = [...product.pickedItems];
+
+     if (amount > 0) { // Adding items
+        for(let i = 0; i < amount; i++) {
+            if (newPickedItems.length < product.quantity) {
+                 newPickedItems.push({ sku: product.sku, isSubstitute: false });
+            }
+        }
+     } else { // Removing items
+        for(let i = 0; i < Math.abs(amount); i++) {
+            const itemIndexToRemove = newPickedItems.findIndex(p => p.sku === product.sku && !p.isSubstitute);
+            if (itemIndexToRemove > -1) {
+                newPickedItems.splice(itemIndexToRemove, 1);
+            }
+        }
+     }
+     
+     const newProducts = [...activeOrder.products];
+     newProducts[productIndex] = { ...product, pickedItems: newPickedItems };
 
      updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
   }
@@ -404,7 +437,7 @@ export default function PickingListClient() {
   const handleMarkOrderComplete = () => {
     if (!activeOrder) return;
 
-    const unpickedItems = activeOrder.products.filter(p => p.picked < p.quantity).length;
+    const unpickedItems = activeOrder.products.filter(p => p.pickedItems.length < p.quantity).length;
     
     if (unpickedItems > 0) {
       setIsCompletionAlertOpen(true);
@@ -413,25 +446,13 @@ export default function PickingListClient() {
     }
   }
 
-  const parseDateKey = (dateStr: string): number => {
-    if (dateStr === 'Unsorted') return Infinity;
-    const [day, month, year] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day).getTime();
-  };
-  
   const getSortedDateKeys = () => {
-      return Object.keys(groupedOrders).sort((a, b) => parseDateKey(a) - parseDateKey(b));
+      return Object.keys(groupedOrders).sort((a, b) => parseSlot(a)[0].getTime() - parseSlot(b)[0].getTime());
   };
   
   const getSortedTimeKeys = (dateKey: string) => {
-      const parseTime = (timeStr: string) => {
-          if (timeStr === 'N/A') return Infinity;
-          const match = timeStr.match(/(\d{2}):(\d{2})/);
-          if (!match) return Infinity;
-          return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-      };
       if (groupedOrders[dateKey]) {
-        return Object.keys(groupedOrders[dateKey]).sort((a, b) => parseTime(a) - parseTime(b));
+        return Object.keys(groupedOrders[dateKey]).sort((a, b) => parseSlot(a)[0].getTime() - parseSlot(b)[0].getTime());
       }
       return [];
   }
@@ -443,8 +464,11 @@ export default function PickingListClient() {
     const [key, direction] = sortConfig.split('-');
 
     result.sort((a, b) => {
-        if ((a.picked >= a.quantity) && (b.picked < b.quantity)) return 1;
-        if ((a.picked < a.quantity) && (b.picked >= b.quantity)) return -1;
+        const aIsPicked = a.pickedItems.length >= a.quantity;
+        const bIsPicked = b.pickedItems.length >= b.quantity;
+
+        if (aIsPicked && !bIsPicked) return 1;
+        if (!aIsPicked && bIsPicked) return -1;
         
         let valA: any;
         let valB: any;
@@ -480,7 +504,7 @@ export default function PickingListClient() {
     return result;
 }, [activeOrder, sortConfig]);
 
-  const unpickedCount = activeOrder?.products.filter(p => p.picked < p.quantity).length || 0;
+  const unpickedCount = activeOrder?.products.filter(p => p.pickedItems.length < p.quantity).length || 0;
   
   const handleItemToggle = (id: string) => {
     setOpenItemId(prev => prev === id ? null : id);
@@ -534,7 +558,7 @@ export default function PickingListClient() {
             
             <div className="space-y-4">
                 {sortedProducts.map(p => {
-                    const isFullyPicked = p.picked >= p.quantity;
+                    const isFullyPicked = p.pickedItems.length >= p.quantity;
                      if (!p.details) {
                       return (
                          <Card key={p.sku} className="flex items-start gap-4 p-4 transition-opacity bg-muted/50">
@@ -554,7 +578,7 @@ export default function PickingListClient() {
                                         onClick={() => handleManualPick(p.sku!, isFullyPicked ? -p.quantity : p.quantity)}
                                     />
                                     <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
-                                        <span className={cn(isFullyPicked && 'text-primary')}>{p.picked}</span>/{p.quantity}
+                                        <span className={cn(isFullyPicked && 'text-primary')}>{p.pickedItems.length}</span>/{p.quantity}
                                     </div>
                                 </div>
                                 <CollapsibleTrigger asChild>
@@ -568,11 +592,17 @@ export default function PickingListClient() {
                                 </CollapsibleTrigger>
                                 <div className='flex flex-col items-center gap-2' onClick={(e) => e.stopPropagation()}>
                                     <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, 1)} disabled={isFullyPicked}>+</Button>
-                                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, -1)} disabled={p.picked === 0}>-</Button>
+                                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku!, -1)} disabled={p.pickedItems.length === 0}>-</Button>
                                 </div>
                             </div>
                            <CollapsibleContent>
-                               <div className="px-4 pb-4">
+                               <div className="px-4 pb-4 space-y-2">
+                                   {!isFullyPicked && (
+                                       <Button variant="outline" className="w-full">
+                                            <Replace className="mr-2 h-4 w-4" />
+                                            Substitute
+                                       </Button>
+                                   )}
                                    <ProductCard
                                      product={p.details}
                                      layout="list"
@@ -656,7 +686,7 @@ export default function PickingListClient() {
              </CardContent>
         </Card>
         
-        {Object.keys(groupedOrders).length > 0 && (
+        {Object.keys(groupedOrders).length > 0 ? (
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <CardTitle>Imported Orders</CardTitle>
@@ -697,7 +727,7 @@ export default function PickingListClient() {
                                                         {order.products.length} unique items
                                                     </p>
                                                 </div>
-                                                {order.isPicked && (
+                                                {order.isPicked ? (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon">
@@ -723,6 +753,10 @@ export default function PickingListClient() {
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
+                                                ) : (
+                                                    <div className="text-sm text-primary font-semibold">
+                                                        {order.products.filter(p => p.pickedItems.length >= p.quantity).length} / {order.products.length} Picked
+                                                    </div>
                                                 )}
                                             </div>
                                         ))}
@@ -731,6 +765,13 @@ export default function PickingListClient() {
                             ))}
                         </div>
                     ))}
+                </CardContent>
+            </Card>
+        ) : !isLoading && (
+             <Card className="max-w-4xl mx-auto">
+                <CardContent className="p-12 text-center">
+                    <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">Import orders from the collection point system to begin.</p>
                 </CardContent>
             </Card>
         )}
