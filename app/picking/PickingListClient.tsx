@@ -59,7 +59,9 @@ interface Order {
     isPicked: boolean;
 }
 
-type GroupedOrders = Record<string, Order[]>;
+// State is now nested: { "25-11-2025": { "16:00 - 17:00": [Order, ...] } }
+type GroupedOrders = Record<string, Record<string, Order[]>>;
+
 
 const FormSchema = z.object({
   rawOrderText: z.string().min(10, 'Please paste in the order text.'),
@@ -85,7 +87,7 @@ const parseOrderText = (text: string): Order[] => {
         
         const productsSection = orderContentsSplit[1];
         
-        const productLines = productsSection.split('\n').filter(l => /^\d{7,}\s/.test(l.trim()));
+        const productLines = productsSection.split('\n').filter(l => /^\d{7,}/.test(l.trim()));
         
         const productMap = new window.Map<string, { name: string; quantity: number }>();
 
@@ -224,12 +226,18 @@ export default function PickingListClient() {
     const groups: GroupedOrders = {};
     enrichedOrders.forEach(order => {
         const slot = order.collectionSlot;
-        if (!groups[slot]) {
-            groups[slot] = [];
-        }
-        groups[slot].push(order);
-    });
+        const slotParts = slot.match(/(\d{2}-\d{2}-\d{4})\s(.*?)$/);
+        const dateKey = slotParts ? slotParts[1] : 'Unsorted';
+        const timeKey = slotParts ? slotParts[2] : slot;
 
+        if (!groups[dateKey]) {
+            groups[dateKey] = {};
+        }
+        if (!groups[dateKey][timeKey]) {
+            groups[dateKey][timeKey] = [];
+        }
+        groups[dateKey][timeKey].push(order);
+    });
 
     setGroupedOrders(groups);
     form.reset();
@@ -264,9 +272,12 @@ export default function PickingListClient() {
   const handleRepickOrder = (orderId: string) => {
      let orderToRepick: Order | undefined;
      
-     for (const slot in groupedOrders) {
-         orderToRepick = groupedOrders[slot].find(o => o.id === orderId);
-         if(orderToRepick) break;
+     for (const date in groupedOrders) {
+        for (const time in groupedOrders[date]) {
+            orderToRepick = groupedOrders[date][time].find(o => o.id === orderId);
+            if(orderToRepick) break;
+        }
+        if(orderToRepick) break;
      }
      
      if (!orderToRepick) return;
@@ -280,7 +291,13 @@ export default function PickingListClient() {
      setGroupedOrders(prev => {
          const newGroups = { ...prev };
          const slot = resetOrder.collectionSlot;
-         newGroups[slot] = newGroups[slot].map(o => o.id === orderId ? resetOrder : o);
+         const slotParts = slot.match(/(\d{2}-\d{2}-\d{4})\s(.*?)$/);
+         const dateKey = slotParts ? slotParts[1] : 'Unsorted';
+         const timeKey = slotParts ? slotParts[2] : slot;
+
+         if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
+             newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === orderId ? resetOrder : o);
+         }
          return newGroups;
      });
      handleSelectOrder(resetOrder);
@@ -289,10 +306,15 @@ export default function PickingListClient() {
   const handleMarkCollected = (orderId: string) => {
      setGroupedOrders(prev => {
         const newGroups = { ...prev };
-        for (const slot in newGroups) {
-            newGroups[slot] = newGroups[slot].filter(o => o.id !== orderId);
-            if (newGroups[slot].length === 0) {
-                delete newGroups[slot];
+        for (const dateKey in newGroups) {
+            for (const timeKey in newGroups[dateKey]) {
+                newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].filter(o => o.id !== orderId);
+                if (newGroups[dateKey][timeKey].length === 0) {
+                    delete newGroups[dateKey][timeKey];
+                }
+            }
+            if (Object.keys(newGroups[dateKey]).length === 0) {
+                delete newGroups[dateKey];
             }
         }
         return newGroups;
@@ -309,8 +331,12 @@ export default function PickingListClient() {
      setGroupedOrders(prev => {
         const newGroups = { ...prev };
         const slot = updatedOrder.collectionSlot;
-        if (newGroups[slot]) {
-            newGroups[slot] = newGroups[slot].map(o => o.id === updatedOrder.id ? updatedOrder : o);
+        const slotParts = slot.match(/(\d{2}-\d{2}-\d{4})\s(.*?)$/);
+        const dateKey = slotParts ? slotParts[1] : 'Unsorted';
+        const timeKey = slotParts ? slotParts[2] : slot;
+
+        if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
+            newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === updatedOrder.id ? updatedOrder : o);
         }
         return newGroups;
      });
@@ -372,16 +398,27 @@ export default function PickingListClient() {
     toast({ title: 'Order Complete!', description: `Order for ${activeOrder.customerName} has been marked as picked.` });
   }
 
-  const getSortedSlotKeys = () => {
-    const parseSlot = (slot: string): number => {
-        if (slot === 'N/A') return Infinity;
-        const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
-        if (!parts) return Infinity;
-        const [, day, month, year, hour, minute] = parts;
-        return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
+  const getSortedDateKeys = () => {
+    const parseDate = (dateStr: string): number => {
+        if (dateStr === 'Unsorted') return Infinity;
+        const [day, month, year] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day).getTime();
     };
-    return Object.keys(groupedOrders).sort((a, b) => parseSlot(a) - parseSlot(b));
+    return Object.keys(groupedOrders).sort((a, b) => parseDate(a) - parseDate(b));
   };
+  
+  const getSortedTimeKeys = (dateKey: string) => {
+      const parseTime = (timeStr: string) => {
+          if (timeStr === 'N/A') return Infinity;
+          const match = timeStr.match(/(\d{2}):(\d{2})/);
+          if (!match) return Infinity;
+          return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+      };
+      if (groupedOrders[dateKey]) {
+        return Object.keys(groupedOrders[dateKey]).sort((a, b) => parseTime(a) - parseTime(b));
+      }
+      return [];
+  }
 
 
   if (activeOrder) {
@@ -519,65 +556,72 @@ export default function PickingListClient() {
                     <CardDescription>Select an order to begin picking.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {getSortedSlotKeys().map((slot) => (
-                        <div key={slot}>
-                            <h3 className="font-bold text-lg mb-2 border-b pb-1">
-                                Slot: {slot}
-                            </h3>
-                            <div className="space-y-4">
-                                {groupedOrders[slot].map(order => (
-                                    <div
-                                        key={order.id} 
-                                        className={cn(
-                                            "p-4 flex justify-between items-center rounded-lg border",
-                                            order.isPicked ? 'bg-green-50 dark:bg-green-900/20' : 'cursor-pointer hover:bg-accent'
-                                        )}
-                                        onClick={() => !order.isPicked && handleSelectOrder(order)}
-                                    >
-                                        <div className="space-y-1">
-                                            <p className="font-semibold flex items-center gap-2">
-                                                <User className="h-4 w-4" />
-                                                {order.customerName}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                <CalendarClock className="h-4 w-4" />
-                                                {order.collectionSlot}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                <ListOrdered className="h-4 w-4" />
-                                                {order.products.length} unique items
-                                            </p>
-                                        </div>
-                                        {order.isPicked && (
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreVertical />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    {order.phoneNumber && (
-                                                        <DropdownMenuItem asChild>
-                                                            <a href={`tel:${order.phoneNumber}`}>
-                                                                <Phone className="mr-2 h-4 w-4" /> Call Customer
-                                                            </a>
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuItem onClick={() => handleViewOrder(order)}>
-                                                        <Eye className="mr-2 h-4 w-4" /> View Items
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
-                                                        <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
-                                                        <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        )}
+                    {getSortedDateKeys().map(dateKey => (
+                        <div key={dateKey}>
+                             <h2 className="font-bold text-xl mb-4 border-b-2 border-primary pb-2">
+                                {dateKey}
+                            </h2>
+                            {getSortedTimeKeys(dateKey).map(timeKey => (
+                                <div key={timeKey} className="ml-4">
+                                    <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                                        Slot: {timeKey}
+                                    </h3>
+                                    <div className="space-y-4 pl-4">
+                                        {groupedOrders[dateKey][timeKey].map(order => (
+                                            <div
+                                                key={order.id} 
+                                                className={cn(
+                                                    "p-4 flex justify-between items-center rounded-lg border",
+                                                    order.isPicked ? 'bg-green-50 dark:bg-green-900/20' : 'cursor-pointer hover:bg-accent'
+                                                )}
+                                                onClick={() => !order.isPicked && handleSelectOrder(order)}
+                                            >
+                                                <div className="space-y-1">
+                                                    <p className="font-semibold flex items-center gap-2">
+                                                        <User className="h-4 w-4" />
+                                                        {order.customerName}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                        <CalendarClock className="h-4 w-4" />
+                                                        {order.collectionSlot}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                        <ListOrdered className="h-4 w-4" />
+                                                        {order.products.length} unique items
+                                                    </p>
+                                                </div>
+                                                {order.isPicked && (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreVertical />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent>
+                                                            {order.phoneNumber && (
+                                                                <DropdownMenuItem asChild>
+                                                                    <a href={`tel:${order.phoneNumber}`}>
+                                                                        <Phone className="mr-2 h-4 w-4" /> Call Customer
+                                                                    </a>
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                                                                <Eye className="mr-2 h-4 w-4" /> View Items
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
+                                                                <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
+                                                                <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
                     ))}
                 </CardContent>
