@@ -69,24 +69,23 @@ const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
 
 const parseOrderText = (text: string): Order[] => {
     const orders: Order[] = [];
-    // Split by a line that contains "Order for" to correctly separate orders.
     const orderSections = text.split(/Order for /).filter(Boolean);
 
     orderSections.forEach((section, i) => {
         const customerNameMatch = section.match(/(.*?)\n/);
+        // Find the order reference on the line above "Order for"
         const orderRefMatch = section.match(/Order reference: (\d+)/);
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
         const phoneMatch = section.match(/Phone number: ([+0-9\s]+)/);
 
         if (!customerNameMatch) return;
-
-        const contentsSplit = section.split('Order contents');
-        if (contentsSplit.length < 2) return;
         
-        // Use the order ref as the ID, or a fallback if not found.
-        const orderId = orderRefMatch ? orderRefMatch[1] : `imported-order-${Date.now()}-${i}`;
+        const orderContents = section.split('Order contents')[1];
+        if (!orderContents) return;
 
-        const productLines = contentsSplit[1].split('\n').filter(l => /^\d{7,}/.test(l.trim()));
+        const orderId = orderRefMatch ? orderRefMatch[1] : `imported-order-${Date.now()}-${i}`;
+        
+        const productLines = orderContents.split('\n').filter(l => /^\d{7,}/.test(l.trim()));
         const productMap = new window.Map<string, { name: string; quantity: number }>();
 
         productLines.forEach(line => {
@@ -207,6 +206,22 @@ export default function PickingListClient() {
         products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
     }));
     
+    // Sort by collection slot
+    enrichedOrders.sort((a, b) => {
+        const parseSlot = (slot: string) => {
+            if (slot === 'N/A') return Infinity;
+            const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
+            if (!parts) return Infinity;
+            const [, day, month, year, hour, minute] = parts;
+            return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
+        };
+
+        const timeA = parseSlot(a.collectionSlot);
+        const timeB = parseSlot(b.collectionSlot);
+
+        return timeA - timeB;
+    });
+
     setOrders(enrichedOrders);
     form.reset();
     setIsLoading(false);
