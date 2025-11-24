@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -60,6 +59,8 @@ interface Order {
     isPicked: boolean;
 }
 
+type GroupedOrders = Record<string, Order[]>;
+
 const FormSchema = z.object({
   rawOrderText: z.string().min(10, 'Please paste in the order text.'),
 });
@@ -69,7 +70,6 @@ const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
 
 const parseOrderText = (text: string): Order[] => {
     const orders: Order[] = [];
-    // Split by a pattern that's likely unique to the start of each order.
     const orderSections = text.split(/(?=COLLECTION POINT OPERATIONS\nBACK\nOrder for)/).filter(s => s.trim() !== '');
 
     orderSections.forEach((section) => {
@@ -121,7 +121,7 @@ const parseOrderText = (text: string): Order[] => {
 
 
 export default function PickingListClient() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [groupedOrders, setGroupedOrders] = useState<GroupedOrders>({});
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null); // For read-only view
   const [isLoading, setIsLoading] = useState(false);
@@ -132,18 +132,18 @@ export default function PickingListClient() {
   const { settings } = useApiSettings();
   const { isOnline } = useNetworkSync();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
-  const ordersRef = useRef(orders);
+  const groupedOrdersRef = useRef(groupedOrders);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    ordersRef.current = orders;
-  }, [orders]);
+    groupedOrdersRef.current = groupedOrders;
+  }, [groupedOrders]);
 
   useEffect(() => {
     try {
       const savedOrders = localStorage.getItem(LOCAL_STORAGE_KEY_ORDERS);
       if (savedOrders) {
-        setOrders(JSON.parse(savedOrders));
+        setGroupedOrders(JSON.parse(savedOrders));
       }
     } catch (error) {
       console.error("Failed to load orders from local storage", error);
@@ -151,8 +151,8 @@ export default function PickingListClient() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY_ORDERS, JSON.stringify(orders));
-  }, [orders]);
+    localStorage.setItem(LOCAL_STORAGE_KEY_ORDERS, JSON.stringify(groupedOrders));
+  }, [groupedOrders]);
 
   useEffect(() => {
     if (isScannerActive) {
@@ -221,7 +221,17 @@ export default function PickingListClient() {
         return timeA - timeB;
     });
 
-    setOrders(enrichedOrders);
+    const groups: GroupedOrders = {};
+    enrichedOrders.forEach(order => {
+        const slot = order.collectionSlot;
+        if (!groups[slot]) {
+            groups[slot] = [];
+        }
+        groups[slot].push(order);
+    });
+
+
+    setGroupedOrders(groups);
     form.reset();
     setIsLoading(false);
     playSuccess();
@@ -253,7 +263,13 @@ export default function PickingListClient() {
   }
   
   const handleRepickOrder = (orderId: string) => {
-     const orderToRepick = orders.find(o => o.id === orderId);
+     let orderToRepick: Order | undefined;
+     
+     for (const slot in groupedOrders) {
+         orderToRepick = groupedOrders[slot].find(o => o.id === orderId);
+         if(orderToRepick) break;
+     }
+     
      if (!orderToRepick) return;
 
      const resetOrder: Order = {
@@ -262,18 +278,44 @@ export default function PickingListClient() {
         products: orderToRepick.products.map(p => ({ ...p, picked: 0 })),
      };
      
-     setOrders(prev => prev.map(o => o.id === orderId ? resetOrder : o));
+     setGroupedOrders(prev => {
+         const newGroups = { ...prev };
+         const slot = resetOrder.collectionSlot;
+         newGroups[slot] = newGroups[slot].map(o => o.id === orderId ? resetOrder : o);
+         return newGroups;
+     });
      handleSelectOrder(resetOrder); // Directly enter picking mode for this order
   }
 
   const handleMarkCollected = (orderId: string) => {
-    setOrders(prev => prev.filter(o => o.id !== orderId));
+     setGroupedOrders(prev => {
+        const newGroups = { ...prev };
+        for (const slot in newGroups) {
+            newGroups[slot] = newGroups[slot].filter(o => o.id !== orderId);
+            if (newGroups[slot].length === 0) {
+                delete newGroups[slot];
+            }
+        }
+        return newGroups;
+    });
     toast({ title: 'Order Collected', description: 'The order has been removed from the list.' });
   }
 
   const handleViewOrder = (order: Order) => {
     setViewOrder(order);
   }
+
+  const updateActiveOrderAndGroups = (updatedOrder: Order) => {
+     setActiveOrder(updatedOrder);
+     setGroupedOrders(prev => {
+        const newGroups = { ...prev };
+        const slot = updatedOrder.collectionSlot;
+        if (newGroups[slot]) {
+            newGroups[slot] = newGroups[slot].map(o => o.id === updatedOrder.id ? updatedOrder : o);
+        }
+        return newGroups;
+     });
+  };
 
   const handleScanToPick = useCallback((text: string) => {
     const sku = text.split(',')[0].trim();
@@ -297,49 +339,34 @@ export default function PickingListClient() {
     
     playSuccess();
     
-    setOrders(prevOrders => prevOrders.map(o => {
-        if (o.id !== activeOrder.id) return o;
-        const newProducts = [...o.products];
-        newProducts[productIndex] = {
-            ...newProducts[productIndex],
-            picked: newProducts[productIndex].picked + 1
-        };
-        return { ...o, products: newProducts };
-    }));
+    const newProducts = [...activeOrder.products];
+    newProducts[productIndex] = {
+        ...newProducts[productIndex],
+        picked: newProducts[productIndex].picked + 1
+    };
     
-    // Update active order state directly as well
-     setActiveOrder(prevActiveOrder => {
-        if (!prevActiveOrder) return null;
-        const newProducts = [...prevActiveOrder.products];
-        newProducts[productIndex] = { ...newProducts[productIndex], picked: newProducts[productIndex].picked + 1 };
-        return { ...prevActiveOrder, products: newProducts };
-    });
+    updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
 
     toast({ title: 'Item Picked', description: `${product.name} (${product.picked + 1}/${product.quantity})`, icon: <Check /> });
 
   }, [activeOrder, playError, playInfo, playSuccess, toast]);
 
   const handleManualPick = (sku: string, amount: number) => {
-     setOrders(prevOrders => prevOrders.map(o => {
-        if (o.id !== activeOrder!.id) return o;
-        return {
-            ...o,
-            products: o.products.map(p => p.sku === sku ? {...p, picked: Math.min(p.quantity, p.picked + amount)} : p)
-        }
-     }));
-     setActiveOrder(prev => {
-        if (!prev) return null;
-        return {
-            ...prev,
-            products: prev.products.map(p => p.sku === sku ? {...p, picked: Math.min(p.quantity, p.picked + amount)} : p)
-        }
-     });
+     if (!activeOrder) return;
+     
+     const newProducts = activeOrder.products.map(p => 
+        p.sku === sku ? {...p, picked: Math.max(0, Math.min(p.quantity, p.picked + amount))} : p
+     );
+
+     updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
   }
   
   const handleMarkOrderComplete = () => {
     if (!activeOrder) return;
     
-    setOrders(prev => prev.map(o => o.id === activeOrder.id ? { ...o, isPicked: true } : o));
+    const updatedOrder = { ...activeOrder, isPicked: true };
+    updateActiveOrderAndGroups(updatedOrder);
+
     setActiveOrder(null);
     setIsScannerActive(false);
     playSuccess();
@@ -474,63 +501,72 @@ export default function PickingListClient() {
              </CardContent>
         </Card>
         
-        {orders.length > 0 && (
+        {Object.keys(groupedOrders).length > 0 && (
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <CardTitle>Imported Orders</CardTitle>
                     <CardDescription>Select an order to begin picking.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    {orders.map(order => (
-                        <div
-                            key={order.id} 
-                            className={cn(
-                                "p-4 flex justify-between items-center rounded-lg border",
-                                order.isPicked ? 'bg-green-50 dark:bg-green-900/20' : 'cursor-pointer hover:bg-accent'
-                            )}
-                            onClick={() => !order.isPicked && handleSelectOrder(order)}
-                        >
-                            <div className="space-y-1">
-                                <p className="font-semibold flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    {order.customerName}
-                                </p>
-                                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                    <CalendarClock className="h-4 w-4" />
-                                    {order.collectionSlot}
-                                </p>
-                                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                    <ListOrdered className="h-4 w-4" />
-                                    {order.products.length} unique items
-                                </p>
-                            </div>
-                             {order.isPicked && (
-                                 <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreVertical />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        {order.phoneNumber && (
-                                            <DropdownMenuItem asChild>
-                                                <a href={`tel:${order.phoneNumber}`}>
-                                                    <Phone className="mr-2 h-4 w-4" /> Call Customer
-                                                </a>
-                                            </DropdownMenuItem>
+                <CardContent className="space-y-6">
+                    {Object.entries(groupedOrders).map(([slot, orders]) => (
+                        <div key={slot}>
+                            <h3 className="font-bold text-lg mb-2 border-b pb-1">
+                                Slot: {slot}
+                            </h3>
+                            <div className="space-y-4">
+                                {orders.map(order => (
+                                    <div
+                                        key={order.id} 
+                                        className={cn(
+                                            "p-4 flex justify-between items-center rounded-lg border",
+                                            order.isPicked ? 'bg-green-50 dark:bg-green-900/20' : 'cursor-pointer hover:bg-accent'
                                         )}
-                                        <DropdownMenuItem onClick={() => handleViewOrder(order)}>
-                                            <Eye className="mr-2 h-4 w-4" /> View Items
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
-                                            <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
-                                            <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                 </DropdownMenu>
-                             )}
+                                        onClick={() => !order.isPicked && handleSelectOrder(order)}
+                                    >
+                                        <div className="space-y-1">
+                                            <p className="font-semibold flex items-center gap-2">
+                                                <User className="h-4 w-4" />
+                                                {order.customerName}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                <CalendarClock className="h-4 w-4" />
+                                                {order.collectionSlot}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                <ListOrdered className="h-4 w-4" />
+                                                {order.products.length} unique items
+                                            </p>
+                                        </div>
+                                        {order.isPicked && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreVertical />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    {order.phoneNumber && (
+                                                        <DropdownMenuItem asChild>
+                                                            <a href={`tel:${order.phoneNumber}`}>
+                                                                <Phone className="mr-2 h-4 w-4" /> Call Customer
+                                                            </a>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                                                        <Eye className="mr-2 h-4 w-4" /> View Items
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
+                                                        <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
+                                                        <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ))}
                 </CardContent>
