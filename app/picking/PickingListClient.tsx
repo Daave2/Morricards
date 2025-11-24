@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand, PackageX } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand, PackageX, Archive, ArchiveRestore } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -68,6 +68,7 @@ interface Order {
     phoneNumber?: string;
     products: OrderProduct[];
     isPicked: boolean;
+    isCollected?: boolean;
 }
 
 // State is now nested: { "25-11-2025": { "16:00 - 17:00": [Order, ...] } }
@@ -130,6 +131,7 @@ const parseOrderText = (text: string): Order[] => {
                     pickedItems: [],
                 })),
                 isPicked: false,
+                isCollected: false,
             });
         }
     });
@@ -368,23 +370,31 @@ export default function PickingListClient() {
      handleSelectOrder(resetOrder);
   }
 
-  const handleMarkCollected = (orderId: string) => {
+  const handleToggleOrderCollected = (orderId: string, collect: boolean) => {
      setGroupedOrders(prev => {
         const newGroups = { ...prev };
+        let orderFound = false;
         for (const dateKey in newGroups) {
             for (const timeKey in newGroups[dateKey]) {
-                newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].filter(o => o.id !== orderId);
-                if (newGroups[dateKey][timeKey].length === 0) {
-                    delete newGroups[dateKey][timeKey];
+                const orderIndex = newGroups[dateKey][timeKey].findIndex(o => o.id === orderId);
+                if (orderIndex > -1) {
+                    newGroups[dateKey][timeKey][orderIndex] = {
+                        ...newGroups[dateKey][timeKey][orderIndex],
+                        isCollected: collect,
+                    };
+                    orderFound = true;
+                    break;
                 }
             }
-            if (Object.keys(newGroups[dateKey]).length === 0) {
-                delete newGroups[dateKey];
-            }
+            if (orderFound) break;
         }
         return newGroups;
     });
-    toast({ title: 'Order Collected', description: 'The order has been removed from the list.' });
+
+    toast({ 
+        title: `Order ${collect ? 'Collected' : 'Restored'}`, 
+        description: `The order has been moved to the ${collect ? 'collected' : 'active'} section.` 
+    });
   }
 
   const handleViewOrder = (order: Order) => {
@@ -695,6 +705,9 @@ export default function PickingListClient() {
     // Take first 2 words of the product name for a broader search
     return substitutingFor.name.split(' ').slice(0, 2).join(' ');
   }, [substitutingFor]);
+  
+  const allOrdersList = useMemo(() => Object.values(groupedOrders).flatMap(dateGroup => Object.values(dateGroup).flat()), [groupedOrders]);
+  const collectedOrders = useMemo(() => allOrdersList.filter(o => o.isCollected), [allOrdersList]);
 
 
   if (activeOrder) {
@@ -1006,7 +1019,7 @@ export default function PickingListClient() {
                                         Slot: {timeKey}
                                     </h3>
                                     <div className="space-y-4 md:pl-4">
-                                        {groupedOrders[dateKey][timeKey].map(order => (
+                                        {groupedOrders[dateKey][timeKey].filter(o => !o.isCollected).map(order => (
                                             <div
                                                 key={order.id} 
                                                 className={cn(
@@ -1051,7 +1064,7 @@ export default function PickingListClient() {
                                                                 <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
                                                                     <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleMarkCollected(order.id)} className="text-destructive">
+                                                                <DropdownMenuItem onClick={() => handleToggleOrderCollected(order.id, true)} className="text-destructive">
                                                                     <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
@@ -1074,6 +1087,55 @@ export default function PickingListClient() {
                             ))}
                         </div>
                     ))}
+                    {collectedOrders.length > 0 && (
+                        <Collapsible className="mt-6">
+                            <CollapsibleTrigger asChild>
+                                <div className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-accent">
+                                    <div className="flex items-center gap-2 font-semibold text-lg">
+                                        <Archive className="h-5 w-5" />
+                                        Collected Orders ({collectedOrders.length})
+                                    </div>
+                                    <ChevronDown className="h-5 w-5" />
+                                </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pt-4 space-y-4">
+                                {collectedOrders.map(order => (
+                                     <div key={order.id} className="p-4 rounded-lg border opacity-70">
+                                          <div className="flex justify-between items-start gap-4">
+                                            <div className="space-y-1 flex-grow">
+                                                <p className="font-semibold flex items-center gap-2">
+                                                    <User className="h-4 w-4" />
+                                                    {order.customerName}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                    <CalendarClock className="h-4 w-4" />
+                                                    {order.collectionSlot}
+                                                </p>
+                                            </div>
+                                             <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
+                                                        <MoreVertical />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                     <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                                                        <Eye className="mr-2 h-4 w-4" /> View Items
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleToggleOrderCollected(order.id, false)}>
+                                                        <ArchiveRestore className="mr-2 h-4 w-4" /> Un-collect
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </div>
+                                          <div className="mt-2 pt-2 border-t">
+                                                <OrderSummary order={order} onShowDetails={handleShowSummaryDetails} />
+                                            </div>
+                                     </div>
+                                ))}
+                            </CollapsibleContent>
+                        </Collapsible>
+                    )}
                 </CardContent>
             </Card>
         ) : !isLoading && (
@@ -1088,6 +1150,7 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 
 
