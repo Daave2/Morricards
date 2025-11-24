@@ -857,21 +857,13 @@ export default function PickingListClient() {
 
             return [
                 { "textParagraph": { "text": summaryText } },
-                {
+                 {
                     "collapsible": {
-                        "uncollapsedHeader": {
-                          "title": "Line Details",
-                           "hasDivider": true,
-                           "textStyle": "NORMAL"
-                        },
-                        "collapsedHeader": {
-                           "title": "Line Details",
-                           "hasDivider": true,
-                           "textStyle": "NORMAL"
-                        },
-                        "widgets": [
-                            { "textParagraph": { "text": lineItemsText } }
-                        ]
+                      "uncollapsibleWidgetsCount": 1,
+                      "widgets": [
+                        { "textParagraph": { "text": "<b>Line Details</b>" } },
+                        { "textParagraph": { "text": lineItemsText } }
+                      ]
                     }
                 },
                 { "divider": {} }
@@ -1388,6 +1380,7 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 
 
