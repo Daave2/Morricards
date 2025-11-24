@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -34,6 +35,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { queueProductFetch } from '@/lib/offlineQueue';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '../ui/checkbox';
+import Image from 'next/image';
 
 // TYPES
 type Product = FetchMorrisonsDataOutput[0];
@@ -73,7 +76,7 @@ const parseOrderText = (text: string): Order[] => {
         if (!customerNameMatch || !orderRefMatch) return;
 
         const productLines = section.split('Order contents')[1]?.split('\n').filter(l => /^\d+\s/.test(l.trim())) || [];
-        const productMap = new Map<string, { name: string; quantity: number }>();
+        const productMap = new window.Map<string, { name: string; quantity: number }>();
 
         productLines.forEach(line => {
             const parts = line.trim().split('\t');
