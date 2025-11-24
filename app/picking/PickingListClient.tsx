@@ -598,6 +598,12 @@ export default function PickingListClient() {
     setOpenItemId(prev => prev === id ? null : id);
   }
 
+  const suggestedSubQuery = useMemo(() => {
+    if (!substitutingFor) return '';
+    // Take first 2 words of the product name for a broader search
+    return substitutingFor.name.split(' ').slice(0, 2).join(' ');
+  }, [substitutingFor]);
+
 
   if (activeOrder) {
     return (
@@ -624,7 +630,7 @@ export default function PickingListClient() {
                         <DialogDescription>Search for a replacement item, or scan any product as a substitute.</DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[70vh] overflow-y-auto p-1">
-                        <SearchComponent defaultQuery={substitutingFor?.name || ''} onPick={handleSubSearchPick} />
+                        <SearchComponent defaultQuery={suggestedSubQuery} onPick={handleSubSearchPick} />
                         <div className="relative my-4">
                             <div className="absolute inset-0 flex items-center">
                                 <span className="w-full border-t" />
