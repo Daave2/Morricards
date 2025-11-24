@@ -405,6 +405,46 @@ export default function PickingListClient() {
     setSummaryDialogContent({ order, title, products });
     setSummaryDialogOpen(true);
   };
+  
+  const handleExportOrder = (order: Order) => {
+    let summary = `Order Summary for ${order.customerName}\n`;
+    summary += `Order ID: ${order.id}\n`;
+    summary += `Collection: ${order.collectionSlot}\n\n`;
+    summary += '------------------------------\n\n';
+
+    order.products.forEach(p => {
+        summary += `Item: ${p.name} (x${p.quantity})\n`;
+        summary += `SKU: ${p.sku}\n`;
+
+        const pickedOriginals = p.pickedItems.filter(item => !item.isSubstitute);
+        const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
+        const missingCount = p.pickedItems.filter(item => item.sku === 'MISSING').length;
+        
+        if (pickedOriginals.length === p.quantity) {
+            summary += 'Status: Picked\n';
+        } else {
+            if (pickedOriginals.length > 0) {
+                summary += `Picked: ${pickedOriginals.length} of ${p.quantity}\n`;
+            }
+            if (substitutes.length > 0) {
+                substitutes.forEach(sub => {
+                    summary += ` -> Substituted with: ${sub.details?.name || 'Unknown'} (SKU: ${sub.sku})\n`;
+                });
+            }
+            if (missingCount > 0) {
+                summary += `Status: Missing (${missingCount} unit(s))\n`;
+            }
+        }
+        summary += '\n';
+    });
+
+    navigator.clipboard.writeText(summary).then(() => {
+        toast({ title: "Order Summary Copied", description: "The order summary has been copied to your clipboard." });
+    }).catch(err => {
+        toast({ variant: 'destructive', title: "Copy Failed", description: "Could not copy the summary to the clipboard." });
+        console.error('Copy failed', err);
+    });
+  };
 
 
   const updateActiveOrderAndGroups = (updatedOrder: Order) => {
@@ -1061,6 +1101,9 @@ export default function PickingListClient() {
                                                                 <DropdownMenuItem onClick={() => handleViewOrder(order)}>
                                                                     <Eye className="mr-2 h-4 w-4" /> View Items
                                                                 </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleExportOrder(order)}>
+                                                                    <Copy className="mr-2 h-4 w-4" /> Export Summary
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
                                                                     <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
                                                                 </DropdownMenuItem>
@@ -1122,6 +1165,9 @@ export default function PickingListClient() {
                                                      <DropdownMenuItem onClick={() => handleViewOrder(order)}>
                                                         <Eye className="mr-2 h-4 w-4" /> View Items
                                                     </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleExportOrder(order)}>
+                                                        <Copy className="mr-2 h-4 w-4" /> Export Summary
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleToggleOrderCollected(order.id, false)}>
                                                         <ArchiveRestore className="mr-2 h-4 w-4" /> Un-collect
                                                     </DropdownMenuItem>
@@ -1150,6 +1196,7 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 
 
