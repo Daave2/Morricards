@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -489,10 +489,14 @@ export default function PickingListClient() {
                             )}
                             onClick={() => !order.isPicked && handleSelectOrder(order)}
                         >
-                            <div>
+                            <div className="space-y-1">
                                 <p className="font-semibold flex items-center gap-2">
                                     <User className="h-4 w-4" />
                                     {order.customerName}
+                                </p>
+                                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                    <CalendarClock className="h-4 w-4" />
+                                    {order.collectionSlot}
                                 </p>
                                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                                     <ListOrdered className="h-4 w-4" />
