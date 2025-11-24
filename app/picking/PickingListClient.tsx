@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -69,6 +69,7 @@ const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
 
 const parseOrderText = (text: string): Order[] => {
     const orders: Order[] = [];
+    // Split by a line that contains "Order for" to correctly separate orders.
     const orderSections = text.split(/Order for /).filter(Boolean);
 
     orderSections.forEach((section, i) => {
@@ -77,17 +78,20 @@ const parseOrderText = (text: string): Order[] => {
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
         const phoneMatch = section.match(/Phone number: ([+0-9\s]+)/);
 
-        if (!customerNameMatch || !orderRefMatch) return;
+        if (!customerNameMatch) return;
 
         const contentsSplit = section.split('Order contents');
         if (contentsSplit.length < 2) return;
+        
+        // Use the order ref as the ID, or a fallback if not found.
+        const orderId = orderRefMatch ? orderRefMatch[1] : `imported-order-${Date.now()}-${i}`;
 
-        const productLines = contentsSplit[1].split('\n').filter(l => /^\d+/.test(l.trim()));
+        const productLines = contentsSplit[1].split('\n').filter(l => /^\d{7,}/.test(l.trim()));
         const productMap = new window.Map<string, { name: string; quantity: number }>();
 
         productLines.forEach(line => {
             const parts = line.trim().split('\t');
-            if (parts.length >= 2 && /^\d{7,}/.test(parts[0])) { // Ensure product ID is a plausible SKU length
+            if (parts.length >= 2) {
                 const sku = parts[0].trim();
                 const name = parts[1].trim();
                 if (productMap.has(sku)) {
@@ -100,7 +104,7 @@ const parseOrderText = (text: string): Order[] => {
 
         if (productMap.size > 0) {
             orders.push({
-                id: orderRefMatch[1],
+                id: orderId,
                 customerName: customerNameMatch[1].trim(),
                 collectionSlot: collectionSlotMatch ? collectionSlotMatch[1].trim() : 'N/A',
                 phoneNumber: phoneMatch ? phoneMatch[1].trim() : undefined,
@@ -132,6 +136,7 @@ export default function PickingListClient() {
   const { isOnline } = useNetworkSync();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
   const ordersRef = useRef(orders);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     ordersRef.current = orders;
@@ -207,6 +212,26 @@ export default function PickingListClient() {
     setIsLoading(false);
     playSuccess();
   }
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        form.setValue('rawOrderText', text);
+        handleImportOrders({ rawOrderText: text });
+      };
+      reader.onerror = () => {
+        toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
+      }
+      reader.readAsText(file);
+    }
+    // Reset the file input so the same file can be re-uploaded
+    if(fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  };
 
   const handleSelectOrder = (order: Order) => {
     setActiveOrder(order);
@@ -420,10 +445,17 @@ export default function PickingListClient() {
                         className="h-48"
                         {...form.register('rawOrderText')}
                       />
-                      <Button type="submit" className="w-full" disabled={isLoading}>
-                          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageSearch className="mr-2 h-4 w-4" />}
-                          Import and Fetch Products
-                      </Button>
+                      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.csv" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import from File
+                        </Button>
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageSearch className="mr-2 h-4 w-4" />}
+                            Import from Paste
+                        </Button>
+                      </div>
                   </form>
              </CardContent>
         </Card>
@@ -490,5 +522,3 @@ export default function PickingListClient() {
     </>
   );
 }
-
-    
