@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -29,14 +30,12 @@ import ZXingScanner from '@/components/ZXingScanner';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { useNetworkSync } from '@/hooks/useNetworkSync';
 import InstallPrompt from '@/components/InstallPrompt';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { queueProductFetch } from '@/lib/offlineQueue';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 // TYPES
@@ -131,6 +130,7 @@ export default function PickingListClient() {
   const [viewOrder, setViewOrder] = useState<Order | null>(null); // For read-only view
   const [isLoading, setIsLoading] = useState(false);
   const [isScannerActive, setIsScannerActive] = useState(false);
+  const [sortConfig, setSortConfig] = useState<string>('walkSequence-asc');
 
   const { toast, dismiss } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
@@ -420,18 +420,52 @@ export default function PickingListClient() {
       return [];
   }
 
+  const sortedProducts = useMemo(() => {
+    if (!activeOrder) return [];
+    
+    const result: OrderProduct[] = [...activeOrder.products];
+    const [key, direction] = sortConfig.split('-');
+
+    result.sort((a, b) => {
+        if ((a.picked >= a.quantity) && (b.picked < b.quantity)) return 1;
+        if ((a.picked < a.quantity) && (b.picked >= b.quantity)) return -1;
+        
+        let valA: any;
+        let valB: any;
+
+        switch(key) {
+            case 'walkSequence':
+                valA = a.details?.productDetails?.legacyItemNumbers?.[0] || '999999';
+                valB = b.details?.productDetails?.legacyItemNumbers?.[0] || '999999';
+                break;
+            case 'stock':
+                valA = a.details?.stockQuantity ?? -1;
+                valB = b.details?.stockQuantity ?? -1;
+                break;
+            case 'price':
+                valA = a.details?.price?.regular ?? -1;
+                valB = b.details?.price?.regular ?? -1;
+                break;
+            case 'name':
+                valA = a.name;
+                valB = b.name;
+                break;
+            default:
+                return 0;
+        }
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        
+        return direction === 'asc' ? valA - valB : valB - valA;
+    });
+
+    return result;
+}, [activeOrder, sortConfig]);
+
 
   if (activeOrder) {
-    const sortedProducts = [...activeOrder.products].sort((a, b) => {
-        if (a.picked === a.quantity && b.picked < b.quantity) return 1;
-        if (a.picked < a.quantity && b.picked === b.quantity) return -1;
-        
-        const walkA = a.details?.productDetails?.legacyItemNumbers?.[0] || '9999';
-        const walkB = b.details?.productDetails?.legacyItemNumbers?.[0] || '9999';
-
-        return parseInt(walkA) - parseInt(walkB);
-    })
-
     return (
         <main className="container mx-auto px-4 py-8 md:py-12">
             <Card className="mb-4">
@@ -450,6 +484,25 @@ export default function PickingListClient() {
             </Card>
 
             <div className="sticky top-0 z-40 p-2 shadow-md mb-4 bg-background/95 backdrop-blur-sm border rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-semibold">Scan to Pick</h3>
+                    <div className="w-48">
+                        <Select value={sortConfig} onValueChange={setSortConfig}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Sort by..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="walkSequence-asc">Pick Walk</SelectItem>
+                                <SelectItem value="stock-desc">Stock (High-Low)</SelectItem>
+                                <SelectItem value="stock-asc">Stock (Low-High)</SelectItem>
+                                <SelectItem value="price-desc">Price (High-Low)</SelectItem>
+                                <SelectItem value="price-asc">Price (Low-High)</SelectItem>
+                                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
                 <ZXingScanner
                     ref={scannerRef}
                     onResult={handleScanToPick}
