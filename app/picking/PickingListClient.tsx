@@ -846,11 +846,15 @@ export default function PickingListClient() {
                     status = `✓ Picked (x${p.quantity})`;
                 } else {
                     if (pickedOriginals.length > 0) status += `✓ Picked (x${pickedOriginals.length}) `;
-                    if (substitutes.length > 0) status += `↪ Sub (x${substitutes.length}) `;
+                    if (substitutes.length > 0) {
+                        substitutes.forEach(sub => {
+                             status += `↪ Sub: ${sub.details?.name || sub.sku} `;
+                        });
+                    }
                     if (isMissing) status += `✗ Missing`;
                 }
 
-                return { "textParagraph": { "text": `• ${p.name} - <i>${status.trim()}</i>` } };
+                return { "textParagraph": { "text": `• <b>${p.name}</b> (SKU: ${p.sku}) - <i>${status.trim()}</i>` } };
             });
 
             return {
@@ -890,7 +894,12 @@ export default function PickingListClient() {
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('Failed to export to chat:', error);
-        toast({ variant: 'destructive', title: 'Export Failed', description: `Could not send report to Google Chat. ${errorMessage}`, duration: 10000 });
+        toast({
+            variant: 'destructive',
+            title: 'Export Failed',
+            description: `Could not send report to Google Chat. ${errorMessage}`,
+            duration: 10000,
+        });
     }
   };
 
@@ -1371,4 +1380,3 @@ export default function PickingListClient() {
     </>
   );
 }
-
