@@ -23,7 +23,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import ZXingScanner from '@/components/ZXingScanner';
@@ -36,6 +35,7 @@ import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ProductCard from '@/components/product-card';
 
 
 // TYPES
@@ -211,23 +211,26 @@ export default function PickingListClient() {
         products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
     }));
 
-    const groups: GroupedOrders = {};
+    const newGroups: GroupedOrders = { ...groupedOrders };
     enrichedOrders.forEach(order => {
         const slot = order.collectionSlot;
         const slotParts = slot.match(/(\d{2}-\d{2}-\d{4})\s(.*?)$/);
         const dateKey = slotParts ? slotParts[1] : 'Unsorted';
         const timeKey = slotParts ? slotParts[2] : slot;
 
-        if (!groups[dateKey]) {
-            groups[dateKey] = {};
+        if (!newGroups[dateKey]) {
+            newGroups[dateKey] = {};
         }
-        if (!groups[dateKey][timeKey]) {
-            groups[dateKey][timeKey] = [];
+        if (!newGroups[dateKey][timeKey]) {
+            newGroups[dateKey][timeKey] = [];
         }
-        groups[dateKey][timeKey].push(order);
+        // Avoid adding duplicate orders
+        if (!newGroups[dateKey][timeKey].some(o => o.id === order.id)) {
+            newGroups[dateKey][timeKey].push(order);
+        }
     });
 
-    setGroupedOrders(groups);
+    setGroupedOrders(newGroups);
     form.reset();
     setIsLoading(false);
     playSuccess();
@@ -398,14 +401,14 @@ export default function PickingListClient() {
     }
   }
 
+  const parseDateKey = (dateStr: string): number => {
+    if (dateStr === 'Unsorted') return Infinity;
+    const [day, month, year] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day).getTime();
+  };
 
   const getSortedDateKeys = () => {
-    const parseDate = (dateStr: string): number => {
-        if (dateStr === 'Unsorted') return Infinity;
-        const [day, month, year] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day).getTime();
-    };
-    return Object.keys(groupedOrders).sort((a, b) => parseDate(a) - parseDate(b));
+    return Object.keys(groupedOrders).sort((a, b) => parseDateKey(a) - parseDateKey(b));
   };
   
   const getSortedTimeKeys = (dateKey: string) => {
@@ -516,39 +519,36 @@ export default function PickingListClient() {
             <div className="space-y-4">
                 {sortedProducts.map(p => {
                     const isFullyPicked = p.picked >= p.quantity;
+                    if (!p.details) {
+                      return (
+                         <Card key={p.sku} className="flex items-start gap-4 p-4 transition-opacity bg-muted/50">
+                             <p className="text-sm text-muted-foreground">Details for {p.name} (SKU: {p.sku}) could not be loaded.</p>
+                         </Card>
+                      )
+                    }
                     return (
-                        <Card key={p.sku} className={cn("flex items-start gap-4 p-4 transition-opacity", isFullyPicked && 'opacity-50')}>
-                             <div className='flex-shrink-0'>
-                                <Checkbox
-                                    checked={isFullyPicked}
-                                    className="h-8 w-8"
-                                    onClick={() => handleManualPick(p.sku, isFullyPicked ? -p.quantity : p.quantity)}
-                                />
-                            </div>
-                            {p.details && (
-                                <Image
-                                    src={p.details.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                                    alt={p.name}
-                                    width={64}
-                                    height={64}
-                                    className="rounded-md border object-cover"
-                                />
-                            )}
-                            <div className="flex-grow">
-                                <p className="font-semibold">{p.name}</p>
-                                <p className="text-sm text-muted-foreground">{p.details?.location.standard || 'N/A'}</p>
-                                <div className='flex items-center gap-4 mt-2'>
-                                    <div className="text-lg font-bold">
-                                        <span className={cn(isFullyPicked && 'text-primary')}>{p.picked}</span> / {p.quantity}
-                                    </div>
-                                    <div className='flex items-center gap-2'>
-                                        <Button size="sm" variant="outline" onClick={() => handleManualPick(p.sku, -1)} disabled={p.picked === 0}>-</Button>
-                                        <Button size="sm" variant="outline" onClick={() => handleManualPick(p.sku, 1)} disabled={isFullyPicked}>+</Button>
-                                    </div>
-                                </div>
-                            </div>
-                           
-                        </Card>
+                        <div key={p.sku} className={cn("relative transition-opacity", isFullyPicked && 'opacity-50')}>
+                           <div className="absolute top-4 left-4 z-10 flex flex-col items-center gap-2">
+                             <Checkbox
+                                  checked={isFullyPicked}
+                                  className="h-8 w-8"
+                                  onClick={() => handleManualPick(p.sku, isFullyPicked ? -p.quantity : p.quantity)}
+                              />
+                              <div className="text-sm font-bold bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 border">
+                                <span className={cn(isFullyPicked && 'text-primary')}>{p.picked}</span>/{p.quantity}
+                              </div>
+                              <div className='flex flex-col items-center gap-2'>
+                                  <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku, 1)} disabled={isFullyPicked}>+</Button>
+                                  <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleManualPick(p.sku, -1)} disabled={p.picked === 0}>-</Button>
+                              </div>
+                           </div>
+                           <ProductCard
+                             product={p.details}
+                             layout="list"
+                             isPicker={true}
+                             locationId={settings.locationId}
+                           />
+                        </div>
                     )
                 })}
             </div>
