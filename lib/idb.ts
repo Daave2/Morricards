@@ -206,8 +206,7 @@ export async function addAvailabilityCapture(payload: AvailabilityCapturePayload
 
 export async function addProductFetch(payload: ProductFetchPayload) {
   const full: ProductFetch = {
-    // Use SKU as ID to prevent duplicate queueing
-    id: payload.sku,
+    id: crypto.randomUUID(),
     ts: Date.now(),
     payload,
     synced: 0,

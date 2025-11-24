@@ -12,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand, PackageX, Archive, ArchiveRestore } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand, PackageX, Archive, ArchiveRestore, Mail, MessageSquare } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -42,6 +42,7 @@ import SearchComponent from '@/components/assistant/Search';
 import type { SearchHit } from '@/lib/morrisonsSearch';
 import ImageModal from '@/components/image-modal';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 // TYPES
@@ -747,7 +748,132 @@ export default function PickingListClient() {
   }, [substitutingFor]);
   
   const allOrdersList = useMemo(() => Object.values(groupedOrders).flatMap(dateGroup => Object.values(dateGroup).flat()), [groupedOrders]);
+  const pickedOrders = useMemo(() => allOrdersList.filter(o => o.isPicked && !o.isCollected), [allOrdersList]);
   const collectedOrders = useMemo(() => allOrdersList.filter(o => o.isCollected), [allOrdersList]);
+
+  const handleCopyAllForEmail = async () => {
+    if (pickedOrders.length === 0) {
+        toast({ variant: 'destructive', title: 'No Picked Orders', description: 'There are no completed orders to export.' });
+        return;
+    }
+
+    function escapeHtml(s: string | number | undefined) {
+      if (s === undefined) return '';
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+    
+    let tableHtml = `<table border="1" cellspacing="0" cellpadding="8" style="border-collapse:collapse;width:100%;font:12px sans-serif;">
+        <thead style="background:#f2f2f2;font-weight:bold;text-align:left;">
+          <tr>
+            <th>Customer</th><th>Slot</th><th>Items</th><th>Picked</th><th>Subbed</th><th>Missing</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    pickedOrders.forEach((order, i) => {
+        const pickedCount = order.products.filter(p => p.pickedItems.filter(i => !i.isSubstitute).length >= p.quantity).length;
+        const subbedCount = order.products.filter(p => p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')).length;
+        const missingCount = order.products.filter(p => p.pickedItems.some(i => i.sku === 'MISSING')).length;
+        
+        tableHtml += `<tr${i % 2 ? "" : ' bgcolor="#f9f9f9"'}>
+            <td>${escapeHtml(order.customerName)}</td>
+            <td>${escapeHtml(order.collectionSlot)}</td>
+            <td>${order.products.length}</td>
+            <td>${pickedCount}</td>
+            <td>${subbedCount}</td>
+            <td>${missingCount}</td>
+        </tr>`;
+    });
+
+    tableHtml += `</tbody></table>`;
+    
+    try {
+        const tmp = document.createElement("div");
+        tmp.style.position = "fixed";
+        tmp.style.left = "-9999px";
+        tmp.innerHTML = tableHtml;
+        document.body.appendChild(tmp);
+        
+        const range = document.createRange();
+        range.selectNodeContents(tmp);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        
+        document.execCommand("copy");
+        
+        sel?.removeAllRanges();
+        document.body.removeChild(tmp);
+
+        toast({ title: "Copied for Email", description: `Summary of ${pickedOrders.length} orders copied to clipboard.` });
+    } catch (copyError) {
+        console.error("HTML copy failed:", copyError);
+        toast({ variant: 'destructive', title: 'Copy Failed', description: 'Could not copy data to clipboard.' });
+    }
+  };
+
+  const handleExportAllToChat = async () => {
+    if (pickedOrders.length === 0) {
+        toast({ variant: 'destructive', title: 'No Picked Orders', description: 'There are no completed orders to export.' });
+        return;
+    }
+    
+    const DEFAULT_WEBHOOK = 'https://chat.googleapis.com/v1/spaces/AAQA0I44GoE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=ScysZAnKmUOE3ZhkcTVP-9xL8RXYhJPYXW37kwY2wdw';
+    const webhookUrl = settings.chatWebhookUrl || DEFAULT_WEBHOOK;
+
+    toast({ title: 'Exporting to Chat...', description: `Sending summary of ${pickedOrders.length} orders.` });
+    
+    try {
+        const widgets = pickedOrders.flatMap(order => {
+            const pickedCount = order.products.filter(p => p.pickedItems.filter(i => !i.isSubstitute).length >= p.quantity).length;
+            const subbedCount = order.products.filter(p => p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')).length;
+            const missingCount = order.products.filter(p => p.pickedItems.some(i => i.sku === 'MISSING')).length;
+
+            let text = `<b>${order.customerName}</b> (${order.collectionSlot})`;
+            text += `<br>Items: ${order.products.length} | Picked: ${pickedCount} | Subbed: ${subbedCount} | Missing: ${missingCount}`;
+
+            return [
+                {"textParagraph": {"text": text}},
+                {"divider": {}},
+            ];
+        });
+
+        const payload = {
+            "cardsV2": [{
+                "cardId": `picked-orders-report-${Date.now()}`,
+                "card": {
+                    "header": {
+                        "title": "Picking Summary",
+                        "subtitle": `${pickedOrders.length} order(s) completed in Store ${settings.locationId}`,
+                        "imageUrl": "https://cdn-icons-png.flaticon.com/512/1319/1319818.png",
+                        "imageType": "CIRCLE",
+                    },
+                    "sections": [{ "widgets": widgets.slice(0, -1) }], // Remove last divider
+                },
+            }]
+        };
+
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+            toast({ title: 'Export Successful', description: 'The order summary was sent to Google Chat.' });
+        } else {
+            throw new Error(`Webhook failed with status ${response.status}: ${await response.text()}`);
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Failed to export to chat:', error);
+        toast({ variant: 'destructive', title: 'Export Failed', description: `Could not send report to Google Chat. ${errorMessage}`, duration: 10000 });
+    }
+  };
 
 
   if (activeOrder) {
@@ -1044,8 +1170,38 @@ export default function PickingListClient() {
         {Object.keys(groupedOrders).length > 0 ? (
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Imported Orders</CardTitle>
-                    <CardDescription>Select an order to begin picking.</CardDescription>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle>Imported Orders</CardTitle>
+                            <CardDescription>Select an order to begin picking, or export a summary of all picked orders.</CardDescription>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                           <TooltipProvider>
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={handleExportAllToChat} disabled={pickedOrders.length === 0}>
+                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                        Export to Chat
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Send a formatted summary of all picked orders to a Google Chat webhook.</p>
+                                </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={handleCopyAllForEmail} disabled={pickedOrders.length === 0}>
+                                        <Mail className="mr-2 h-4 w-4" />
+                                        Copy for Email
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Copy a summary of all picked orders as a rich HTML table for email.</p>
+                                </TooltipContent>
+                                </Tooltip>
+                           </TooltipProvider>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {getSortedDateKeys().map(dateKey => (
@@ -1196,6 +1352,7 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 
 
