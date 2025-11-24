@@ -69,7 +69,7 @@ const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
 
 const parseOrderText = (text: string): Order[] => {
     const orders: Order[] = [];
-    const orderSections = text.split(/Order for /g).filter(Boolean);
+    const orderSections = text.split(/Order for /).filter(Boolean);
 
     orderSections.forEach((section, i) => {
         const customerNameMatch = section.match(/(.*?)\n/);
@@ -79,12 +79,15 @@ const parseOrderText = (text: string): Order[] => {
 
         if (!customerNameMatch || !orderRefMatch) return;
 
-        const productLines = section.split('Order contents')[1]?.split('\n').filter(l => /^\d+\s/.test(l.trim())) || [];
+        const contentsSplit = section.split('Order contents');
+        if (contentsSplit.length < 2) return;
+
+        const productLines = contentsSplit[1].split('\n').filter(l => /^\d+/.test(l.trim()));
         const productMap = new window.Map<string, { name: string; quantity: number }>();
 
         productLines.forEach(line => {
             const parts = line.trim().split('\t');
-            if (parts.length >= 2) {
+            if (parts.length >= 2 && /^\d{7,}/.test(parts[0])) { // Ensure product ID is a plausible SKU length
                 const sku = parts[0].trim();
                 const name = parts[1].trim();
                 if (productMap.has(sku)) {
@@ -487,3 +490,5 @@ export default function PickingListClient() {
     </>
   );
 }
+
+    
