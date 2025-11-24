@@ -167,13 +167,32 @@ export default function MapPageClient() {
     handleReset();
 
     try {
-      const result = await findAisleForProductTool({ productCategory: values.productCategory });
-      if (result.bestAisleId) {
-        setHighlightedAisle(result.bestAisleId);
-        toast({ title: 'Aisle Found!', description: `This is the suggested aisle for ${values.productCategory}.` });
-      } else {
-        toast({ variant: 'destructive', title: 'Aisle Not Found', description: `Could not determine an aisle for ${values.productCategory}.` });
+      // Step 1: Find the most likely aisle for context
+      const aisleResult = await findAisleForProductTool({ productCategory: values.productCategory });
+      if (aisleResult.bestAisleId) {
+        setHighlightedAisle(aisleResult.bestAisleId);
       }
+      
+      // Step 2: Search for all products in that category
+      const searchRes = await fetch(`/api/morrisons/search?q=${encodeURIComponent(values.productCategory)}&maxPageSize=50`);
+      if (!searchRes.ok) {
+        throw new Error('Failed to search for products in that category.');
+      }
+      const searchJson = await searchRes.json();
+      const hits: SearchHit[] = Array.isArray(searchJson?.hits) ? searchJson.hits : [];
+      
+      if (hits.length === 0) {
+        toast({ variant: 'destructive', title: 'No Products Found', description: `Could not find any products for "${values.productCategory}".` });
+        setIsAisleLoading(false);
+        return;
+      }
+
+      // Step 3: Fetch locations for all found products
+      const skusToFetch = hits.map(h => h.retailerProductId).filter((sku): sku is string => !!sku);
+      await fetchAndSetProducts(skusToFetch);
+      
+      toast({ title: 'Category Located', description: `Displaying all found products for "${values.productCategory}".` });
+
     } catch (e) {
         const error = e instanceof Error ? e.message : String(e);
         toast({ variant: 'destructive', title: 'Error', description: `An error occurred: ${error}` });
@@ -230,7 +249,7 @@ export default function MapPageClient() {
                           ) : (
                             <BrainCircuit className="mr-2 h-4 w-4" />
                           )}
-                          Find Aisle
+                          Find Category
                         </Button>
                       </form>
                     </Form>
@@ -240,9 +259,9 @@ export default function MapPageClient() {
                 {(isLoading || locatedProducts.length > 0) && (
                     <Card className="mt-8">
                         <CardHeader>
-                            <CardTitle>Search Results</CardTitle>
+                            <CardTitle>Located Items</CardTitle>
                             <CardDescription>
-                                {isLoading ? 'Locating products...' : `${locatedProducts.length} of ${allHits.length} items found on the map.`}
+                                {isLoading ? 'Locating products...' : `${locatedProducts.length} ${locatedProducts.length === 1 ? 'item' : 'items'} found on the map.`}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
