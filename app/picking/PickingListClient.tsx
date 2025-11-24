@@ -137,30 +137,40 @@ const parseOrderText = (text: string): Order[] => {
     return orders;
 };
 
-const OrderSummary = ({ order }: { order: Order }) => {
-    const totalItems = order.products.reduce((sum, p) => sum + p.quantity, 0);
+const OrderSummary = ({ order, onShowDetails }: { order: Order, onShowDetails: (title: string, products: OrderProduct[]) => void }) => {
     
-    let pickedCount = 0;
-    let subbedCount = 0;
-    let missingCount = 0;
-
-    order.products.forEach(p => {
-        p.pickedItems.forEach(item => {
-            if (item.sku === 'MISSING') {
-                missingCount++;
-            } else if (item.isSubstitute) {
-                subbedCount++;
-            } else {
-                pickedCount++;
-            }
-        });
+    const pickedProducts = order.products.filter(p => {
+        const originalPicked = p.pickedItems.filter(i => !i.isSubstitute).length;
+        return originalPicked >= p.quantity;
     });
+    
+    const subbedProducts = order.products.filter(p => 
+        p.pickedItems.some(i => i.isSubstitute && i.sku !== 'MISSING')
+    );
+
+    const missingProducts = order.products.filter(p => 
+        p.pickedItems.some(i => i.sku === 'MISSING')
+    );
+    
+    const stats = [
+        { label: 'Picked', count: pickedProducts.length, icon: <Check className="h-4 w-4 text-green-600"/>, products: pickedProducts },
+        { label: 'Subbed', count: subbedProducts.length, icon: <Replace className="h-4 w-4 text-blue-600"/>, products: subbedProducts },
+        { label: 'Missing', count: missingProducts.length, icon: <PackageX className="h-4 w-4 text-red-600"/>, products: missingProducts },
+    ];
 
     return (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-2">
-            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-green-600"/> Picked: <span className="font-bold">{pickedCount}</span></span>
-            <span className="flex items-center gap-1.5"><Replace className="h-4 w-4 text-blue-600"/> Subbed: <span className="font-bold">{subbedCount}</span></span>
-            <span className="flex items-center gap-1.5"><PackageX className="h-4 w-4 text-red-600"/> Missing: <span className="font-bold">{missingCount}</span></span>
+            {stats.map(stat => (
+                stat.count > 0 ? (
+                    <div 
+                        key={stat.label} 
+                        className="flex items-center gap-1.5 cursor-pointer hover:text-foreground"
+                        onClick={() => onShowDetails(stat.label, stat.products)}
+                    >
+                        {stat.icon} {stat.label}: <span className="font-bold">{stat.count}</span>
+                    </div>
+                ) : null
+            ))}
         </div>
     )
 }
@@ -177,6 +187,8 @@ export default function PickingListClient() {
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [substitutingFor, setSubstitutingFor] = useState<OrderProduct | null>(null);
   const [substituteDialogOpen, setSubstituteDialogOpen] = useState(false);
+  const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
+  const [summaryDialogContent, setSummaryDialogContent] = useState<{title: string, products: OrderProduct[]}>({title: '', products: []});
 
 
   const { toast, dismiss } = useToast();
@@ -378,6 +390,12 @@ export default function PickingListClient() {
   const handleViewOrder = (order: Order) => {
     setViewOrder(order);
   }
+  
+  const handleShowSummaryDetails = (title: string, products: OrderProduct[]) => {
+    setSummaryDialogContent({ title, products });
+    setSummaryDialogOpen(true);
+  };
+
 
   const updateActiveOrderAndGroups = (updatedOrder: Order) => {
      setActiveOrder(updatedOrder);
@@ -919,6 +937,27 @@ export default function PickingListClient() {
             </div>
         </DialogContent>
     </Dialog>
+    
+    <Dialog open={summaryDialogOpen} onOpenChange={setSummaryDialogOpen}>
+        <DialogContent>
+             <DialogHeader>
+                <DialogTitle>{summaryDialogContent.title} for {activeOrder?.customerName}</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto pr-4 space-y-3">
+                 {summaryDialogContent.products.map(p => (
+                     <Card key={p.sku}>
+                        <CardContent className="p-3 flex items-center gap-4">
+                           <Image src={p.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={p.name} width={48} height={48} className="rounded-md border object-cover" />
+                           <div>
+                               <p className="font-semibold text-sm">{p.name}</p>
+                               <p className="text-xs text-muted-foreground">SKU: {p.sku}</p>
+                           </div>
+                        </CardContent>
+                     </Card>
+                 ))}
+            </div>
+        </DialogContent>
+    </Dialog>
 
     <main className="container mx-auto px-4 py-8 md:py-12">
         <InstallPrompt />
@@ -1025,7 +1064,7 @@ export default function PickingListClient() {
                                                 </div>
                                                  {order.isPicked && (
                                                     <div className="mt-2 pt-2 border-t">
-                                                        <OrderSummary order={order} />
+                                                        <OrderSummary order={order} onShowDetails={handleShowSummaryDetails} />
                                                     </div>
                                                 )}
                                             </div>
@@ -1049,5 +1088,6 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 
