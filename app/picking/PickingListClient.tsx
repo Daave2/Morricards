@@ -69,9 +69,10 @@ const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
 
 const parseOrderText = (text: string): Order[] => {
     const orders: Order[] = [];
-    const orderSections = text.split('COLLECTION POINT OPERATIONS').filter(s => s.trim() !== '');
+    // Split by a pattern that's likely unique to the start of each order.
+    const orderSections = text.split(/(?=COLLECTION POINT OPERATIONS\nBACK\nOrder for)/).filter(s => s.trim() !== '');
 
-    orderSections.forEach((section, i) => {
+    orderSections.forEach((section) => {
         const orderRefMatch = section.match(/Order reference: (\d+)/);
         const customerNameMatch = section.match(/Order for (.*?)\n/);
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
@@ -79,10 +80,10 @@ const parseOrderText = (text: string): Order[] => {
 
         if (!customerNameMatch || !orderRefMatch) return;
         
-        const orderContents = section.split('Order contents')[1];
-        if (!orderContents) return;
+        const orderContentsMatch = section.split('Order contents');
+        if (orderContentsMatch.length < 2) return;
         
-        const productLines = orderContents.split('\n').filter(l => /^\d{7,}/.test(l.trim()));
+        const productLines = orderContentsMatch[1].split('\n').filter(l => /^\d{7,}/.test(l.trim()));
         const productMap = new window.Map<string, { name: string; quantity: number }>();
 
         productLines.forEach(line => {
