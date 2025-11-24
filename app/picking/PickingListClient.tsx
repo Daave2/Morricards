@@ -69,21 +69,18 @@ const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
 
 const parseOrderText = (text: string): Order[] => {
     const orders: Order[] = [];
-    const orderSections = text.split(/Order for /).filter(Boolean);
+    const orderSections = text.split(/Order reference: /).filter(s => s.trim() !== '' && !s.includes('COLLECTION POINT OPERATIONS'));
 
     orderSections.forEach((section, i) => {
-        const customerNameMatch = section.match(/(.*?)\n/);
-        // Find the order reference on the line above "Order for"
-        const orderRefMatch = section.match(/Order reference: (\d+)/);
+        const orderRefMatch = section.match(/^(\d+)/);
+        const customerNameMatch = section.match(/Order for (.*?)\n/);
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
         const phoneMatch = section.match(/Phone number: ([+0-9\s]+)/);
 
-        if (!customerNameMatch) return;
+        if (!customerNameMatch || !orderRefMatch) return;
         
         const orderContents = section.split('Order contents')[1];
         if (!orderContents) return;
-
-        const orderId = orderRefMatch ? orderRefMatch[1] : `imported-order-${Date.now()}-${i}`;
         
         const productLines = orderContents.split('\n').filter(l => /^\d{7,}/.test(l.trim()));
         const productMap = new window.Map<string, { name: string; quantity: number }>();
@@ -103,7 +100,7 @@ const parseOrderText = (text: string): Order[] => {
 
         if (productMap.size > 0) {
             orders.push({
-                id: orderId,
+                id: orderRefMatch[1],
                 customerName: customerNameMatch[1].trim(),
                 collectionSlot: collectionSlotMatch ? collectionSlotMatch[1].trim() : 'N/A',
                 phoneNumber: phoneMatch ? phoneMatch[1].trim() : undefined,
@@ -212,6 +209,7 @@ export default function PickingListClient() {
             if (slot === 'N/A') return Infinity;
             const parts = slot.match(/(\d{2})-(\d{2})-(\d{4})\s(\d{2}):(\d{2})/);
             if (!parts) return Infinity;
+            // Correctly parse DD-MM-YYYY format
             const [, day, month, year, hour, minute] = parts;
             return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
         };
