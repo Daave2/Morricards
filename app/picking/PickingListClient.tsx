@@ -43,7 +43,7 @@ import type { SearchHit } from '@/lib/morrisonsSearch';
 import ImageModal from '@/components/image-modal';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useCollection, useFirestore, useMemoFirebase } from '@/src/firebase/firestore/use-collection';
+import { useCollection, useFirestore, useMemoFirebase } from '@/src/firebase';
 import { setDocumentNonBlocking } from '@/src/firebase/non-blocking-updates';
 import { collection, doc } from 'firebase/firestore';
 
@@ -82,8 +82,6 @@ type GroupedOrders = Record<string, Record<string, Order[]>>;
 const FormSchema = z.object({
   rawOrderText: z.string().min(10, 'Please paste in the order text.'),
 });
-
-const HARDCODED_USER_ID = 'test-user-123';
 
 
 const parseOrderText = (text: string): Omit<Order, 'id'>[] => {
@@ -195,8 +193,8 @@ export default function PickingListClient() {
 
   const firestore = useFirestore();
   const ordersCollectionRef = useMemoFirebase(
-    () => collection(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`),
-    [firestore]
+    () => settings.locationId ? collection(firestore, `stores/${settings.locationId}/pickingOrders`) : null,
+    [firestore, settings.locationId]
   );
   
   const { data: ordersFromDb, isLoading: isDbLoading } = useCollection<Order>(ordersCollectionRef);
@@ -245,6 +243,13 @@ export default function PickingListClient() {
       return;
     }
 
+    if (!settings.locationId) {
+        playError();
+        toast({ variant: 'destructive', title: 'Import Failed', description: 'Store Location ID is not set in settings.' });
+        setIsLoading(false);
+        return;
+    }
+
     const allSkus = new Set<string>();
     parsedOrders.forEach(order => order.products.forEach(p => allSkus.add(p.sku)));
 
@@ -276,7 +281,7 @@ export default function PickingListClient() {
         const id = orderRefMatch ? orderRefMatch[1] : `manual-${Date.now()}`;
         const newOrder: Order = { ...orderData, id };
 
-        const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, id);
+        const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, id);
         return setDocumentNonBlocking(orderRef, newOrder, { merge: true });
     });
     
@@ -314,7 +319,7 @@ export default function PickingListClient() {
   const handleRepickOrder = (orderId: string) => {
      if (!ordersFromDb) return;
      const orderToRepick = ordersFromDb.find(o => o.id === orderId);
-     if (!orderToRepick) return;
+     if (!orderToRepick || !settings.locationId) return;
 
      const resetOrder: Order = {
         ...orderToRepick,
@@ -322,18 +327,18 @@ export default function PickingListClient() {
         products: orderToRepick.products.map(p => ({ ...p, pickedItems: [] })),
      };
      
-     const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, orderId);
+     const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderId);
      setDocumentNonBlocking(orderRef, resetOrder, { merge: true });
 
      handleSelectOrder(resetOrder);
   }
 
   const handleToggleOrderCollected = (orderId: string, collect: boolean) => {
-    if (!ordersFromDb) return;
+    if (!ordersFromDb || !settings.locationId) return;
     const orderToUpdate = ordersFromDb.find(o => o.id === orderId);
     if (!orderToUpdate) return;
      
-     const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, orderId);
+     const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderId);
      setDocumentNonBlocking(orderRef, { isCollected: collect }, { merge: true });
 
     toast({ 
@@ -392,9 +397,10 @@ export default function PickingListClient() {
   };
 
 
-  const updateActiveOrderAndGroups = (updatedOrder: Order) => {
+  const updateActiveOrderAndDB = (updatedOrder: Order) => {
+     if (!settings.locationId) return;
      setActiveOrder(updatedOrder);
-     const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, updatedOrder.id);
+     const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, updatedOrder.id);
      setDocumentNonBlocking(orderRef, updatedOrder, { merge: true });
   };
 
@@ -426,11 +432,11 @@ export default function PickingListClient() {
         pickedItems: [...newProducts[productIndex].pickedItems, { sku, isSubstitute: false, details: product.details }]
     };
     
-    updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
+    updateActiveOrderAndDB({ ...activeOrder, products: newProducts });
 
     toast({ title: 'Item Picked', description: `${product.name} (${newProducts[productIndex].pickedItems.filter(p => !p.isSubstitute).length}/${product.quantity})`, icon: <Check /> });
 
-  }, [activeOrder, playError, playInfo, playSuccess, toast]);
+  }, [activeOrder, playError, playInfo, playSuccess, toast, updateActiveOrderAndDB]);
 
 
   const handleManualPick = (sku: string, amount: number) => {
@@ -461,7 +467,7 @@ export default function PickingListClient() {
      const newProducts = [...activeOrder.products];
      newProducts[productIndex] = { ...product, pickedItems: newPickedItems };
 
-     updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
+     updateActiveOrderAndDB({ ...activeOrder, products: newProducts });
   }
 
   const handleSubstitute = (product: OrderProduct) => {
@@ -485,7 +491,7 @@ export default function PickingListClient() {
         return p;
     });
 
-    updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
+    updateActiveOrderAndDB({ ...activeOrder, products: newProducts });
 
     toast({ title: 'Substitute Added', description: `${subProduct.name} was added as a substitute for ${substitutingFor.name}.` });
     setSubstituteDialogOpen(false);
@@ -558,7 +564,7 @@ export default function PickingListClient() {
       isPicked: true 
     };
 
-    updateActiveOrderAndGroups(updatedOrder);
+    updateActiveOrderAndDB(updatedOrder);
 
     setActiveOrder(null);
     setIsScannerActive(false);
@@ -758,7 +764,7 @@ export default function PickingListClient() {
             let statusHtml = '';
             let detailsHtml = '';
 
-            if (pickedOriginals.length === p.quantity) {
+             if (pickedOriginals.length === p.quantity) {
                 statusHtml = `<span class="status-picked">Picked</span>`;
             } else if (missingCount === p.quantity) {
                 statusHtml = `<span class="status-missing">Missing</span>`;
@@ -776,10 +782,9 @@ export default function PickingListClient() {
             if (substitutes.length > 0) {
                 detailsHtml += substitutes.map(s => `Sub: ${escapeHtml(s.details?.name)} (SKU: ${s.sku})`).join('<br>');
             }
-            if (missingCount > 0) {
+             if (missingCount > 0) {
                 detailsHtml += `Missing: ${missingCount}`;
             }
-
 
             const imageUrl = p.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png';
 
@@ -1369,5 +1374,6 @@ export default function PickingListClient() {
     </>
   );
 }
+
 
 

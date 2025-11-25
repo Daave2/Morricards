@@ -122,11 +122,11 @@
     ]
   },
   "firestore": {
-    "/users/{userId}/pickingOrders/{orderId}": {
+    "/stores/{locationId}/pickingOrders/{orderId}": {
       "schema": {
         "$ref": "#/entities/PickingOrder"
       },
-      "description": "Stores all picking orders for a given user."
+      "description": "Stores all picking orders for a given store location, shared by all users of that store."
     }
   }
 }
