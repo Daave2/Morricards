@@ -1,0 +1,217 @@
+{
+  "entities": {
+    "PickingOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PickingOrder",
+      "type": "object",
+      "description": "Represents a picking order for products.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the picking order."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created the picking order. (Relationship: User 1:N PickingOrder)"
+        },
+        "orderDate": {
+          "type": "string",
+          "description": "Date when the picking order was created.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the picking order (e.g., 'pending', 'picking', 'picked', 'collected', 'cancelled')."
+        },
+        "storeLocationId": {
+          "type": "string",
+          "description": "The Morrisons store location ID this order applies to."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "orderDate",
+        "status",
+        "storeLocationId"
+      ]
+    },
+    "PickedProduct": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PickedProduct",
+      "type": "object",
+      "description": "Represents a product picked as part of a picking order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the picked product."
+        },
+        "pickingOrderId": {
+          "type": "string",
+          "description": "Reference to the PickingOrder this product belongs to. (Relationship: PickingOrder 1:N PickedProduct)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to the product that was picked."
+        },
+        "quantityPicked": {
+          "type": "number",
+          "description": "Quantity of the product that was picked."
+        },
+        "picked": {
+          "type": "boolean",
+          "description": "Indicates whether the product has been physically picked."
+        }
+      },
+      "required": [
+        "id",
+        "pickingOrderId",
+        "productId",
+        "quantityPicked",
+        "picked"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the MorriCards application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product available at Morrisons.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the product."
+        },
+        "sku": {
+          "type": "string",
+          "description": "Morrisons product SKU."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the product."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the product."
+        }
+      },
+      "required": [
+        "id",
+        "sku",
+        "name"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  Authentication is handled via Firebase Auth; this collection primarily stores profile details.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/pickingOrders/{pickingOrderId}",
+        "definition": {
+          "entityName": "PickingOrder",
+          "schema": {
+            "$ref": "#/backend/entities/PickingOrder"
+          },
+          "description": "Stores picking orders created by the user.  Authorization is based on the `userId` path segment.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user who created the picking order."
+            },
+            {
+              "name": "pickingOrderId",
+              "description": "The unique identifier for the picking order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/pickingOrders/{pickingOrderId}/pickedProducts/{pickedProductId}",
+        "definition": {
+          "entityName": "PickedProduct",
+          "schema": {
+            "$ref": "#/backend/entities/PickedProduct"
+          },
+          "description": "Stores the products picked for a specific picking order. Authorization is inherited from the parent `pickingOrder` document, based on the `userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user who created the picking order."
+            },
+            {
+              "name": "pickingOrderId",
+              "description": "The unique identifier for the picking order."
+            },
+            {
+              "name": "pickedProductId",
+              "description": "The unique identifier for the picked product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores product information. Publicly readable.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "The unique identifier for the product."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the 'MorriCards' application, focusing on managing picking orders, picked products, and user-related data. The structure prioritizes authorization independence and easy querying.  It follows the principle of hierarchical paths for user-owned data (PickingOrders) and their associated data (PickedProducts).  This structure is secure because the security rules can be written on the top level of `/users/{userId}` and will cascade down to the subcollections, so we do not need to write the same rules over and over again.\n\n**Authorization Independence:** The structure achieves authorization independence by storing PickingOrders under the `users/{userId}` path.  This means each user has their own PickingOrders, enabling simple, path-based security rules that rely on `request.auth.uid == userId`.  No `get()` calls are required to determine ownership.\n\n**QAPs (Rules are not Filters):** The segregation of PickingOrders and PickedProducts under user-specific paths directly supports secure `list` operations. Security rules can enforce that a user can only list PickingOrders and PickedProducts under their own `userId` path, preventing unauthorized access to other users' data.  The use of hierarchical paths ensures that authorization is inherent in the data structure, enabling simple and effective security rules for listing operations.\n"
+  }
+}

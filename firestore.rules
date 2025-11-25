@@ -1,0 +1,138 @@
+/**
+ * This ruleset enforces a strict user-ownership model for a warehouse picking application.
+ * All user-generated data, such as picking orders and their associated products, is
+ * securely nested within a user-specific data tree. Publicly accessible data, like
+ * the product catalog, is stored in a separate top-level collection.
+ *
+ * Core Philosophy:
+ * The security model is centered on the principle that users can only access data that
+ * they own. This is achieved by structuring the database hierarchically, where all
+ * private information is stored under a path containing the user's unique ID (UID).
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores a user's public profile. Each user can create and manage their own document.
+ * - /users/{userId}/pickingOrders/{pickingOrderId}: A subcollection containing picking orders created by the user.
+ * - /users/{userId}/pickingOrders/{pickingOrderId}/pickedProducts/{pickedProductId}: A subcollection of products for a specific order.
+ * - /products/{productId}: A top-level collection for product information, readable by anyone but not writable by clients.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: All data under `/users/{userId}` is strictly controlled by that user. No other user can read or write to it.
+ * - No User Listing: To protect user privacy and prevent data scraping, listing documents in the top-level `/users` collection is disallowed.
+ * - Public Read-Only Catalog: The `/products` collection is publicly readable to allow the app to display product information. Client-side writes are disabled to protect data integrity; this data should be managed by a trusted backend service.
+ * - Relational Integrity: On creation, rules validate that internal ID fields (e.g., `userId`, `pickingOrderId`) match the IDs in the document path, ensuring data consistency. Key identifiers are immutable once set.
+ *
+ * Denormalization for Authorization:
+ * This ruleset leverages the Firestore path structure as the primary authorization mechanism. By nesting user-specific data like `/users/{userId}/pickingOrders/...`, we avoid costly and complex `get()` calls to other documents to verify ownership. The `userId` in the path is sufficient to grant or deny access, leading to simple, fast, and highly secure rules.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the foundation of the user-ownership model.
+     * @param userId The user ID to check against the request's auth UID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Validates that the user ID within a new document's data matches the
+     * user ID from the document path. Enforces relational integrity on create.
+     * @param userId The user ID from the path wildcard.
+     */
+    function hasCorrectOwner(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * Ensures that a document's owner field cannot be changed on update.
+     * This prevents re-assigning a document to another user.
+     */
+    function isOwnerUnchanged() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    /**
+     * Verifies that the document being modified already exists.
+     * Crucial for all update and delete operations.
+     */
+    function isExistingDocument() {
+      return resource != null;
+    }
+
+
+    /**
+     * @description Manages user profile documents.
+     * @path /users/{userId}
+     * @allow A user (uid: "user_abc") can create their own profile at /users/user_abc.
+     * @deny A user (uid: "user_abc") cannot create a profile for someone else at /users/user_xyz.
+     * @deny Unauthenticated users cannot read or write any user profiles.
+     * @principle Enforces self-creation and ownership. Users can only manage their own profile document.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Disallow listing all users for security and privacy.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && isExistingDocument() && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && isExistingDocument();
+    }
+
+    /**
+     * @description Manages picking orders owned by a specific user.
+     * @path /users/{userId}/pickingOrders/{pickingOrderId}
+     * @allow A user (uid: "user_abc") can create, read, update, or delete an order at /users/user_abc/pickingOrders/order_123.
+     * @deny A different user (uid: "user_xyz") cannot access anything at /users/user_abc/pickingOrders/order_123.
+     * @principle Restricts access to a user's own data tree. All operations are gated by ownership.
+     */
+    match /users/{userId}/pickingOrders/{pickingOrderId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasCorrectOwner(userId);
+      allow update: if isOwner(userId) && isExistingDocument() && isOwnerUnchanged();
+      allow delete: if isOwner(userId) && isExistingDocument();
+    }
+
+    /**
+     * @description Manages the products picked for a specific picking order.
+     * @path /users/{userId}/pickingOrders/{pickingOrderId}/pickedProducts/{pickedProductId}
+     * @allow A user (uid: "user_abc") can create or update a picked product within their own order.
+     * @deny A user (uid: "user_xyz") cannot read or modify picked products in another user's order.
+     * @principle Inherits ownership from the parent path. Access is determined by the {userId}.
+     */
+    match /users/{userId}/pickingOrders/{pickingOrderId}/pickedProducts/{pickedProductId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.pickingOrderId == pickingOrderId;
+      allow update: if isOwner(userId) && isExistingDocument() && request.resource.data.pickingOrderId == resource.data.pickingOrderId;
+      allow delete: if isOwner(userId) && isExistingDocument();
+    }
+
+    /**
+     * @description Stores public product information, accessible to all users.
+     * @path /products/{productId}
+     * @allow Any user, authenticated or not, can read product data.
+     * @deny No client application can write to the products collection.
+     * @principle Provides public read access while protecting data integrity by disallowing client writes. Data should be managed by a trusted backend.
+     */
+    match /products/{productId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // Writes must be handled by a trusted backend service.
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
