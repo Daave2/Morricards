@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
 import AppLayout from '@/components/AppLayout';
 import CustomThemeProvider from '@/components/CustomThemeProvider';
-import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseClientProvider } from '@/src/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'MorriCards',
