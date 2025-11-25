@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -83,11 +84,11 @@ const FormSchema = z.object({
 });
 
 
-const parseOrderText = (text: string): Omit<Order, 'id'>[] => {
-    const orders: Omit<Order, 'id'>[] = [];
+const parseOrderText = (text: string): Order[] => {
+    const orders: Order[] = [];
     const orderSections = text.split(/(?=COLLECTION POINT OPERATIONS\nBACK\nOrder for)/).filter(s => s.trim() !== '');
 
-    orderSections.forEach((section) => {
+    orderSections.forEach((section, index) => {
         const orderRefMatch = section.match(/Order reference: (\d+)/);
         const customerNameMatch = section.match(/Order for (.*?)\n/);
         const collectionSlotMatch = section.match(/Collection slot: (.*?)\n/);
@@ -117,10 +118,12 @@ const parseOrderText = (text: string): Omit<Order, 'id'>[] => {
             }
         });
         
-        const finalOrderId = orderRefMatch ? orderRefMatch[1] : `manual-${Date.now()}`;
+        // Use the official Order Reference as the ID. Fallback to a generated one if not found.
+        const id = orderRefMatch ? orderRefMatch[1] : `manual-${customerNameMatch[1].trim()}-${collectionSlotMatch ? collectionSlotMatch[1].trim() : Date.now() + index}`;
 
         if (productMap.size > 0) {
             orders.push({
+                id,
                 customerName: customerNameMatch[1].trim(),
                 collectionSlot: collectionSlotMatch ? collectionSlotMatch[1].trim() : 'N/A',
                 phoneNumber: phoneMatch ? phoneMatch[1].trim() : undefined,
@@ -250,7 +253,7 @@ export default function PickingListClient() {
     }
 
     const existingOrderIds = new Set(ordersFromDb?.map(o => o.id));
-    const newOrdersToImport = parsedOrders.filter(p => !existingOrderIds.has(p.products[0]?.sku)); // Assuming first product sku is part of ID or use order ref
+    const newOrdersToImport = parsedOrders.filter(p => !existingOrderIds.has(p.id));
     const skippedCount = parsedOrders.length - newOrdersToImport.length;
 
     if (newOrdersToImport.length === 0) {
@@ -287,12 +290,8 @@ export default function PickingListClient() {
     }));
     
     const importPromises = enrichedOrders.map(orderData => {
-        // This is a bit of a hack, we need a better unique ID from the source data
-        const id = orderData.products[0] ? `${orderData.products[0].sku}-${new Date(orderData.collectionSlot.split(' ')[0].split('-').reverse().join('-')).getTime()}` : `manual-${Date.now()}`;
-        const newOrder: Order = { ...orderData, id };
-
-        const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, id);
-        return setDocumentNonBlocking(orderRef, newOrder, { merge: true });
+        const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
+        return setDocumentNonBlocking(orderRef, orderData, { merge: true });
     });
     
     await Promise.all(importPromises);
