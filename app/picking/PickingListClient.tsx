@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -234,7 +233,7 @@ export default function PickingListClient() {
 
   const handleImportOrders = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
-    const parsedOrders = parseOrderText(values.rawOrderText);
+    let parsedOrders = parseOrderText(values.rawOrderText);
 
     if (parsedOrders.length === 0) {
       playError();
@@ -250,10 +249,21 @@ export default function PickingListClient() {
         return;
     }
 
-    const allSkus = new Set<string>();
-    parsedOrders.forEach(order => order.products.forEach(p => allSkus.add(p.sku)));
+    const existingOrderIds = new Set(ordersFromDb?.map(o => o.id));
+    const newOrdersToImport = parsedOrders.filter(p => !existingOrderIds.has(p.products[0]?.sku)); // Assuming first product sku is part of ID or use order ref
+    const skippedCount = parsedOrders.length - newOrdersToImport.length;
 
-    toast({ title: 'Import Successful', description: `Found ${parsedOrders.length} orders. Fetching product details...` });
+    if (newOrdersToImport.length === 0) {
+        toast({ title: 'No New Orders', description: `All ${skippedCount} imported order(s) already exist and were skipped.` });
+        setIsLoading(false);
+        form.reset();
+        return;
+    }
+
+    const allSkus = new Set<string>();
+    newOrdersToImport.forEach(order => order.products.forEach(p => allSkus.add(p.sku)));
+
+    toast({ title: 'Importing Orders...', description: `Found ${newOrdersToImport.length} new orders. Fetching product details...` });
 
     const { data: productDetails, error } = await getProductData({
         locationId: settings.locationId,
@@ -271,14 +281,14 @@ export default function PickingListClient() {
         productDetails.forEach(p => productMap.set(p.sku, p));
     }
     
-    const enrichedOrders = parsedOrders.map(order => ({
+    const enrichedOrders = newOrdersToImport.map(order => ({
         ...order,
         products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
     }));
     
     const importPromises = enrichedOrders.map(orderData => {
-        const orderRefMatch = orderData.collectionSlot.match(/Order reference: (\d+)/);
-        const id = orderRefMatch ? orderRefMatch[1] : `manual-${Date.now()}`;
+        // This is a bit of a hack, we need a better unique ID from the source data
+        const id = orderData.products[0] ? `${orderData.products[0].sku}-${new Date(orderData.collectionSlot.split(' ')[0].split('-').reverse().join('-')).getTime()}` : `manual-${Date.now()}`;
         const newOrder: Order = { ...orderData, id };
 
         const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, id);
@@ -286,6 +296,11 @@ export default function PickingListClient() {
     });
     
     await Promise.all(importPromises);
+
+    toast({
+        title: 'Import Complete',
+        description: `Successfully imported ${newOrdersToImport.length} new orders. Skipped ${skippedCount} duplicate(s).`
+    })
 
     form.reset();
     setIsLoading(false);
@@ -764,9 +779,9 @@ export default function PickingListClient() {
             let statusHtml = '';
             let detailsHtml = '';
 
-             if (pickedOriginals.length === p.quantity) {
+            if (pickedOriginals.length >= p.quantity) {
                 statusHtml = `<span class="status-picked">Picked</span>`;
-            } else if (missingCount === p.quantity) {
+            } else if (missingCount >= p.quantity) {
                 statusHtml = `<span class="status-missing">Missing</span>`;
             } else if (substitutes.length > 0 && (pickedOriginals.length + substitutes.length) >= p.quantity) {
                 statusHtml = `<span class="status-subbed">Substituted</span>`;
@@ -1374,6 +1389,3 @@ export default function PickingListClient() {
     </>
   );
 }
-
-
-
