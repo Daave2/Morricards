@@ -28,7 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import ZXingScanner from '@/components/ZXingScanner';
 import { useApiSettings } from '@/hooks/use-api-settings';
-import { useNetworkSync } from '@/hooks/use-network-sync';
+import { useNetworkSync } from '@/hooks/useNetworkSync';
 import InstallPrompt from '@/components/InstallPrompt';
 import { queueProductFetch } from '@/lib/offlineQueue';
 import { Checkbox } from '@/components/ui/checkbox';
