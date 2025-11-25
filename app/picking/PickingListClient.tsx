@@ -28,7 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import ZXingScanner from '@/components/ZXingScanner';
 import { useApiSettings } from '@/hooks/use-api-settings';
-import { useNetworkSync } from '@/hooks/useNetworkSync';
+import { useNetworkSync } from '@/hooks/use-network-sync';
 import InstallPrompt from '@/components/InstallPrompt';
 import { queueProductFetch } from '@/lib/offlineQueue';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -46,6 +46,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useCollection, useFirestore, useMemoFirebase } from '@/src/firebase';
 import { setDocumentNonBlocking } from '@/src/firebase/non-blocking-updates';
 import { collection, doc } from 'firebase/firestore';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 
 // TYPES
@@ -184,6 +186,7 @@ export default function PickingListClient() {
   const [substituteDialogOpen, setSubstituteDialogOpen] = useState(false);
   const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
   const [summaryDialogContent, setSummaryDialogContent] = useState<{order: Order | null, title: string, products: OrderProduct[]}>({order: null, title: '', products: []});
+  const [isSpeedMode, setIsSpeedMode] = useState(false);
 
 
   const { toast, dismiss } = useToast();
@@ -201,6 +204,14 @@ export default function PickingListClient() {
   
   const { data: ordersFromDb, isLoading: isDbLoading } = useCollection<Order>(ordersCollectionRef);
 
+  const startScannerWithDelay = useCallback(() => {
+    setTimeout(() => {
+        if (scannerRef.current) {
+            scannerRef.current.start();
+        }
+    }, 1500); // 1.5 second delay
+  }, []);
+  
   useEffect(() => {
     if (isScannerActive) {
       scannerRef.current?.start();
@@ -427,6 +438,7 @@ export default function PickingListClient() {
     if (productIndex === -1) {
         playError();
         toast({ variant: 'destructive', title: 'Item Not in This Order' });
+        if (isSpeedMode) startScannerWithDelay();
         return;
     }
     
@@ -435,6 +447,7 @@ export default function PickingListClient() {
     if (product.pickedItems.filter(p => !p.isSubstitute).length >= product.quantity) {
         playInfo();
         toast({ title: 'Already Picked', description: `All units of ${product.name} have been picked.`, icon: <Info /> });
+        if (isSpeedMode) startScannerWithDelay();
         return;
     }
     
@@ -449,8 +462,10 @@ export default function PickingListClient() {
     updateActiveOrderAndDB({ ...activeOrder, products: newProducts });
 
     toast({ title: 'Item Picked', description: `${product.name} (${newProducts[productIndex].pickedItems.filter(p => !p.isSubstitute).length}/${product.quantity})`, icon: <Check /> });
+    
+    if (isSpeedMode) startScannerWithDelay();
 
-  }, [activeOrder, playError, playInfo, playSuccess, toast, updateActiveOrderAndDB]);
+  }, [activeOrder, playError, playInfo, playSuccess, toast, updateActiveOrderAndDB, isSpeedMode, startScannerWithDelay]);
 
 
   const handleManualPick = (sku: string, amount: number) => {
@@ -928,6 +943,15 @@ export default function PickingListClient() {
                         </CardDescription>
                     </div>
                 </CardHeader>
+                <CardContent className="px-6 pb-4">
+                    <div className="flex items-center space-x-2">
+                        <Switch id="speed-mode" checked={isSpeedMode} onCheckedChange={setIsSpeedMode} />
+                        <Label htmlFor="speed-mode" className="flex items-center gap-2">
+                            <Bolt className={cn("h-4 w-4 transition-colors", isSpeedMode ? "text-primary" : "text-muted-foreground")} />
+                            Speed Mode (Continuous Scan)
+                        </Label>
+                    </div>
+                </CardContent>
             </Card>
 
             <Dialog open={substituteDialogOpen} onOpenChange={setSubstituteDialogOpen}>
