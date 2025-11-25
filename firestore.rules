@@ -17,7 +17,7 @@ service cloud.firestore {
       // Allow any authenticated user to read, list, create, update, or delete
       // picking orders within any store. Access is implicitly controlled by the
       // client application, which only shows data for the user's configured store.
-      allow read, write: if isSignedIn();
+      allow list, read, write: if isSignedIn();
     }
 
     // --- User-Specific Data (if any in the future) ---
