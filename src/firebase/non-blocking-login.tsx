@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Auth, // Import Auth type for type hinting
@@ -8,10 +9,10 @@ import {
 } from 'firebase/auth';
 
 /** Initiate anonymous sign-in (non-blocking). */
-export function initiateAnonymousSignIn(authInstance: Auth): void {
+export function initiateAnonymousSignIn(authInstance: Auth) {
   // CRITICAL: Call signInAnonymously directly. Do NOT use 'await signInAnonymously(...)'.
-  signInAnonymously(authInstance);
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
+  // Let the onAuthStateChanged listener handle the result.
+  return signInAnonymously(authInstance);
 }
 
 /** Initiate email/password sign-up (non-blocking). */
