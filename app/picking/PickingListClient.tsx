@@ -43,6 +43,9 @@ import type { SearchHit } from '@/lib/morrisonsSearch';
 import ImageModal from '@/components/image-modal';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useCollection, useFirestore, useMemoFirebase } from '@/src/firebase/firestore/use-collection';
+import { setDocumentNonBlocking } from '@/src/firebase/non-blocking-updates';
+import { collection, doc } from 'firebase/firestore';
 
 
 // TYPES
@@ -80,11 +83,11 @@ const FormSchema = z.object({
   rawOrderText: z.string().min(10, 'Please paste in the order text.'),
 });
 
-const LOCAL_STORAGE_KEY_ORDERS = 'morricards-orders';
+const HARDCODED_USER_ID = 'test-user-123';
 
 
-const parseOrderText = (text: string): Order[] => {
-    const orders: Order[] = [];
+const parseOrderText = (text: string): Omit<Order, 'id'>[] => {
+    const orders: Omit<Order, 'id'>[] = [];
     const orderSections = text.split(/(?=COLLECTION POINT OPERATIONS\nBACK\nOrder for)/).filter(s => s.trim() !== '');
 
     orderSections.forEach((section) => {
@@ -121,7 +124,6 @@ const parseOrderText = (text: string): Order[] => {
 
         if (productMap.size > 0) {
             orders.push({
-                id: finalOrderId,
                 customerName: customerNameMatch[1].trim(),
                 collectionSlot: collectionSlotMatch ? collectionSlotMatch[1].trim() : 'N/A',
                 phoneNumber: phoneMatch ? phoneMatch[1].trim() : undefined,
@@ -171,7 +173,6 @@ const OrderSummary = ({ order, onShowDetails }: { order: Order, onShowDetails: (
 
 
 export default function PickingListClient() {
-  const [groupedOrders, setGroupedOrders] = useState<GroupedOrders>({});
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null); // For read-only view
   const [isLoading, setIsLoading] = useState(false);
@@ -190,27 +191,15 @@ export default function PickingListClient() {
   const { settings } = useApiSettings();
   const { isOnline } = useNetworkSync();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
-  const groupedOrdersRef = useRef(groupedOrders);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    groupedOrdersRef.current = groupedOrders;
-  }, [groupedOrders]);
-
-  useEffect(() => {
-    try {
-      const savedOrders = localStorage.getItem(LOCAL_STORAGE_KEY_ORDERS);
-      if (savedOrders) {
-        setGroupedOrders(JSON.parse(savedOrders));
-      }
-    } catch (error) {
-      console.error("Failed to load orders from local storage", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY_ORDERS, JSON.stringify(groupedOrders));
-  }, [groupedOrders]);
+  const firestore = useFirestore();
+  const ordersCollectionRef = useMemoFirebase(
+    () => collection(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`),
+    [firestore]
+  );
+  
+  const { data: ordersFromDb, isLoading: isDbLoading } = useCollection<Order>(ordersCollectionRef);
 
   useEffect(() => {
     if (isScannerActive) {
@@ -234,14 +223,12 @@ export default function PickingListClient() {
         if (dateMatch && timeMatch) {
             const [day, month, year] = dateMatch[0].split('-').map(Number);
             const [startTime] = timeMatch[0].split(/\s*-\s*/);
-            // Note: month is 0-indexed in JS Dates
             const date = new Date(year, month - 1, day, parseInt(startTime.split(':')[0]), parseInt(startTime.split(':')[1]));
              if (!isNaN(date.getTime())) {
               return [date, dateMatch[0], timeMatch[0]];
             }
         }
       } catch (e) {
-        // Fallthrough on parsing error
       }
       return [defaultDate, "Unsorted", "N/A"];
   };
@@ -283,25 +270,18 @@ export default function PickingListClient() {
         ...order,
         products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
     }));
+    
+    const importPromises = enrichedOrders.map(orderData => {
+        const orderRefMatch = orderData.collectionSlot.match(/Order reference: (\d+)/);
+        const id = orderRefMatch ? orderRefMatch[1] : `manual-${Date.now()}`;
+        const newOrder: Order = { ...orderData, id };
 
-    const newGroups: GroupedOrders = { ...groupedOrders };
-    enrichedOrders.forEach(order => {
-        const slot = order.collectionSlot;
-        const [, dateKey, timeKey] = parseSlot(slot);
-
-        if (!newGroups[dateKey]) {
-            newGroups[dateKey] = {};
-        }
-        if (!newGroups[dateKey][timeKey]) {
-            newGroups[dateKey][timeKey] = [];
-        }
-        // Avoid adding duplicate orders
-        if (!newGroups[dateKey][timeKey].some(o => o.id === order.id)) {
-            newGroups[dateKey][timeKey].push(order);
-        }
+        const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, id);
+        return setDocumentNonBlocking(orderRef, newOrder, { merge: true });
     });
+    
+    await Promise.all(importPromises);
 
-    setGroupedOrders(newGroups);
     form.reset();
     setIsLoading(false);
     playSuccess();
@@ -332,16 +312,8 @@ export default function PickingListClient() {
   }
   
   const handleRepickOrder = (orderId: string) => {
-     let orderToRepick: Order | undefined;
-     
-     for (const date in groupedOrders) {
-        for (const time in groupedOrders[date]) {
-            orderToRepick = groupedOrders[date][time].find(o => o.id === orderId);
-            if(orderToRepick) break;
-        }
-        if(orderToRepick) break;
-     }
-     
+     if (!ordersFromDb) return;
+     const orderToRepick = ordersFromDb.find(o => o.id === orderId);
      if (!orderToRepick) return;
 
      const resetOrder: Order = {
@@ -350,38 +322,19 @@ export default function PickingListClient() {
         products: orderToRepick.products.map(p => ({ ...p, pickedItems: [] })),
      };
      
-     setGroupedOrders(prev => {
-         const newGroups = { ...prev };
-         const [, dateKey, timeKey] = parseSlot(resetOrder.collectionSlot);
+     const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, orderId);
+     setDocumentNonBlocking(orderRef, resetOrder, { merge: true });
 
-         if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
-             newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === orderId ? resetOrder : o);
-         }
-         return newGroups;
-     });
      handleSelectOrder(resetOrder);
   }
 
   const handleToggleOrderCollected = (orderId: string, collect: boolean) => {
-     setGroupedOrders(prev => {
-        const newGroups = { ...prev };
-        let orderFound = false;
-        for (const dateKey in newGroups) {
-            for (const timeKey in newGroups[dateKey]) {
-                const orderIndex = newGroups[dateKey][timeKey].findIndex(o => o.id === orderId);
-                if (orderIndex > -1) {
-                    newGroups[dateKey][timeKey][orderIndex] = {
-                        ...newGroups[dateKey][timeKey][orderIndex],
-                        isCollected: collect,
-                    };
-                    orderFound = true;
-                    break;
-                }
-            }
-            if (orderFound) break;
-        }
-        return newGroups;
-    });
+    if (!ordersFromDb) return;
+    const orderToUpdate = ordersFromDb.find(o => o.id === orderId);
+    if (!orderToUpdate) return;
+     
+     const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, orderId);
+     setDocumentNonBlocking(orderRef, { isCollected: collect }, { merge: true });
 
     toast({ 
         title: `Order ${collect ? 'Collected' : 'Restored'}`, 
@@ -441,15 +394,8 @@ export default function PickingListClient() {
 
   const updateActiveOrderAndGroups = (updatedOrder: Order) => {
      setActiveOrder(updatedOrder);
-     setGroupedOrders(prev => {
-        const newGroups = { ...prev };
-        const [, dateKey, timeKey] = parseSlot(updatedOrder.collectionSlot);
-
-        if (newGroups[dateKey] && newGroups[dateKey][timeKey]) {
-            newGroups[dateKey][timeKey] = newGroups[dateKey][timeKey].map(o => o.id === updatedOrder.id ? updatedOrder : o);
-        }
-        return newGroups;
-     });
+     const orderRef = doc(firestore, `users/${HARDCODED_USER_ID}/pickingOrders`, updatedOrder.id);
+     setDocumentNonBlocking(orderRef, updatedOrder, { merge: true });
   };
 
   const handleScanToPick = useCallback((text: string) => {
@@ -482,7 +428,7 @@ export default function PickingListClient() {
     
     updateActiveOrderAndGroups({ ...activeOrder, products: newProducts });
 
-    toast({ title: 'Item Picked', description: `${product.name} (${product.pickedItems.filter(p => !p.isSubstitute).length}/${product.quantity})`, icon: <Check /> });
+    toast({ title: 'Item Picked', description: `${product.name} (${newProducts[productIndex].pickedItems.filter(p => !p.isSubstitute).length}/${product.quantity})`, icon: <Check /> });
 
   }, [activeOrder, playError, playInfo, playSuccess, toast]);
 
@@ -599,7 +545,6 @@ export default function PickingListClient() {
     const productsWithMissingMarked = activeOrder.products.map(p => {
         const pickedCount = p.pickedItems.length;
         if (pickedCount < p.quantity) {
-            // Mark remaining quantity as missing
             const missingCount = p.quantity - pickedCount;
             const missingItems: PickedItem[] = Array.from({ length: missingCount }, () => ({ sku: 'MISSING', isSubstitute: true }));
             return { ...p, pickedItems: [...p.pickedItems, ...missingItems] };
@@ -632,6 +577,24 @@ export default function PickingListClient() {
       finishOrderCompletion();
     }
   }
+
+  const groupedOrders = useMemo(() => {
+    if (!ordersFromDb) return {};
+    const newGroups: GroupedOrders = {};
+    ordersFromDb.forEach(order => {
+        const slot = order.collectionSlot;
+        const [, dateKey, timeKey] = parseSlot(slot);
+
+        if (!newGroups[dateKey]) {
+            newGroups[dateKey] = {};
+        }
+        if (!newGroups[dateKey][timeKey]) {
+            newGroups[dateKey][timeKey] = [];
+        }
+        newGroups[dateKey][timeKey].push(order);
+    });
+    return newGroups;
+  }, [ordersFromDb]);
 
   const getSortedDateKeys = () => {
       return Object.keys(groupedOrders).sort((a, b) => {
@@ -735,11 +698,10 @@ export default function PickingListClient() {
 
   const suggestedSubQuery = useMemo(() => {
     if (!substitutingFor) return '';
-    // Take first 2 words of the product name for a broader search
     return substitutingFor.name.split(' ').slice(0, 2).join(' ');
   }, [substitutingFor]);
   
-  const allOrdersList = useMemo(() => Object.values(groupedOrders).flatMap(dateGroup => Object.values(dateGroup).flat()), [groupedOrders]);
+  const allOrdersList = useMemo(() => ordersFromDb || [], [ordersFromDb]);
   const pickedOrders = useMemo(() => allOrdersList.filter(o => o.isPicked && !o.isCollected), [allOrdersList]);
   const collectedOrders = useMemo(() => allOrdersList.filter(o => o.isCollected), [allOrdersList]);
 
@@ -808,7 +770,7 @@ export default function PickingListClient() {
                  statusHtml = `<span class="status-missing">Missing</span>`;
             }
             
-            if (pickedOriginals.length > 0) {
+            if (pickedOriginals.length > 0 && pickedOriginals.length < p.quantity) {
                  detailsHtml += `Picked: ${pickedOriginals.length}<br>`;
             }
             if (substitutes.length > 0) {
@@ -1222,7 +1184,7 @@ export default function PickingListClient() {
              </CardContent>
         </Card>
         
-        {Object.keys(groupedOrders).length > 0 ? (
+        {(ordersFromDb && ordersFromDb.length > 0) || isDbLoading ? (
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1307,7 +1269,7 @@ export default function PickingListClient() {
                                                                         <a href={`tel:${order.phoneNumber}`}>
                                                                             <Phone className="mr-2 h-4 w-4" /> Call Customer
                                                                         </a>
-                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuItem>
                                                                 )}
                                                                 <DropdownMenuItem onClick={() => handleViewOrder(order)}>
                                                                     <Eye className="mr-2 h-4 w-4" /> View Items
@@ -1395,7 +1357,7 @@ export default function PickingListClient() {
                     )}
                 </CardContent>
             </Card>
-        ) : !isLoading && (
+        ) : !isLoading && !isDbLoading && (
              <Card className="max-w-4xl mx-auto">
                 <CardContent className="p-12 text-center">
                     <Bot className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
@@ -1407,3 +1369,5 @@ export default function PickingListClient() {
     </>
   );
 }
+
+

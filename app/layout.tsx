@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
 import AppLayout from '@/components/AppLayout';
 import CustomThemeProvider from '@/components/CustomThemeProvider';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'MorriCards',
@@ -40,20 +41,22 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-          themes={['light', 'dark', 'theme-glass', 'theme-dark-gradient']}
-        >
-          <CustomThemeProvider>
-            <AppLayout>
-              {children}
-            </AppLayout>
-            <Toaster />
-          </CustomThemeProvider>
-        </ThemeProvider>
+        <FirebaseClientProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+            themes={['light', 'dark', 'theme-glass', 'theme-dark-gradient']}
+          >
+            <CustomThemeProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+              <Toaster />
+            </CustomThemeProvider>
+          </ThemeProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );
