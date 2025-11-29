@@ -247,18 +247,20 @@ export default function PickingListClient() {
 
   const handleImportOrders = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
+    const { id: toastId } = toast({ title: 'Parsing orders...', description: 'Please wait.' });
+
     let parsedOrders = parseOrderText(values.rawOrderText);
 
     if (parsedOrders.length === 0) {
       playError();
-      toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not find any valid orders in the text.' });
+      toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Could not find any valid orders in the text.' });
       setIsLoading(false);
       return;
     }
 
     if (!settings.locationId) {
         playError();
-        toast({ variant: 'destructive', title: 'Import Failed', description: 'Store Location ID is not set in settings.' });
+        toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Store Location ID is not set in settings.' });
         setIsLoading(false);
         return;
     }
@@ -268,48 +270,64 @@ export default function PickingListClient() {
     const skippedCount = parsedOrders.length - newOrdersToImport.length;
 
     if (newOrdersToImport.length === 0) {
-        toast({ title: 'No New Orders', description: `All ${skippedCount} imported order(s) already exist and were skipped.` });
+        toast({ id: toastId, title: 'No New Orders', description: `All ${skippedCount} imported order(s) already exist and were skipped.` });
         setIsLoading(false);
         form.reset();
         return;
     }
 
-    const allSkus = new Set<string>();
-    newOrdersToImport.forEach(order => order.products.forEach(p => allSkus.add(p.sku)));
+    const BATCH_SIZE = 5;
+    let importedCount = 0;
 
-    toast({ title: 'Importing Orders...', description: `Found ${newOrdersToImport.length} new orders. Fetching product details...` });
+    for (let i = 0; i < newOrdersToImport.length; i += BATCH_SIZE) {
+        const batch = newOrdersToImport.slice(i, i + BATCH_SIZE);
+        const progress = i + batch.length;
 
-    const { data: productDetails, error } = await getProductData({
-        locationId: settings.locationId,
-        skus: Array.from(allSkus),
-        bearerToken: settings.bearerToken,
-        debugMode: settings.debugMode,
-    });
+        toast({ id: toastId, title: 'Importing Orders...', description: `Processing ${progress} of ${newOrdersToImport.length}...` });
+
+        const skusInBatch = new Set<string>();
+        batch.forEach(order => order.products.forEach(p => skusInBatch.add(p.sku)));
+
+        const { data: productDetails, error } = await getProductData({
+            locationId: settings.locationId,
+            skus: Array.from(skusInBatch),
+            bearerToken: settings.bearerToken,
+            debugMode: settings.debugMode,
+        });
+
+        if (error) {
+            toast({ id: toastId, variant: 'destructive', title: `Product Fetch Error (Batch ${i/BATCH_SIZE + 1})`, description: error });
+            // Continue to next batch
+            continue;
+        }
+
+        const productMap = new window.Map<string, Product>();
+        if (productDetails) {
+            productDetails.forEach(p => productMap.set(p.sku, p));
+        }
     
-    if (error) {
-        toast({ variant: 'destructive', title: 'Product Fetch Error', description: error });
+        const enrichedOrders = batch.map(order => ({
+            ...order,
+            products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
+        }));
+
+        const importPromises = enrichedOrders.map(orderData => {
+            const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
+            return setDocumentNonBlocking(orderRef, orderData, { merge: true });
+        });
+    
+        await Promise.all(importPromises);
+        importedCount += batch.length;
+        
+        // Small delay to prevent UI freezing and API throttling
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    const productMap = new window.Map<string, Product>();
-    if (productDetails) {
-        productDetails.forEach(p => productMap.set(p.sku, p));
-    }
-    
-    const enrichedOrders = newOrdersToImport.map(order => ({
-        ...order,
-        products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
-    }));
-    
-    const importPromises = enrichedOrders.map(orderData => {
-        const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
-        return setDocumentNonBlocking(orderRef, orderData, { merge: true });
-    });
-    
-    await Promise.all(importPromises);
 
     toast({
+        id: toastId,
         title: 'Import Complete',
-        description: `Successfully imported ${newOrdersToImport.length} new orders. Skipped ${skippedCount} duplicate(s).`
+        description: `Successfully imported ${importedCount} new orders. Skipped ${skippedCount} duplicate(s).`
     })
 
     form.reset();
