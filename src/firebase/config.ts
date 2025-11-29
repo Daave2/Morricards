@@ -1,8 +1,9 @@
+
 export const firebaseConfig = {
-  "projectId": "morricards",
-  "appId": "1:19314257763:web:882f5ab308ec91b40ded56",
-  "apiKey": "AIzaSyBhtnJ4meofnKy851E5D6tHN_kmRD9gol0",
-  "authDomain": "morricards.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "19314257763"
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  measurementId: "",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
