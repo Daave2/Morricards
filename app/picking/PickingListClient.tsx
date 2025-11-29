@@ -71,10 +71,10 @@ interface Order {
     id: string;
     customerName: string;
     collectionSlot: string;
-    phoneNumber?: string;
+    phoneNumber: string | null;
     products: OrderProduct[];
     isPicked: boolean;
-    isCollected?: boolean;
+    isCollected: boolean;
 }
 
 // State is now nested: { "25-11-2025": { "16:00 - 17:00": [Order, ...] } }
@@ -128,7 +128,7 @@ const parseOrderText = (text: string): Order[] => {
                 id,
                 customerName: customerNameMatch[1].trim(),
                 collectionSlot: collectionSlotMatch ? collectionSlotMatch[1].trim() : 'N/A',
-                phoneNumber: phoneMatch ? phoneMatch[1].trim() : undefined,
+                phoneNumber: phoneMatch ? phoneMatch[1].trim() : null,
                 products: Array.from(productMap.entries()).map(([sku, { name, quantity }]) => ({
                     sku,
                     name,
@@ -766,8 +766,8 @@ export default function PickingListClient() {
         return;
     }
 
-    function escapeHtml(s: string | number | undefined) {
-        if (s === undefined) return '';
+    function escapeHtml(s: string | number | undefined | null) {
+        if (s === undefined || s === null) return '';
         return String(s)
             .replaceAll("&", "&amp;")
             .replaceAll("<", "&lt;")
