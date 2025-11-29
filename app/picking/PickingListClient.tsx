@@ -45,7 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCollection, useFirestore, useMemoFirebase } from '@/src/firebase';
 import { setDocumentNonBlocking } from '@/src/firebase/non-blocking-updates';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
@@ -258,9 +258,9 @@ export default function PickingListClient() {
       return;
     }
 
-    if (!settings.locationId) {
+    if (!settings.locationId || !firestore) {
         playError();
-        toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Store Location ID is not set in settings.' });
+        toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Store Location ID is not set or Firestore is not available.' });
         setIsLoading(false);
         return;
     }
@@ -297,7 +297,6 @@ export default function PickingListClient() {
 
         if (error) {
             toast({ id: toastId, variant: 'destructive', title: `Product Fetch Error (Batch ${i/BATCH_SIZE + 1})`, description: error });
-            // Continue to next batch
             continue;
         }
 
@@ -310,19 +309,24 @@ export default function PickingListClient() {
             ...order,
             products: order.products.map(p => ({ 
                 ...p, 
-                details: productMap.get(p.sku) || null // Explicitly set to null if not found
+                details: productMap.get(p.sku) || null
             })),
         }));
 
-        const importPromises = enrichedOrders.map(orderData => {
-            const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
-            return setDocumentNonBlocking(orderRef, orderData, { merge: true });
-        });
-    
-        await Promise.all(importPromises);
-        importedCount += batch.length;
+        try {
+            const firestoreBatch = writeBatch(firestore);
+            enrichedOrders.forEach(orderData => {
+                const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
+                firestoreBatch.set(orderRef, orderData, { merge: true });
+            });
+            await firestoreBatch.commit();
+            importedCount += batch.length;
+        } catch (e) {
+            const batchError = e instanceof Error ? e.message : String(e);
+            toast({ id: toastId, variant: 'destructive', title: `Firestore Error (Batch ${i/BATCH_SIZE + 1})`, description: batchError });
+            continue; // Skip to next batch
+        }
         
-        // Small delay to prevent UI freezing and API throttling
         await new Promise(resolve => setTimeout(resolve, 200));
     }
 
