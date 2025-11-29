@@ -10,7 +10,7 @@
 import type { components } from '../morrisons-types';
 import type { StockOrder, Order as MorrisonsOrder, SpaceInfo } from '../morrisons-types';
 
-const API_KEY = '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
+const API_KEY = process.env.MORRISONS_API_KEY || '0GYtUV6tIhQ3a9rED9XUqiEQIbFhFktW';
 
 const BASE_STOCK = 'https://api.morrisons.com/stock/v2/locations';
 const BASE_LOCN = 'https://api.morrisons.com/priceintegrity/v1/locations';
