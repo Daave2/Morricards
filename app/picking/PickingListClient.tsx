@@ -633,15 +633,17 @@ export default function PickingListClient() {
 
   const getSortedDateKeys = () => {
       return Object.keys(groupedOrders).sort((a, b) => {
-          const dateA = a.split('-').reverse().join('-');
-          const dateB = b.split('-').reverse().join('-');
-          return new Date(dateA).getTime() - new Date(dateB).getTime();
+          const dateA = parseSlot(a + ' 00:00 - 00:00')[0];
+          const dateB = parseSlot(b + ' 00:00 - 00:00')[0];
+          return dateA.getTime() - dateB.getTime();
       });
   };
   
   const getSortedTimeKeys = (dateKey: string) => {
       if (groupedOrders[dateKey]) {
         return Object.keys(groupedOrders[dateKey]).sort((a, b) => {
+            if (a === 'N/A') return 1;
+            if (b === 'N/A') return -1;
             const timeA = a.split(' - ')[0];
             const timeB = b.split(' - ')[0];
             return timeA.localeCompare(timeB);
