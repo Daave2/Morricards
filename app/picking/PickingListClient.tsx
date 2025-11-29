@@ -56,7 +56,7 @@ type Product = FetchMorrisonsDataOutput[0];
 interface PickedItem {
     sku: string;
     isSubstitute: boolean;
-    details?: Product;
+    details?: Product | null;
 }
 
 interface OrderProduct {
@@ -64,7 +64,7 @@ interface OrderProduct {
     name: string;
     quantity: number;
     pickedItems: PickedItem[];
-    details?: Product;
+    details?: Product | null;
 }
 
 interface Order {
@@ -308,7 +308,10 @@ export default function PickingListClient() {
     
         const enrichedOrders = batch.map(order => ({
             ...order,
-            products: order.products.map(p => ({ ...p, details: productMap.get(p.sku) })),
+            products: order.products.map(p => ({ 
+                ...p, 
+                details: productMap.get(p.sku) || null // Explicitly set to null if not found
+            })),
         }));
 
         const importPromises = enrichedOrders.map(orderData => {
