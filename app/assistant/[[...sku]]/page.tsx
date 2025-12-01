@@ -14,7 +14,11 @@ function Loading() {
     )
 }
 
-export default function AssistantPage({ params }: { params: { sku?: string[] } }) {
+type AssistantPageProps = {
+  params: { sku?: string[] };
+};
+
+export default function AssistantPage({ params }: AssistantPageProps) {
   const sku = params.sku?.[0];
 
   return (
@@ -23,5 +27,3 @@ export default function AssistantPage({ params }: { params: { sku?: string[] } }
     </Suspense>
   );
 }
-
-    
