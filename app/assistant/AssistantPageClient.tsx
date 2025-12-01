@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -528,7 +529,17 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     } finally {
       setIsGeneratingInsights(false);
     }
-  }, [settings.locationId, settings.bearerToken, settings.debugMode, toast, form, playError, playSuccess, fetchAndUpdateToken, consecutiveFails]);
+  }, [
+    settings.locationId, 
+    settings.bearerToken, 
+    settings.debugMode, 
+    toast, 
+    form, 
+    playError, 
+    playSuccess, 
+    fetchAndUpdateToken
+    // Note: 'consecutiveFails' is intentionally omitted to prevent re-triggering on error.
+  ]);
 
 
   // Handle dynamic links from URL params
@@ -536,11 +547,12 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     const skuToLoad = skuFromPath || searchParams.get('sku');
     const locationFromUrl = searchParams.get('locationId');
     
-    if (skuToLoad && settingsLoaded && (settings.locationId || locationFromUrl)) {
+    // This effect should only run once the settings are loaded.
+    if (settingsLoaded && skuToLoad) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath, searchParams, settingsLoaded, settings.locationId]);
+  }, [skuFromPath, searchParams, settingsLoaded]);
 
 
   const handleReset = () => {
