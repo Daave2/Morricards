@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -836,9 +837,9 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
                                   <DataRow icon={<Flag />} label="Manual Order" value={productDetails.manuallyStoreOrderedItem} />
                                   <DataRow icon={<Info />} label="Start of Day Stock" value={product.spaceInfo?.startOfDayQty} />
                                   <DataRow icon={<Info />} label="End of Day Stock" value={product.spaceInfo?.endOfDayQty} />
-                                  <DataRow icon={<Info />} label="Facings" value={product.spaceInfo?.standardSpace?.locations?.[0]?.facings} />
-                                  <DataRow icon={<Info />} label="Fill Quantity" value={product.spaceInfo?.standardSpace?.locations?.[0]?.fillQty} />
-                                  <DataRow icon={<Info />} label="Merch Type" value={product.spaceInfo?.standardSpace?.locations?.[0]?.merchandiseType} />
+                                  <DataRow icon={<Info />} label="Facings" value={product.spaceInfo?.standardSpace?.locations?.[0].facings} />
+                                  <DataRow icon={<Info />} label="Fill Quantity" value={product.spaceInfo?.standardSpace?.locations?.[0].fillQty} />
+                                  <DataRow icon={<Info />} label="Merch Type" value={product.spaceInfo?.standardSpace?.locations?.[0].merchandiseType} />
                                 </AccordionContent>
                               </AccordionItem>
                               {productDetails.commercialHierarchy && (
@@ -885,5 +886,3 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     </div>
   );
 }
-
-    
