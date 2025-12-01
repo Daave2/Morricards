@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -434,7 +434,7 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     defaultValues: { sku: '' },
   });
 
-  const fetchProductAndInsights = async (sku: string, locationIdOverride?: string | null) => {
+  const fetchProductAndInsights = useCallback(async (sku: string, locationIdOverride?: string | null) => {
     if (!sku || sku.trim().length < 4) {
       toast({ variant: 'destructive', title: 'Invalid SKU', description: 'Please enter a valid SKU or EAN.' });
       return;
@@ -528,21 +528,23 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     } finally {
       setIsGeneratingInsights(false);
     }
-  };
+  }, [settings.locationId, settings.bearerToken, settings.debugMode, consecutiveFails, fetchAndUpdateToken, playError, playSuccess, toast]);
+
 
   // Handle dynamic links from URL params
   useEffect(() => {
+    // This effect should only run when the component mounts or the URL truly changes.
     const skuFromQuery = searchParams.get('sku');
     const locationFromUrl = searchParams.get('locationId');
     const skuToLoad = skuFromPath || skuFromQuery;
 
-    // FIX: Only run if we have a SKU to load AND the settings have loaded a locationId.
     if (skuToLoad && settings.locationId) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
-    // We depend on settings.locationId to ensure settings are loaded before fetching.
+    // The dependency array is intentionally stable.
+    // It depends on the page props and the loaded settings.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath, settings.locationId]);
+  }, [skuFromPath, searchParams, settings.locationId]);
 
 
   const handleReset = () => {
