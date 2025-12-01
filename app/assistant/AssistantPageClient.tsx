@@ -534,14 +534,15 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
   useEffect(() => {
     const skuFromQuery = searchParams.get('sku');
     const locationFromUrl = searchParams.get('locationId');
-
     const skuToLoad = skuFromPath || skuFromQuery;
 
-    if (skuToLoad) {
+    // FIX: Only run if we have a SKU to load AND the settings have loaded a locationId.
+    if (skuToLoad && settings.locationId) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
+    // We depend on settings.locationId to ensure settings are loaded before fetching.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath]);
+  }, [skuFromPath, settings.locationId]);
 
 
   const handleReset = () => {
