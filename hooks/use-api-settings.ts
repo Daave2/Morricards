@@ -70,13 +70,12 @@ export function useApiSettings() {
   }, []);
 
   useEffect(() => {
-    let settingsFound = false;
+    let currentSettings: ApiSettings = DEFAULT_SETTINGS;
     try {
       const item = window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
       if (item) {
-        settingsFound = true;
-        const parsed = JSON.parse(item);
-        setSettings(prev => ({...prev, ...parsed}));
+        currentSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(item) };
+        setSettings(currentSettings);
       }
     } catch (error) {
       console.error("Failed to load settings from localStorage", error);
@@ -84,8 +83,8 @@ export function useApiSettings() {
         setSettingsLoaded(true);
     }
 
-    if (!settingsFound) {
-      // It's the first run, so fetch the token
+    // If the stored token is the same as the default one, it's likely the first run or has never been updated.
+    if (currentSettings.bearerToken === DEFAULT_SETTINGS.bearerToken) {
       fetchAndUpdateToken();
     }
   }, [fetchAndUpdateToken]);
