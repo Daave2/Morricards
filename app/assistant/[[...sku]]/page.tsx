@@ -14,11 +14,13 @@ function Loading() {
     )
 }
 
+// Define a specific, local type for the page's props, avoiding the generic PageProps from Next.js.
 type AssistantPageProps = {
   params: { sku?: string[] };
   searchParams?: { [key: string]: string | string[] | undefined };
 };
 
+// The component is a standard React component, not async.
 export default function AssistantPage({ params }: AssistantPageProps) {
   const sku = params.sku?.[0];
 
