@@ -290,7 +290,7 @@ const ChatInterface = ({ product, locationId }: { product: BaseProduct, location
                   )}
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-2.5 text-sm max-w-[85%] shadow-sm",
+                      "rounded-2xl px-4 py-2.5 text-sm max-w-[85%]",
                       msg.role === 'user'
                         ? "bg-primary text-primary-foreground rounded-br-none"
                         : "bg-muted/80 backdrop-blur-sm rounded-bl-none border"
@@ -377,7 +377,7 @@ const ProductSkeleton = () => (
   </div>
 );
 
-export default function AssistantPageClient() {
+export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: string }) {
   const [isScanMode, setIsScanMode] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -435,29 +435,21 @@ export default function AssistantPageClient() {
 
   // Handle dynamic links from URL params
   useEffect(() => {
-    let skuFromUrl = searchParams.get('sku');
+    const skuFromQuery = searchParams.get('sku');
     const locationFromUrl = searchParams.get('locationId');
 
-    // If 'sku' param doesn't exist, check for a keyless numeric param
-    if (!skuFromUrl) {
-      for (const [key, value] of searchParams.entries()) {
-        if (!value && /^\d{7,13}$/.test(key)) {
-          skuFromUrl = key;
-          break;
-        }
-      }
-    }
+    const skuToLoad = skuFromPath || skuFromQuery;
 
-    if (skuFromUrl) {
+    if (skuToLoad) {
       if (locationFromUrl) {
         setSettings({ locationId: locationFromUrl });
       }
-      fetchProductAndInsights(skuFromUrl);
+      fetchProductAndInsights(skuToLoad);
       // Clean the URL to avoid re-triggering on refresh
       router.replace('/assistant', undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, skuFromPath]);
 
   const handleReset = () => {
     setProduct(null);

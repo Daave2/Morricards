@@ -1,4 +1,5 @@
 
+
 import { Suspense } from 'react';
 import AssistantPageClient from './AssistantPageClient';
 import { Loader2 } from 'lucide-react';
@@ -14,10 +15,12 @@ function Loading() {
     )
 }
 
-export default function AssistantPage() {
+export default function AssistantPage({ params }: { params: { sku: string[] } }) {
+  const sku = params.sku?.[0];
+
   return (
     <Suspense fallback={<Loading />}>
-      <AssistantPageClient />
+      <AssistantPageClient skuFromPath={sku} />
     </Suspense>
   );
 }
