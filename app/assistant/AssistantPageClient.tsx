@@ -537,7 +537,8 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     form, 
     playError, 
     playSuccess,
-    fetchAndUpdateToken
+    fetchAndUpdateToken,
+    consecutiveFails,
   ]);
 
   const skuFromQuery = useMemo(() => searchParams.get('sku'), [searchParams]);
@@ -547,12 +548,10 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
   useEffect(() => {
     const skuToLoad = skuFromPath || skuFromQuery;
     
-    // This effect should only run once the settings are loaded and a sku is present.
     if (settingsLoaded && skuToLoad && settings.locationId) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath, skuFromQuery, locationFromUrl, settingsLoaded, settings.bearerToken]);
+  }, [skuFromPath, skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, settings.bearerToken, fetchProductAndInsights]);
 
 
   const handleReset = () => {
@@ -894,5 +893,3 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     </div>
   );
 }
-
-    
