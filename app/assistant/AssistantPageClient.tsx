@@ -528,7 +528,7 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     } finally {
       setIsGeneratingInsights(false);
     }
-  }, [settings.locationId, settings.bearerToken, settings.debugMode, consecutiveFails, fetchAndUpdateToken, playError, playSuccess, toast]);
+  }, [settings.locationId, settings.bearerToken, settings.debugMode, fetchAndUpdateToken, playError, playSuccess, toast, form, consecutiveFails]);
 
 
   // Handle dynamic links from URL params
@@ -539,10 +539,10 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     const skuToLoad = skuFromPath || skuFromQuery;
     
     // CRITICAL FIX: Wait for settings to be loaded from local storage before proceeding.
-    if (skuToLoad && settingsLoaded) {
+    if (skuToLoad && settingsLoaded && settings.locationId) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
-  }, [skuFromPath, searchParams, settingsLoaded, fetchProductAndInsights]);
+  }, [skuFromPath, searchParams, settingsLoaded, settings.locationId, fetchProductAndInsights]);
 
 
   const handleReset = () => {
@@ -884,3 +884,5 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     </div>
   );
 }
+
+    
