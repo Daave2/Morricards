@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -536,23 +536,25 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     toast, 
     form, 
     playError, 
-    playSuccess, 
-    fetchAndUpdateToken
-    // Note: 'consecutiveFails' is intentionally omitted to prevent re-triggering on error.
+    playSuccess,
+    fetchAndUpdateToken,
+    consecutiveFails,
   ]);
 
+  const skuFromQuery = useMemo(() => searchParams.get('sku'), [searchParams]);
+  const locationFromUrl = useMemo(() => searchParams.get('locationId'), [searchParams]);
 
   // Handle dynamic links from URL params
   useEffect(() => {
-    const skuToLoad = skuFromPath || searchParams.get('sku');
-    const locationFromUrl = searchParams.get('locationId');
+    const skuToLoad = skuFromPath || skuFromQuery;
     
-    // This effect should only run once the settings are loaded.
+    // This effect should only run once the settings are loaded and a sku is present.
     if (settingsLoaded && skuToLoad) {
+      // We pass the explicit `locationId` from the URL. If it's null, the function will use the one from settings.
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath, searchParams, settingsLoaded]);
+  }, [skuFromPath, skuFromQuery, locationFromUrl, settingsLoaded]);
 
 
   const handleReset = () => {
