@@ -433,30 +433,7 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     defaultValues: { sku: '' },
   });
 
-  // Handle dynamic links from URL params
-  useEffect(() => {
-    const skuFromQuery = searchParams.get('sku');
-    const locationFromUrl = searchParams.get('locationId');
-
-    const skuToLoad = skuFromPath || skuFromQuery;
-
-    if (skuToLoad) {
-      if (locationFromUrl) {
-        setSettings({ locationId: locationFromUrl });
-      }
-      fetchProductAndInsights(skuToLoad);
-      // Clean the URL to avoid re-triggering on refresh
-      router.replace('/assistant', undefined);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, skuFromPath]);
-
-  const handleReset = () => {
-    setProduct(null);
-    setInsights(null);
-  }
-
-  const fetchProductAndInsights = async (sku: string) => {
+  const fetchProductAndInsights = async (sku: string, locationIdOverride?: string | null) => {
     if (!sku || sku.trim().length < 4) {
       toast({ variant: 'destructive', title: 'Invalid SKU', description: 'Please enter a valid SKU or EAN.' });
       return;
@@ -464,7 +441,7 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     setIsFetchingProduct(true);
     handleReset();
 
-    const { locationId } = settings;
+    const locationId = locationIdOverride || settings.locationId;
     if (!locationId) {
       playError();
       toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID in settings.' });
@@ -550,6 +527,29 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
       setIsGeneratingInsights(false);
     }
   };
+
+  // Handle dynamic links from URL params
+  useEffect(() => {
+    const skuFromQuery = searchParams.get('sku');
+    const locationFromUrl = searchParams.get('locationId');
+
+    const skuToLoad = skuFromPath || skuFromQuery;
+
+    if (skuToLoad) {
+      // Temporarily set the location if it's in the URL, otherwise fetchProductAndInsights will use the default.
+      if (locationFromUrl) {
+          toast({ title: "Using Store from URL", description: `Temporarily using Store ID: ${locationFromUrl}` });
+      }
+      fetchProductAndInsights(skuToLoad, locationFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skuFromPath, searchParams]);
+
+
+  const handleReset = () => {
+    setProduct(null);
+    setInsights(null);
+  }
 
   const handleScanSuccess = async (text: string) => {
     const sku = text.split(',')[0].trim();
@@ -885,3 +885,5 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     </div>
   );
 }
+
+    
