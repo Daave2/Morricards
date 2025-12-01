@@ -528,21 +528,19 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     } finally {
       setIsGeneratingInsights(false);
     }
-  }, [settings.locationId, settings.bearerToken, settings.debugMode, fetchAndUpdateToken, playError, playSuccess, toast, form, consecutiveFails]);
+  }, [settings.locationId, settings.bearerToken, settings.debugMode, toast, form, playError, playSuccess, fetchAndUpdateToken, consecutiveFails]);
 
 
   // Handle dynamic links from URL params
   useEffect(() => {
-    // This effect should only run when the component mounts or the URL truly changes.
-    const skuFromQuery = searchParams.get('sku');
+    const skuToLoad = skuFromPath || searchParams.get('sku');
     const locationFromUrl = searchParams.get('locationId');
-    const skuToLoad = skuFromPath || skuFromQuery;
     
-    // CRITICAL FIX: Wait for settings to be loaded from local storage before proceeding.
-    if (skuToLoad && settingsLoaded && settings.locationId) {
+    if (skuToLoad && settingsLoaded && (settings.locationId || locationFromUrl)) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
-  }, [skuFromPath, searchParams, settingsLoaded, settings.locationId, fetchProductAndInsights]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skuFromPath, searchParams, settingsLoaded, settings.locationId]);
 
 
   const handleReset = () => {
