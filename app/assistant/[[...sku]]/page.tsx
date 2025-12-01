@@ -16,6 +16,7 @@ function Loading() {
 
 type AssistantPageProps = {
   params: { sku?: string[] };
+  searchParams?: { [key: string]: string | string[] | undefined };
 };
 
 export default function AssistantPage({ params }: AssistantPageProps) {
