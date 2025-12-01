@@ -444,11 +444,12 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
 
     const locationId = locationIdOverride || settings.locationId;
     if (!locationId) {
-      playError();
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID in settings.' });
-      setIsFetchingProduct(false);
-      return;
+        playError();
+        toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID in settings.' });
+        setIsFetchingProduct(false);
+        return;
     }
+
 
     // Step 1: Get basic data
     const { data, error } = await getProductData({
