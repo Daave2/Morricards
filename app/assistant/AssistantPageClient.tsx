@@ -538,14 +538,10 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     const skuToLoad = skuFromPath || skuFromQuery;
 
     if (skuToLoad) {
-      // Temporarily set the location if it's in the URL, otherwise fetchProductAndInsights will use the default.
-      if (locationFromUrl) {
-          toast({ title: "Using Store from URL", description: `Temporarily using Store ID: ${locationFromUrl}` });
-      }
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath, searchParams]);
+  }, [skuFromPath]);
 
 
   const handleReset = () => {
