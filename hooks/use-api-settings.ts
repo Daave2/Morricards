@@ -29,7 +29,7 @@ export const DEFAULT_SETTINGS: ApiSettings = {
 
 export function useApiSettings() {
   const [settings, setSettings] = useState<ApiSettings>(DEFAULT_SETTINGS);
-  const [isMounted, setIsMounted] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const fetchAndUpdateToken = useCallback(async () => {
     const tokenUrl = 'https://gist.githubusercontent.com/Daave2/b62faeed0dd435100773d4de775ff52d/raw/';
@@ -70,7 +70,6 @@ export function useApiSettings() {
   }, []);
 
   useEffect(() => {
-    setIsMounted(true);
     let settingsFound = false;
     try {
       const item = window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
@@ -81,6 +80,8 @@ export function useApiSettings() {
       }
     } catch (error) {
       console.error("Failed to load settings from localStorage", error);
+    } finally {
+        setSettingsLoaded(true);
     }
 
     if (!settingsFound) {
@@ -133,9 +134,10 @@ export function useApiSettings() {
   }, []);
 
   return { 
-    settings: isMounted ? settings : DEFAULT_SETTINGS, 
+    settings: settingsLoaded ? settings : DEFAULT_SETTINGS, 
     setSettings: updateSettings,
     clearAllData,
-    fetchAndUpdateToken
+    fetchAndUpdateToken,
+    settingsLoaded,
   };
 }

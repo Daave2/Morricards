@@ -393,7 +393,7 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
 
   const { toast } = useToast();
   const { playSuccess, playError } = useAudioFeedback();
-  const { settings, fetchAndUpdateToken, setSettings } = useApiSettings();
+  const { settings, fetchAndUpdateToken, settingsLoaded } = useApiSettings();
   const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
 
   const searchParams = useSearchParams();
@@ -537,14 +537,12 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     const skuFromQuery = searchParams.get('sku');
     const locationFromUrl = searchParams.get('locationId');
     const skuToLoad = skuFromPath || skuFromQuery;
-
-    if (skuToLoad && settings.locationId) {
+    
+    // CRITICAL FIX: Wait for settings to be loaded from local storage before proceeding.
+    if (skuToLoad && settingsLoaded) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
-    // The dependency array is intentionally stable.
-    // It depends on the page props and the loaded settings.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath, searchParams, settings.locationId]);
+  }, [skuFromPath, searchParams, settingsLoaded, fetchProductAndInsights]);
 
 
   const handleReset = () => {
