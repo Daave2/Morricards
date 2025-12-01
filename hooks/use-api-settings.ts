@@ -46,7 +46,7 @@ export function useApiSettings() {
           throw new Error('Fetched token is empty.');
       }
 
-      // Use setSettings to update state and localStorage
+      // Use a functional update for setSettings to ensure we have the latest state
       setSettings(prev => {
         const newSettings = { ...prev, bearerToken: trimmedToken };
         window.localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(newSettings));
@@ -67,7 +67,7 @@ export function useApiSettings() {
       });
       console.error(error);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     let currentSettings: ApiSettings = DEFAULT_SETTINGS;
@@ -83,7 +83,6 @@ export function useApiSettings() {
         setSettingsLoaded(true);
     }
 
-    // If the stored token is the same as the default one, it's likely the first run or has never been updated.
     if (currentSettings.bearerToken === DEFAULT_SETTINGS.bearerToken) {
       fetchAndUpdateToken();
     }

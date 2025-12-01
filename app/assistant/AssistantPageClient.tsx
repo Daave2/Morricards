@@ -537,8 +537,7 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     form, 
     playError, 
     playSuccess,
-    fetchAndUpdateToken,
-    consecutiveFails,
+    fetchAndUpdateToken
   ]);
 
   const skuFromQuery = useMemo(() => searchParams.get('sku'), [searchParams]);
@@ -549,12 +548,11 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
     const skuToLoad = skuFromPath || skuFromQuery;
     
     // This effect should only run once the settings are loaded and a sku is present.
-    if (settingsLoaded && skuToLoad) {
-      // We pass the explicit `locationId` from the URL. If it's null, the function will use the one from settings.
+    if (settingsLoaded && skuToLoad && settings.locationId) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skuFromPath, skuFromQuery, locationFromUrl, settingsLoaded]);
+  }, [skuFromPath, skuFromQuery, locationFromUrl, settingsLoaded, settings.bearerToken]);
 
 
   const handleReset = () => {
