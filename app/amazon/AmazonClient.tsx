@@ -576,70 +576,70 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
       setSettings({ locationId: locationIdFromUrl });
     }
 
-    if (initialSkus && initialSkus.length > 0) {
-      const analyzeSkusFromUrl = async () => {
-        setIsLoading(true);
-        setAnalysisResults([]);
-        toast({ title: 'Starting Analysis...', description: `Analyzing ${initialSkus.length} product(s) from URL...` });
+    const analyzeSkusFromUrl = async (skusToAnalyze: string[]) => {
+      setIsLoading(true);
+      setAnalysisResults([]);
+      toast({ title: 'Starting Analysis...', description: `Analyzing ${skusToAnalyze.length} product(s) from URL...` });
 
-        const locationToUse = locationIdFromUrl || settings.locationId;
+      const locationToUse = locationIdFromUrl || settings.locationId;
 
-        const { data: productData, error } = await getProductData({
-          skus: initialSkus,
-          locationId: locationToUse,
-          bearerToken: settings.bearerToken,
-          debugMode: settings.debugMode,
-        });
+      const { data: productData, error } = await getProductData({
+        skus: skusToAnalyze,
+        locationId: locationToUse,
+        bearerToken: settings.bearerToken,
+        debugMode: settings.debugMode,
+      });
 
-        if (error) {
-          toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
+      if (error) {
+        toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!productData || productData.length === 0) {
+          toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
           setIsLoading(false);
           return;
-        }
-        
-        if (!productData || productData.length === 0) {
-            toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
-            setIsLoading(false);
-            return;
-        }
-
-        toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...` });
-
-        const productMap = new Map(productData.map(p => [p.sku, p]));
-
-        const enrichedResults = await Promise.all(initialSkus.map(async (sku) => {
-          const product = productMap.get(sku);
-          if (!product) {
-            return { product: null, error: `Could not fetch data for SKU ${sku}.`, diagnosticSummary: null };
-          }
-
-          try {
-            if (!product._raw) {
-              throw new Error("Product has no raw data for AI diagnosis.");
-            }
-            const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
-            const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
-
-            return {
-              product,
-              error: product.proxyError || null,
-              diagnosticSummary: diagnosticResult.output?.diagnosticSummary || 'AI diagnosis failed.',
-            };
-          } catch (e) {
-            const errorMsg = e instanceof Error ? e.message : String(e);
-            return { product, error: `Failed to generate AI diagnosis: ${errorMsg}`, diagnosticSummary: null };
-          }
-        }));
-
-        setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
-        setIsLoading(false);
-        toast({ title: 'Analysis Complete!', description: `Finished analyzing ${enrichedResults.length} items.` });
       }
 
-      analyzeSkusFromUrl();
+      toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...` });
+
+      const productMap = new Map(productData.map(p => [p.sku, p]));
+
+      const enrichedResults = await Promise.all(skusToAnalyze.map(async (sku) => {
+        const product = productMap.get(sku);
+        if (!product) {
+          return { product: null, error: `Could not fetch data for SKU ${sku}.`, diagnosticSummary: null };
+        }
+
+        try {
+          if (!product._raw) {
+            throw new Error("Product has no raw data for AI diagnosis.");
+          }
+          const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
+          const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
+
+          return {
+            product,
+            error: product.proxyError || null,
+            diagnosticSummary: diagnosticResult.output?.diagnosticSummary || 'AI diagnosis failed.',
+          };
+        } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          return { product, error: `Failed to generate AI diagnosis: ${errorMsg}`, diagnosticSummary: null };
+        }
+      }));
+
+      setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
+      setIsLoading(false);
+      toast({ title: 'Analysis Complete!', description: `Finished analyzing ${enrichedResults.length} items.` });
+    }
+
+    if (initialSkus && initialSkus.length > 0 && settings.locationId) {
+        analyzeSkusFromUrl(initialSkus);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSkus, locationIdFromUrl]);
+  }, [initialSkus, locationIdFromUrl, settings.locationId, settings.bearerToken]);
 
 
   useEffect(() => {
@@ -816,5 +816,3 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
     </>
   );
 }
-
-    
