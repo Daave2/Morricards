@@ -524,33 +524,42 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
     streamRef.current = null;
   };
 
-  const runImageAnalysis = useCallback(async (imageFile: File) => {
+  const runAnalysis = useCallback(async (
+    analysisParams: { imageDataUri?: string, skus?: string[] }
+  ) => {
     setIsLoading(true);
     setAnalysisResults([]);
-    toast({ title: 'Starting Analysis...', description: 'Reading the list from the image...' });
-
+    toast({ title: 'Starting Analysis...', description: 'Analyzing products...' });
+  
     try {
-      const imageDataUri = await toDataUri(imageFile);
       const results = await amazonAnalysisFlow({
-        imageDataUri,
+        ...analysisParams,
         locationId: settings.locationId,
         bearerToken: settings.bearerToken,
         debugMode: settings.debugMode,
       });
 
-      setAnalysisResults(JSON.parse(JSON.stringify(results)));
+      setAnalysisResults(results);
 
-      const successCount = results.filter((r) => r.product && !r.error).length;
       if (results.length > 0) {
-        toast({
-          title: 'Analysis Complete!',
-          description: `Successfully analyzed ${successCount} of ${results.length} items.`,
-        });
+        const successCount = results.filter(r => r.product && !r.error).length;
+        if (successCount > 0) {
+          toast({
+            title: 'Analysis Complete!',
+            description: `Successfully analyzed ${successCount} of ${results.length} items.`,
+          });
+        } else {
+            toast({
+              variant: 'destructive',
+              title: 'Analysis Failed',
+              description: `Could not find any valid products to analyze.`,
+            });
+        }
       } else {
         toast({
           variant: 'destructive',
-          title: 'Analysis Failed',
-          description: `Could not find any valid products to analyze from the image.`,
+          title: 'No Items Found',
+          description: 'No SKUs were found in the image or provided list.',
         });
       }
     } catch (error) {
@@ -562,86 +571,26 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
       });
       console.error(error);
     }
-
+  
     setIsLoading(false);
   }, [toast, settings]);
 
-  const handleImageSelected = useCallback((file: File) => {
+  const handleImageSelected = useCallback(async (file: File) => {
     setListImage(file);
-    runImageAnalysis(file);
-  }, [runImageAnalysis]);
+    const imageDataUri = await toDataUri(file);
+    await runAnalysis({ imageDataUri });
+  }, [runAnalysis]);
 
   useEffect(() => {
     if (locationIdFromUrl) {
       setSettings({ locationId: locationIdFromUrl });
     }
 
-    const analyzeSkusFromUrl = async (skusToAnalyze: string[]) => {
-      setIsLoading(true);
-      setAnalysisResults([]);
-      toast({ title: 'Starting Analysis...', description: `Analyzing ${skusToAnalyze.length} product(s) from URL...` });
-
-      const locationToUse = locationIdFromUrl || settings.locationId;
-
-      const { data: productData, error } = await getProductData({
-        skus: skusToAnalyze,
-        locationId: locationToUse,
-        bearerToken: settings.bearerToken,
-        debugMode: settings.debugMode,
-      });
-
-      if (error) {
-        toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
-        setIsLoading(false);
-        return;
-      }
-
-      if (!productData) {
-        toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
-        setIsLoading(false);
-        return;
-      }
-
-      toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...` });
-
-      // Guard to ensure productData is an array before creating the map
-      const productMap = Array.isArray(productData) ? new Map(productData.map(p => [p.sku, p])) : new Map();
-
-
-      const enrichedResults = await Promise.all(skusToAnalyze.map(async (sku) => {
-        const product = productMap.get(sku);
-        if (!product) {
-          return { product: null, error: `Could not fetch data for SKU ${sku}.`, diagnosticSummary: null };
-        }
-
-        try {
-          if (!product._raw) {
-            throw new Error("Product has no raw data for AI diagnosis.");
-          }
-          const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
-          const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
-
-          return {
-            product,
-            error: product.proxyError || null,
-            diagnosticSummary: diagnosticResult.output?.diagnosticSummary || 'AI diagnosis failed.',
-          };
-        } catch (e) {
-          const errorMsg = e instanceof Error ? e.message : String(e);
-          return { product, error: `Failed to generate AI diagnosis: ${errorMsg}`, diagnosticSummary: null };
-        }
-      }));
-
-      setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
-      setIsLoading(false);
-      toast({ title: 'Analysis Complete!', description: `Finished analyzing ${enrichedResults.length} items.` });
-    }
-
     if (settingsLoaded && initialSkus && initialSkus.length > 0) {
-      analyzeSkusFromUrl(initialSkus);
+      runAnalysis({ skus: initialSkus });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSkus, locationIdFromUrl, settingsLoaded]);
+  }, [initialSkus, locationIdFromUrl, settingsLoaded, runAnalysis]);
 
 
   useEffect(() => {
