@@ -57,7 +57,8 @@ const AmazonAnalysisInputSchema = z.object({
     .string()
     .describe(
       "An image of the picking list, as a data URI."
-    ),
+    ).optional(),
+  skus: z.array(z.string()).optional(),
   locationId: z.string(),
   bearerToken: z.string().optional(),
   debugMode: z.boolean().optional(),
@@ -77,9 +78,22 @@ export type AmazonAnalysisOutput = z.infer<typeof AmazonAnalysisOutputSchema>;
 
 
 export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<AmazonAnalysisOutput> {
-  // Step 1: AI extracts SKUs from the image.
-  const ocrResult = await ocrPrompt({ imageDataUri: input.imageDataUri });
-  const skus = ocrResult.output?.skus || [];
+  
+  let skus: string[] = [];
+
+  // Path 1: SKUs are provided directly (from URL)
+  if (input.skus && input.skus.length > 0) {
+      skus = input.skus;
+  } 
+  // Path 2: An image is provided for OCR
+  else if (input.imageDataUri) {
+      const ocrResult = await ocrPrompt({ imageDataUri: input.imageDataUri });
+      skus = ocrResult.output?.skus || [];
+  } 
+  // Path 3: No valid input
+  else {
+      throw new Error("Analysis requires either a list of SKUs or an image data URI.");
+  }
 
   if (skus.length === 0) {
     // Return an empty array if no SKUs are found, client will handle the message.
@@ -96,7 +110,7 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
   
   // Step 3: Map the fetched data, enrich with AI diagnosis, and format for the client.
   const results = await Promise.all(skus.map(async (sku) => {
-      const product = productsData.find(p => p.scannedSku === sku);
+      const product = productsData.find(p => p.scannedSku === sku || p.sku === sku);
       if (product) {
           try {
               if (!product._raw) {
@@ -129,5 +143,3 @@ export async function amazonAnalysisFlow(input: AmazonAnalysisInput): Promise<Am
   // This guarantees that only plain objects are returned from the flow.
   return JSON.parse(JSON.stringify(results));
 }
-
-    

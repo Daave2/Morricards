@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -468,7 +469,7 @@ const AmazonListItem = React.forwardRef<HTMLDivElement, { item: EnrichedAnalysis
 AmazonListItem.displayName = 'AmazonListItem';
 
 
-export default function AmazonClient() {
+export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initialSkus?: string[], locationIdFromUrl?: string }) {
   const [listImage, setListImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<EnrichedAnalysis[]>([]);
@@ -476,7 +477,7 @@ export default function AmazonClient() {
   const [openItemId, setOpenItemId] = useState<string | null>(null);
 
   const { toast } = useToast();
-  const { settings } = useApiSettings();
+  const { settings, setSettings } = useApiSettings();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -521,6 +522,87 @@ export default function AmazonClient() {
     }
     streamRef.current = null;
   };
+  
+  const runAnalysis = useCallback(async (analysisInput: { imageDataUri?: string | null, skus?: string[], locationId: string, bearerToken?: string, debugMode?: boolean }) => {
+    setIsLoading(true);
+    setAnalysisResults([]);
+    
+    // Determine the loading message based on the input
+    const toastDescription = analysisInput.skus
+      ? `Analyzing ${analysisInput.skus.length} product(s) from URL...`
+      : 'Reading the list from the image...';
+    toast({ title: 'Starting Analysis...', description: toastDescription });
+    
+    try {
+      const results = await amazonAnalysisFlow({
+        imageDataUri: analysisInput.imageDataUri,
+        skus: analysisInput.skus,
+        locationId: analysisInput.locationId,
+        bearerToken: analysisInput.bearerToken,
+        debugMode: analysisInput.debugMode,
+      });
+
+      // **CRUCIAL FINAL SANITIZATION**
+      try {
+        const sanitizedResults = JSON.parse(JSON.stringify(results));
+        setAnalysisResults(sanitizedResults);
+      } catch (serializationError) {
+        toast({
+          variant: 'destructive',
+          title: 'Fatal Client-Side Serialization Error',
+          description: `Could not make the results safe for React. Check console for raw data.`,
+          duration: 20000,
+        });
+        console.error("RAW DATA causing serialization error on client:", results);
+      }
+
+      const successCount = results.filter((r) => r.product && !r.error).length;
+      if (results.length > 0) {
+        toast({
+          title: 'Analysis Complete!',
+          description: `Successfully analyzed ${successCount} of ${results.length} items.`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Analysis Failed',
+          description: `Could not find any valid products to analyze.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Analysis Failed',
+        description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)
+          }.`,
+        duration: 20000,
+      });
+      console.error(error);
+    }
+
+    setIsLoading(false);
+  }, [toast]);
+  
+  // This effect handles analysis when the page is loaded via a URL with SKUs
+  useEffect(() => {
+    // If a locationId is provided in the URL, update the app settings.
+    if (locationIdFromUrl) {
+      setSettings({ locationId: locationIdFromUrl });
+    }
+    
+    if (initialSkus && initialSkus.length > 0) {
+      // Use the location from the URL, or fall back to the one from settings.
+      const locationToUse = locationIdFromUrl || settings.locationId;
+      runAnalysis({
+        skus: initialSkus,
+        locationId: locationToUse,
+        bearerToken: settings.bearerToken,
+        debugMode: settings.debugMode,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSkus, locationIdFromUrl, runAnalysis]); // We only want this to run once on initial load.
+
 
   useEffect(() => {
     if (isCameraOpen) {
@@ -552,64 +634,24 @@ export default function AmazonClient() {
 
     setIsCameraOpen(false);
   };
-
-  const handleAnalysis = useCallback(async () => {
-    if (!listImage) {
-      return;
-    }
-
-    setIsLoading(true);
-    setAnalysisResults([]);
-    toast({
-      title: 'Starting Analysis...',
-      description: 'Reading the list. This may take a moment.',
-    });
-
-    try {
+  
+  // This effect handles analysis when an image is selected or shared
+  useEffect(() => {
+    const handleImageAnalysis = async () => {
+      if (!listImage) return;
       const imageDataUri = await toDataUri(listImage);
-      if (!imageDataUri) {
-        throw new Error('Could not convert image to data URI.');
-      }
-
-      const results = await amazonAnalysisFlow({
-        imageDataUri: imageDataUri!,
-        locationId: settings.locationId,
-        bearerToken: settings.bearerToken,
-        debugMode: settings.debugMode,
-      });
-
-      // **CRUCIAL FINAL SANITIZATION**
-      try {
-        const sanitizedResults = JSON.parse(JSON.stringify(results));
-        setAnalysisResults(sanitizedResults);
-      } catch (serializationError) {
-        toast({
-          variant: 'destructive',
-          title: 'Fatal Client-Side Serialization Error',
-          description: `Could not make the results safe for React. Check console for raw data.`,
-          duration: 20000,
+      if (imageDataUri) {
+         runAnalysis({ 
+           imageDataUri, 
+           locationId: settings.locationId,
+           bearerToken: settings.bearerToken,
+           debugMode: settings.debugMode,
         });
-        console.error("RAW DATA causing serialization error on client:", results);
       }
-
-      const successCount = results.filter((r) => r.product && !r.error).length;
-      toast({
-        title: 'Analysis Complete!',
-        description: `Successfully analyzed ${successCount} of ${results.length} items.`,
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Analysis Failed',
-        description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)
-          }.`,
-        duration: 20000,
-      });
-      console.error(error);
     }
-
-    setIsLoading(false);
-  }, [listImage, settings.bearerToken, settings.debugMode, settings.locationId, toast]);
+    handleImageAnalysis();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listImage]);
 
 
   useEffect(() => {
@@ -634,18 +676,13 @@ export default function AmazonClient() {
     handleSharedImage();
   }, [toast]);
 
-  useEffect(() => {
-    if (listImage) {
-      handleAnalysis();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listImage]);
-
 
   const handleReset = () => {
     setAnalysisResults([]);
     setListImage(null);
     setOpenItemId(null);
+    // Use history.pushState to clear the URL without reloading the page
+    window.history.pushState({}, '', '/amazon');
   }
 
   const handleItemToggle = (id: string) => {
