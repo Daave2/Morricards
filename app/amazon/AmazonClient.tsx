@@ -601,7 +601,6 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
         
         toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...`});
         
-        // Use a map to correctly associate fetched data with original SKUs
         const productMap = new Map(productData.map(p => [p.sku, p]));
         
         const enrichedResults = await Promise.all(initialSkus.map(async (sku) => {
