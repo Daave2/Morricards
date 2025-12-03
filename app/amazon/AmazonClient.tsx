@@ -596,7 +596,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
         return;
       }
       
-      if (!productData || productData.length === 0) {
+      if (!productData) {
           toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
           setIsLoading(false);
           return;
