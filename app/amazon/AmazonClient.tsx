@@ -51,6 +51,8 @@ import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ImageModal from '@/components/image-modal';
 import TOTPGenerator from '@/components/TOTPGenerator';
+import { getProductData } from '@/app/actions';
+import { pickerDiagnosisPrompt } from '@/ai/flows/picking-analysis-flow';
 
 const LOCAL_STORAGE_KEY_AVAILABILITY = 'morricards-availability-report';
 type ReportedItem = FetchMorrisonsDataOutput[0] & { reason: string; comment?: string; reportId: string };
@@ -523,38 +525,20 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
     streamRef.current = null;
   };
   
-  const runAnalysis = useCallback(async (analysisInput: { imageDataUri?: string | null, skus?: string[], locationId: string, bearerToken?: string, debugMode?: boolean }) => {
+  const runImageAnalysis = useCallback(async (imageDataUri: string) => {
     setIsLoading(true);
     setAnalysisResults([]);
-    
-    // Determine the loading message based on the input
-    const toastDescription = analysisInput.skus
-      ? `Analyzing ${analysisInput.skus.length} product(s) from URL...`
-      : 'Reading the list from the image...';
-    toast({ title: 'Starting Analysis...', description: toastDescription });
-    
+    toast({ title: 'Starting Analysis...', description: 'Reading the list from the image...' });
+
     try {
       const results = await amazonAnalysisFlow({
-        imageDataUri: analysisInput.imageDataUri,
-        skus: analysisInput.skus,
-        locationId: analysisInput.locationId,
-        bearerToken: analysisInput.bearerToken,
-        debugMode: analysisInput.debugMode,
+        imageDataUri,
+        locationId: settings.locationId,
+        bearerToken: settings.bearerToken,
+        debugMode: settings.debugMode,
       });
 
-      // **CRUCIAL FINAL SANITIZATION**
-      try {
-        const sanitizedResults = JSON.parse(JSON.stringify(results));
-        setAnalysisResults(sanitizedResults);
-      } catch (serializationError) {
-        toast({
-          variant: 'destructive',
-          title: 'Fatal Client-Side Serialization Error',
-          description: `Could not make the results safe for React. Check console for raw data.`,
-          duration: 20000,
-        });
-        console.error("RAW DATA causing serialization error on client:", results);
-      }
+      setAnalysisResults(JSON.parse(JSON.stringify(results)));
 
       const successCount = results.filter((r) => r.product && !r.error).length;
       if (results.length > 0) {
@@ -566,42 +550,93 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
         toast({
           variant: 'destructive',
           title: 'Analysis Failed',
-          description: `Could not find any valid products to analyze.`,
+          description: `Could not find any valid products to analyze from the image.`,
         });
       }
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Analysis Failed',
-        description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)
-          }.`,
+        description: `An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}.`,
         duration: 20000,
       });
       console.error(error);
     }
 
     setIsLoading(false);
-  }, [toast]);
+  }, [toast, settings]);
   
   // This effect handles analysis when the page is loaded via a URL with SKUs
   useEffect(() => {
-    // If a locationId is provided in the URL, update the app settings.
     if (locationIdFromUrl) {
       setSettings({ locationId: locationIdFromUrl });
     }
     
     if (initialSkus && initialSkus.length > 0) {
-      // Use the location from the URL, or fall back to the one from settings.
       const locationToUse = locationIdFromUrl || settings.locationId;
-      runAnalysis({
-        skus: initialSkus,
-        locationId: locationToUse,
-        bearerToken: settings.bearerToken,
-        debugMode: settings.debugMode,
-      });
+      
+      const analyzeSkusFromUrl = async () => {
+        setIsLoading(true);
+        setAnalysisResults([]);
+        toast({ title: 'Starting Analysis...', description: `Analyzing ${initialSkus.length} product(s) from URL...` });
+
+        const { data: productData, error } = await getProductData({
+            skus: initialSkus,
+            locationId: locationToUse,
+            bearerToken: settings.bearerToken,
+            debugMode: settings.debugMode,
+        });
+
+        if (error) {
+            toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
+            setIsLoading(false);
+            return;
+        }
+
+        if (!productData) {
+            toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
+            setIsLoading(false);
+            return;
+        }
+        
+        toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...`});
+        
+        // Use a map to correctly associate fetched data with original SKUs
+        const productMap = new Map(productData.map(p => [p.sku, p]));
+        
+        const enrichedResults = await Promise.all(initialSkus.map(async (sku) => {
+            const product = productMap.get(sku);
+            if (!product) {
+                return { product: null, error: `Could not fetch data for SKU ${sku}.`, diagnosticSummary: null };
+            }
+
+            try {
+                if (!product._raw) {
+                    throw new Error("Product has no raw data for AI diagnosis.");
+                }
+                const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
+                const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
+                
+                return {
+                    product,
+                    error: product.proxyError || null,
+                    diagnosticSummary: diagnosticResult.output?.diagnosticSummary || 'AI diagnosis failed.',
+                };
+            } catch (e) {
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                return { product, error: `Failed to generate AI diagnosis: ${errorMsg}`, diagnosticSummary: null };
+            }
+        }));
+
+        setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
+        setIsLoading(false);
+        toast({ title: 'Analysis Complete!', description: `Finished analyzing ${enrichedResults.length} items.` });
+      }
+
+      analyzeSkusFromUrl();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSkus, locationIdFromUrl, runAnalysis]); // We only want this to run once on initial load.
+  }, [initialSkus, locationIdFromUrl]);
 
 
   useEffect(() => {
@@ -637,21 +672,15 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
   
   // This effect handles analysis when an image is selected or shared
   useEffect(() => {
-    const handleImageAnalysis = async () => {
+    const handleImageChange = async () => {
       if (!listImage) return;
       const imageDataUri = await toDataUri(listImage);
       if (imageDataUri) {
-         runAnalysis({ 
-           imageDataUri, 
-           locationId: settings.locationId,
-           bearerToken: settings.bearerToken,
-           debugMode: settings.debugMode,
-        });
+         runImageAnalysis(imageDataUri);
       }
     }
-    handleImageAnalysis();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listImage]);
+    handleImageChange();
+  }, [listImage, runImageAnalysis]);
 
 
   useEffect(() => {
