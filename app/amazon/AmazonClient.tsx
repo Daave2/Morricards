@@ -173,8 +173,7 @@ const ImageUpload = ({
   );
 };
 
-const toDataUri = (file: File | null): Promise<string | null> => {
-  if (!file) return Promise.resolve(null);
+const toDataUri = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -524,13 +523,14 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
     }
     streamRef.current = null;
   };
-  
-  const runImageAnalysis = useCallback(async (imageDataUri: string) => {
+
+  const runImageAnalysis = useCallback(async (imageFile: File) => {
     setIsLoading(true);
     setAnalysisResults([]);
     toast({ title: 'Starting Analysis...', description: 'Reading the list from the image...' });
 
     try {
+      const imageDataUri = await toDataUri(imageFile);
       const results = await amazonAnalysisFlow({
         imageDataUri,
         locationId: settings.locationId,
@@ -565,66 +565,70 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
 
     setIsLoading(false);
   }, [toast, settings]);
-  
-  // This effect handles analysis when the page is loaded via a URL with SKUs
+
+  const handleImageSelected = useCallback((file: File) => {
+    setListImage(file);
+    runImageAnalysis(file);
+  }, [runImageAnalysis]);
+
   useEffect(() => {
     if (locationIdFromUrl) {
       setSettings({ locationId: locationIdFromUrl });
     }
-    
+
     if (initialSkus && initialSkus.length > 0) {
-      const locationToUse = locationIdFromUrl || settings.locationId;
-      
       const analyzeSkusFromUrl = async () => {
         setIsLoading(true);
         setAnalysisResults([]);
         toast({ title: 'Starting Analysis...', description: `Analyzing ${initialSkus.length} product(s) from URL...` });
 
+        const locationToUse = locationIdFromUrl || settings.locationId;
+
         const { data: productData, error } = await getProductData({
-            skus: initialSkus,
-            locationId: locationToUse,
-            bearerToken: settings.bearerToken,
-            debugMode: settings.debugMode,
+          skus: initialSkus,
+          locationId: locationToUse,
+          bearerToken: settings.bearerToken,
+          debugMode: settings.debugMode,
         });
 
         if (error) {
-            toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
-            setIsLoading(false);
-            return;
+          toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
+          setIsLoading(false);
+          return;
         }
-
-        if (!productData) {
+        
+        if (!productData || productData.length === 0) {
             toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
             setIsLoading(false);
             return;
         }
-        
-        toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...`});
-        
-        const productMap = new Map(productData.map(p => [p.sku, p]));
-        
-        const enrichedResults = await Promise.all(initialSkus.map(async (sku) => {
-            const product = productMap.get(sku);
-            if (!product) {
-                return { product: null, error: `Could not fetch data for SKU ${sku}.`, diagnosticSummary: null };
-            }
 
-            try {
-                if (!product._raw) {
-                    throw new Error("Product has no raw data for AI diagnosis.");
-                }
-                const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
-                const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
-                
-                return {
-                    product,
-                    error: product.proxyError || null,
-                    diagnosticSummary: diagnosticResult.output?.diagnosticSummary || 'AI diagnosis failed.',
-                };
-            } catch (e) {
-                const errorMsg = e instanceof Error ? e.message : String(e);
-                return { product, error: `Failed to generate AI diagnosis: ${errorMsg}`, diagnosticSummary: null };
+        toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...` });
+
+        const productMap = new Map(productData.map(p => [p.sku, p]));
+
+        const enrichedResults = await Promise.all(initialSkus.map(async (sku) => {
+          const product = productMap.get(sku);
+          if (!product) {
+            return { product: null, error: `Could not fetch data for SKU ${sku}.`, diagnosticSummary: null };
+          }
+
+          try {
+            if (!product._raw) {
+              throw new Error("Product has no raw data for AI diagnosis.");
             }
+            const sanitizedRawData = JSON.parse(JSON.stringify(product._raw));
+            const diagnosticResult = await pickerDiagnosisPrompt({ rawData: sanitizedRawData });
+
+            return {
+              product,
+              error: product.proxyError || null,
+              diagnosticSummary: diagnosticResult.output?.diagnosticSummary || 'AI diagnosis failed.',
+            };
+          } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            return { product, error: `Failed to generate AI diagnosis: ${errorMsg}`, diagnosticSummary: null };
+          }
         }));
 
         setAnalysisResults(JSON.parse(JSON.stringify(enrichedResults)));
@@ -634,7 +638,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
 
       analyzeSkusFromUrl();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSkus, locationIdFromUrl]);
 
 
@@ -661,26 +665,12 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
     canvas.toBlob(blob => {
       if (blob) {
         const file = new File([blob], `list-capture.jpg`, { type: 'image/jpeg' });
-        setListImage(file);
-        toast({ title: 'Image Captured' });
+        handleImageSelected(file);
       }
     }, 'image/jpeg', 0.9);
 
     setIsCameraOpen(false);
   };
-  
-  // This effect handles analysis when an image is selected or shared
-  useEffect(() => {
-    const handleImageChange = async () => {
-      if (!listImage) return;
-      const imageDataUri = await toDataUri(listImage);
-      if (imageDataUri) {
-         runImageAnalysis(imageDataUri);
-      }
-    }
-    handleImageChange();
-  }, [listImage, runImageAnalysis]);
-
 
   useEffect(() => {
     const handleSharedImage = async () => {
@@ -688,7 +678,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
       if (navigator.serviceWorker && navigator.serviceWorker.controller) {
         navigator.serviceWorker.addEventListener('message', event => {
           if (event.data.action === 'load-image' && event.data.file) {
-            setListImage(event.data.file);
+            handleImageSelected(event.data.file);
             toast({
               title: "Image Received",
               description: "The shared image has been loaded for analysis."
@@ -702,7 +692,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
       }
     };
     handleSharedImage();
-  }, [toast]);
+  }, [toast, handleImageSelected]);
 
 
   const handleReset = () => {
@@ -815,7 +805,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
             </Card>
 
             <ImageUpload
-              onImageSelect={setListImage}
+              onImageSelect={handleImageSelected}
               selectedImage={listImage}
               disabled={isLoading}
               onCameraClick={() => setIsCameraOpen(true)}
@@ -826,3 +816,5 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
     </>
   );
 }
+
+    
