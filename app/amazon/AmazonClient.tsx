@@ -604,7 +604,9 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
 
       toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...` });
 
-      const productMap = new Map(productData.map(p => [p.sku, p]));
+      // Guard to ensure productData is an array
+      const productMap = Array.isArray(productData) ? new Map(productData.map(p => [p.sku, p])) : new Map();
+
 
       const enrichedResults = await Promise.all(skusToAnalyze.map(async (sku) => {
         const product = productMap.get(sku);
