@@ -478,7 +478,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
   const [openItemId, setOpenItemId] = useState<string | null>(null);
 
   const { toast } = useToast();
-  const { settings, setSettings } = useApiSettings();
+  const { settings, setSettings, settingsLoaded } = useApiSettings();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -589,17 +589,17 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
         bearerToken: settings.bearerToken,
         debugMode: settings.debugMode,
       });
-      
+
       if (error) {
         toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
         setIsLoading(false);
         return;
       }
-      
+
       if (!productData) {
-          toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
-          setIsLoading(false);
-          return;
+        toast({ variant: 'destructive', title: 'No Products Found', description: 'No products were found for the provided SKUs.' });
+        setIsLoading(false);
+        return;
       }
 
       toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...` });
@@ -637,11 +637,11 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
       toast({ title: 'Analysis Complete!', description: `Finished analyzing ${enrichedResults.length} items.` });
     }
 
-    if (initialSkus && initialSkus.length > 0 && settings.locationId) {
-        analyzeSkusFromUrl(initialSkus);
+    if (settingsLoaded && initialSkus && initialSkus.length > 0) {
+      analyzeSkusFromUrl(initialSkus);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSkus, locationIdFromUrl, settings.locationId, settings.bearerToken]);
+  }, [initialSkus, locationIdFromUrl, settingsLoaded]);
 
 
   useEffect(() => {

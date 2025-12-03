@@ -75,11 +75,11 @@ export function useApiSettings() {
       const item = window.localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
       if (item) {
         currentSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(item) };
-        setSettings(currentSettings);
       }
     } catch (error) {
       console.error("Failed to load settings from localStorage", error);
     } finally {
+        setSettings(currentSettings);
         setSettingsLoaded(true);
     }
 
@@ -132,7 +132,7 @@ export function useApiSettings() {
   }, []);
 
   return { 
-    settings: settingsLoaded ? settings : DEFAULT_SETTINGS, 
+    settings,
     setSettings: updateSettings,
     clearAllData,
     fetchAndUpdateToken,
