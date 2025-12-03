@@ -589,7 +589,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
         bearerToken: settings.bearerToken,
         debugMode: settings.debugMode,
       });
-
+      
       if (error) {
         toast({ variant: 'destructive', title: 'Data Fetch Failed', description: error });
         setIsLoading(false);
@@ -604,7 +604,7 @@ export default function AmazonClient({ initialSkus, locationIdFromUrl }: { initi
 
       toast({ title: 'Products Found', description: `Now generating insights for ${productData.length} items...` });
 
-      // Guard to ensure productData is an array
+      // Guard to ensure productData is an array before creating the map
       const productMap = Array.isArray(productData) ? new Map(productData.map(p => [p.sku, p])) : new Map();
 
 

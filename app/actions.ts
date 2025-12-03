@@ -57,7 +57,9 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
       return { data: serializableData, error: null };
     } catch (serializationError) {
         console.error('Serialization Error in getProductData:', serializationError);
-        return { data: null, error: 'Failed to serialize product data. The data object contains non-plain objects that cannot be passed to the client. Please check the server logs for details.' };
+        // Ensure the returned error is a simple string.
+        const error = serializationError instanceof Error ? serializationError.message : String(serializationError);
+        return { data: null, error: `Failed to serialize product data: ${error}` };
     }
 
   } catch (e) {
