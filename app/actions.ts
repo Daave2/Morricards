@@ -26,7 +26,9 @@ export async function getProductData(values: z.infer<typeof FormSchema>): Promis
   
   const { skus, locationId, bearerToken, debugMode } = validatedFields.data;
   
-  const skuList = (Array.isArray(skus) ? skus : skus.split(/[\s,]+/))
+  // This logic robustly handles a single string, a comma-separated string, or an array of strings.
+  const skuList = (Array.isArray(skus) ? skus : [skus])
+    .flatMap(s => s.split(/[\s,]+/))
     .map(s => s.trim())
     .filter(Boolean);
   
