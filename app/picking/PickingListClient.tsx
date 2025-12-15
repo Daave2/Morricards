@@ -252,12 +252,11 @@ export default function PickingListClient() {
 
     return ordersFromDb.filter(order => {
         if (order.isArchived) {
-            return true; // Always include archived orders
+            return true;
         }
         
         const [orderDate] = parseSlot(order.collectionSlot);
         
-        // Keep orders that couldn't be parsed (date is 1970)
         if (orderDate.getTime() === new Date(0).getTime()) {
             return true;
         }
@@ -291,7 +290,7 @@ export default function PickingListClient() {
     let importedCount = 0;
     let updatedCount = 0;
 
-    const BATCH_SIZE = 5; // Process orders in batches to avoid overwhelming the API
+    const BATCH_SIZE = 5; 
 
     for (let i = 0; i < parsedOrders.length; i += BATCH_SIZE) {
         const batch = parsedOrders.slice(i, i + BATCH_SIZE);
@@ -333,7 +332,6 @@ export default function PickingListClient() {
 
             enrichedOrders.forEach(orderData => {
                 const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
-                // set with merge will create or overwrite
                 firestoreBatch.set(orderRef, orderData, { merge: true });
                 if (existingOrderIds.has(orderData.id)) {
                     updatedCount++;
@@ -345,10 +343,10 @@ export default function PickingListClient() {
         } catch (e) {
             const batchError = e instanceof Error ? e.message : String(e);
             toast({ id: toastId, variant: 'destructive', title: `Firestore Error (Batch ${i/BATCH_SIZE + 1})`, description: batchError });
-            continue; // Skip to next batch
+            continue; 
         }
         
-        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay between batches
+        await new Promise(resolve => setTimeout(resolve, 200)); 
     }
 
 
@@ -1312,84 +1310,98 @@ export default function PickingListClient() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {getSortedDateKeys().map(dateKey => (
-                        <div key={dateKey}>
-                             <h2 className="font-bold text-xl mb-4 border-b-2 border-primary pb-2">
-                                {dateKey}
-                            </h2>
-                            {getSortedTimeKeys(dateKey).map(timeKey => (
-                                <div key={timeKey} className="ml-0 md:ml-4">
-                                    <h3 className="font-semibold text-lg mb-2 border-b pb-1">
-                                        Slot: {timeKey}
-                                    </h3>
-                                    <div className="space-y-4 md:pl-4">
-                                        {groupedOrders[dateKey][timeKey].filter(o => !o.isArchived).map(order => (
-                                            <div
-                                                key={order.id} 
-                                                className={cn(
-                                                    "p-4 rounded-lg border",
-                                                    !order.isPicked && 'cursor-pointer hover:bg-accent'
-                                                )}
-                                                onClick={() => !order.isPicked && handleSelectOrder(order)}
-                                            >
-                                                <div className="flex justify-between items-start gap-4">
-                                                    <div className="space-y-1 flex-grow">
-                                                        <p className="font-semibold flex items-center gap-2">
-                                                            <User className="h-4 w-4" />
-                                                            {order.customerName}
-                                                        </p>
-                                                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                        <Hash className="h-4 w-4" />
-                                                        {order.id}
-                                                        </p>
-                                                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                            <ListOrdered className="h-4 w-4" />
-                                                            {order.products.length} unique items
-                                                        </p>
+                    {getSortedDateKeys().map(dateKey => {
+                        const timeKeysForDate = getSortedTimeKeys(dateKey);
+                        const hasActiveOrdersForDate = timeKeysForDate.some(timeKey => 
+                            groupedOrders[dateKey]?.[timeKey]?.some(order => !order.isArchived)
+                        );
+
+                        if (!hasActiveOrdersForDate) return null;
+
+                        return (
+                            <div key={dateKey}>
+                                <h2 className="font-bold text-xl mb-4 border-b-2 border-primary pb-2">
+                                    {dateKey}
+                                </h2>
+                                {timeKeysForDate.map(timeKey => {
+                                    const activeOrdersInSlot = groupedOrders[dateKey]?.[timeKey]?.filter(o => !o.isArchived) || [];
+                                    if (activeOrdersInSlot.length === 0) return null;
+
+                                    return (
+                                        <div key={timeKey} className="ml-0 md:ml-4">
+                                            <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                                                Slot: {timeKey}
+                                            </h3>
+                                            <div className="space-y-4 md:pl-4">
+                                                {activeOrdersInSlot.map(order => (
+                                                    <div
+                                                        key={order.id} 
+                                                        className={cn(
+                                                            "p-4 rounded-lg border",
+                                                            !order.isPicked && 'cursor-pointer hover:bg-accent'
+                                                        )}
+                                                        onClick={() => !order.isPicked && handleSelectOrder(order)}
+                                                    >
+                                                        <div className="flex justify-between items-start gap-4">
+                                                            <div className="space-y-1 flex-grow">
+                                                                <p className="font-semibold flex items-center gap-2">
+                                                                    <User className="h-4 w-4" />
+                                                                    {order.customerName}
+                                                                </p>
+                                                                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                                <Hash className="h-4 w-4" />
+                                                                {order.id}
+                                                                </p>
+                                                                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                                    <ListOrdered className="h-4 w-4" />
+                                                                    {order.products.length} unique items
+                                                                </p>
+                                                            </div>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
+                                                                        <MoreVertical />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent>
+                                                                    {order.phoneNumber && (
+                                                                        <DropdownMenuItem asChild>
+                                                                            <a href={`tel:${order.phoneNumber}`}>
+                                                                                <Phone className="mr-2 h-4 w-4" /> Call Customer
+                                                                            </a>
+                                                                    </DropdownMenuItem>
+                                                                    )}
+                                                                    <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                                                                        <Eye className="mr-2 h-4 w-4" /> View Items
+                                                                    </DropdownMenuItem>
+                                                                    {order.isPicked && (
+                                                                    <DropdownMenuItem onClick={() => handleExportOrder(order)}>
+                                                                        <Copy className="mr-2 h-4 w-4" /> Export Summary
+                                                                    </DropdownMenuItem>
+                                                                    )}
+                                                                    <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
+                                                                        <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleToggleOrderArchived(order.id, true)} className="text-destructive">
+                                                                        <Archive className="mr-2 h-4 w-4" /> Archive Order
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
+                                                        {order.isPicked && (
+                                                            <div className="mt-2 pt-2 border-t">
+                                                                <OrderSummary order={order} onShowDetails={handleShowSummaryDetails} />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                     <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
-                                                                <MoreVertical />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent>
-                                                            {order.phoneNumber && (
-                                                                <DropdownMenuItem asChild>
-                                                                    <a href={`tel:${order.phoneNumber}`}>
-                                                                        <Phone className="mr-2 h-4 w-4" /> Call Customer
-                                                                    </a>
-                                                            </DropdownMenuItem>
-                                                            )}
-                                                            <DropdownMenuItem onClick={() => handleViewOrder(order)}>
-                                                                <Eye className="mr-2 h-4 w-4" /> View Items
-                                                            </DropdownMenuItem>
-                                                            {order.isPicked && (
-                                                              <DropdownMenuItem onClick={() => handleExportOrder(order)}>
-                                                                  <Copy className="mr-2 h-4 w-4" /> Export Summary
-                                                              </DropdownMenuItem>
-                                                            )}
-                                                            <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
-                                                                <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleToggleOrderArchived(order.id, true)} className="text-destructive">
-                                                                <Archive className="mr-2 h-4 w-4" /> Archive Order
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                                 {order.isPicked && (
-                                                    <div className="mt-2 pt-2 border-t">
-                                                        <OrderSummary order={order} onShowDetails={handleShowSummaryDetails} />
-                                                    </div>
-                                                )}
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
                     {archivedOrders.length > 0 && (
                         <Collapsible className="mt-6">
                             <CollapsibleTrigger asChild>
