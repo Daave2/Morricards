@@ -548,8 +548,9 @@ export default function AssistantPageClient() {
     
     if (settingsLoaded && skuToLoad && (locationFromUrl || settings.locationId)) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
+      router.replace('/assistant');
     }
-  }, [skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, fetchProductAndInsights]);
+  }, [skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, fetchProductAndInsights, router]);
 
 
   const handleReset = () => {
