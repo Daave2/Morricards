@@ -249,13 +249,13 @@ export default function PickingListClient() {
     setIsLoading(true);
     const { id: toastId } = toast({ title: 'Parsing orders...', description: 'Please wait.' });
 
-    let parsedOrders = parseOrderText(values.rawOrderText);
+    const parsedOrders = parseOrderText(values.rawOrderText);
 
     if (parsedOrders.length === 0) {
-      playError();
-      toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Could not find any valid orders in the text.' });
-      setIsLoading(false);
-      return;
+        playError();
+        toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Could not find any valid orders in the text.' });
+        setIsLoading(false);
+        return;
     }
 
     if (!settings.locationId || !firestore) {
@@ -266,24 +266,18 @@ export default function PickingListClient() {
     }
 
     const existingOrderIds = new Set(ordersFromDb?.map(o => o.id));
-    const newOrdersToImport = parsedOrders.filter(p => !existingOrderIds.has(p.id));
-    const skippedCount = parsedOrders.length - newOrdersToImport.length;
+    const newOrders = parsedOrders.filter(p => !existingOrderIds.has(p.id));
+    const updatedOrders = parsedOrders.filter(p => existingOrderIds.has(p.id));
 
-    if (newOrdersToImport.length === 0) {
-        toast({ id: toastId, title: 'No New Orders', description: `All ${skippedCount} imported order(s) already exist and were skipped.` });
-        setIsLoading(false);
-        form.reset();
-        return;
-    }
-
-    const BATCH_SIZE = 5;
+    const BATCH_SIZE = 5; // Process orders in batches to avoid overwhelming the API
     let importedCount = 0;
+    let updatedCount = 0;
 
-    for (let i = 0; i < newOrdersToImport.length; i += BATCH_SIZE) {
-        const batch = newOrdersToImport.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < parsedOrders.length; i += BATCH_SIZE) {
+        const batch = parsedOrders.slice(i, i + BATCH_SIZE);
         const progress = i + batch.length;
 
-        toast({ id: toastId, title: 'Importing Orders...', description: `Processing ${progress} of ${newOrdersToImport.length}...` });
+        toast({ id: toastId, title: 'Importing Orders...', description: `Processing ${progress} of ${parsedOrders.length}...` });
 
         const skusInBatch = new Set<string>();
         batch.forEach(order => order.products.forEach(p => skusInBatch.add(p.sku)));
@@ -317,24 +311,29 @@ export default function PickingListClient() {
             const firestoreBatch = writeBatch(firestore);
             enrichedOrders.forEach(orderData => {
                 const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
+                // set with merge will create or overwrite
                 firestoreBatch.set(orderRef, orderData, { merge: true });
+                if (existingOrderIds.has(orderData.id)) {
+                    updatedCount++;
+                } else {
+                    importedCount++;
+                }
             });
             await firestoreBatch.commit();
-            importedCount += batch.length;
         } catch (e) {
             const batchError = e instanceof Error ? e.message : String(e);
             toast({ id: toastId, variant: 'destructive', title: `Firestore Error (Batch ${i/BATCH_SIZE + 1})`, description: batchError });
             continue; // Skip to next batch
         }
         
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay between batches
     }
 
 
     toast({
         id: toastId,
         title: 'Import Complete',
-        description: `Successfully imported ${importedCount} new orders. Skipped ${skippedCount} duplicate(s).`
+        description: `Successfully imported ${importedCount} new orders and updated ${updatedCount} existing orders.`
     })
 
     form.reset();
