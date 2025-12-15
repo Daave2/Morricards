@@ -2,7 +2,6 @@
 import { Suspense } from 'react';
 import AmazonClient from '../AmazonClient';
 import { Loader2 } from 'lucide-react';
-import { useApiSettings } from '@/hooks/use-api-settings';
 
 function Loading() {
     return (
