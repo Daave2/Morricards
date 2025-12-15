@@ -74,7 +74,7 @@ interface Order {
     phoneNumber: string | null;
     products: OrderProduct[];
     isPicked: boolean;
-    isCollected: boolean;
+    isArchived: boolean;
 }
 
 // State is now nested: { "25-11-2025": { "16:00 - 17:00": [Order, ...] } }
@@ -136,7 +136,7 @@ const parseOrderText = (text: string): Order[] => {
                     pickedItems: [],
                 })),
                 isPicked: false,
-                isCollected: false,
+                isArchived: false,
             });
         }
     });
@@ -266,12 +266,10 @@ export default function PickingListClient() {
     }
 
     const existingOrderIds = new Set(ordersFromDb?.map(o => o.id));
-    const newOrders = parsedOrders.filter(p => !existingOrderIds.has(p.id));
-    const updatedOrders = parsedOrders.filter(p => existingOrderIds.has(p.id));
-
-    const BATCH_SIZE = 5; // Process orders in batches to avoid overwhelming the API
     let importedCount = 0;
     let updatedCount = 0;
+
+    const BATCH_SIZE = 5; // Process orders in batches to avoid overwhelming the API
 
     for (let i = 0; i < parsedOrders.length; i += BATCH_SIZE) {
         const batch = parsedOrders.slice(i, i + BATCH_SIZE);
@@ -382,17 +380,17 @@ export default function PickingListClient() {
      handleSelectOrder(resetOrder);
   }
 
-  const handleToggleOrderCollected = (orderId: string, collect: boolean) => {
+  const handleToggleOrderArchived = (orderId: string, archive: boolean) => {
     if (!ordersFromDb || !settings.locationId) return;
     const orderToUpdate = ordersFromDb.find(o => o.id === orderId);
     if (!orderToUpdate) return;
      
      const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderId);
-     setDocumentNonBlocking(orderRef, { isCollected: collect }, { merge: true });
+     setDocumentNonBlocking(orderRef, { isArchived: archive }, { merge: true });
 
     toast({ 
-        title: `Order ${collect ? 'Collected' : 'Restored'}`, 
-        description: `The order has been moved to the ${collect ? 'collected' : 'active'} section.` 
+        title: `Order ${archive ? 'Archived' : 'Restored'}`, 
+        description: `The order has been moved to the ${archive ? 'archived' : 'active'} section.` 
     });
   }
 
@@ -763,8 +761,8 @@ export default function PickingListClient() {
   }, [substitutingFor]);
   
   const allOrdersList = useMemo(() => ordersFromDb || [], [ordersFromDb]);
-  const pickedOrders = useMemo(() => allOrdersList.filter(o => o.isPicked && !o.isCollected), [allOrdersList]);
-  const collectedOrders = useMemo(() => allOrdersList.filter(o => o.isCollected), [allOrdersList]);
+  const pickedOrders = useMemo(() => allOrdersList.filter(o => o.isPicked && !o.isArchived), [allOrdersList]);
+  const archivedOrders = useMemo(() => allOrdersList.filter(o => o.isArchived), [allOrdersList]);
 
   const handleCopyAllForEmail = async () => {
     if (pickedOrders.length === 0) {
@@ -1301,7 +1299,7 @@ export default function PickingListClient() {
                                         Slot: {timeKey}
                                     </h3>
                                     <div className="space-y-4 md:pl-4">
-                                        {groupedOrders[dateKey][timeKey].filter(o => !o.isCollected).map(order => (
+                                        {groupedOrders[dateKey][timeKey].filter(o => !o.isArchived).map(order => (
                                             <div
                                                 key={order.id} 
                                                 className={cn(
@@ -1325,40 +1323,36 @@ export default function PickingListClient() {
                                                             {order.products.length} unique items
                                                         </p>
                                                     </div>
-                                                     {order.isPicked ? (
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
-                                                                    <MoreVertical />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent>
-                                                                {order.phoneNumber && (
-                                                                    <DropdownMenuItem asChild>
-                                                                        <a href={`tel:${order.phoneNumber}`}>
-                                                                            <Phone className="mr-2 h-4 w-4" /> Call Customer
-                                                                        </a>
-                                                                </DropdownMenuItem>
-                                                                )}
-                                                                <DropdownMenuItem onClick={() => handleViewOrder(order)}>
-                                                                    <Eye className="mr-2 h-4 w-4" /> View Items
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleExportOrder(order)}>
-                                                                    <Copy className="mr-2 h-4 w-4" /> Export Summary
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
-                                                                    <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleToggleOrderCollected(order.id, true)} className="text-destructive">
-                                                                    <PackageCheck className="mr-2 h-4 w-4" /> Mark as Collected
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    ) : (
-                                                        <div className="text-sm text-primary font-semibold">
-                                                            {order.products.filter(p => p.pickedItems.length >= p.quantity).length} / {order.products.length} Picked
-                                                        </div>
-                                                    )}
+                                                     <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
+                                                                <MoreVertical />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent>
+                                                            {order.phoneNumber && (
+                                                                <DropdownMenuItem asChild>
+                                                                    <a href={`tel:${order.phoneNumber}`}>
+                                                                        <Phone className="mr-2 h-4 w-4" /> Call Customer
+                                                                    </a>
+                                                            </DropdownMenuItem>
+                                                            )}
+                                                            <DropdownMenuItem onClick={() => handleViewOrder(order)}>
+                                                                <Eye className="mr-2 h-4 w-4" /> View Items
+                                                            </DropdownMenuItem>
+                                                            {order.isPicked && (
+                                                              <DropdownMenuItem onClick={() => handleExportOrder(order)}>
+                                                                  <Copy className="mr-2 h-4 w-4" /> Export Summary
+                                                              </DropdownMenuItem>
+                                                            )}
+                                                            <DropdownMenuItem onClick={() => handleRepickOrder(order.id)}>
+                                                                <RefreshCw className="mr-2 h-4 w-4" /> Repick Order
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleToggleOrderArchived(order.id, true)} className="text-destructive">
+                                                                <Archive className="mr-2 h-4 w-4" /> Archive Order
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                                  {order.isPicked && (
                                                     <div className="mt-2 pt-2 border-t">
@@ -1372,19 +1366,19 @@ export default function PickingListClient() {
                             ))}
                         </div>
                     ))}
-                    {collectedOrders.length > 0 && (
+                    {archivedOrders.length > 0 && (
                         <Collapsible className="mt-6">
                             <CollapsibleTrigger asChild>
                                 <div className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-accent">
                                     <div className="flex items-center gap-2 font-semibold text-lg">
                                         <Archive className="h-5 w-5" />
-                                        Collected Orders ({collectedOrders.length})
+                                        Archived Orders ({archivedOrders.length})
                                     </div>
                                     <ChevronDown className="h-5 w-5" />
                                 </div>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="pt-4 space-y-4">
-                                {collectedOrders.map(order => (
+                                {archivedOrders.map(order => (
                                      <div key={order.id} className="p-4 rounded-lg border opacity-70">
                                           <div className="flex justify-between items-start gap-4">
                                             <div className="space-y-1 flex-grow">
@@ -1410,8 +1404,8 @@ export default function PickingListClient() {
                                                     <DropdownMenuItem onClick={() => handleExportOrder(order)}>
                                                         <Copy className="mr-2 h-4 w-4" /> Export Summary
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleToggleOrderCollected(order.id, false)}>
-                                                        <ArchiveRestore className="mr-2 h-4 w-4" /> Un-collect
+                                                    <DropdownMenuItem onClick={() => handleToggleOrderArchived(order.id, false)}>
+                                                        <ArchiveRestore className="mr-2 h-4 w-4" /> Un-archive
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
