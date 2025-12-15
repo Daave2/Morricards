@@ -269,20 +269,20 @@ export default function PickingListClient() {
 
   const handleImportOrders = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
-    const { id: toastId } = toast({ title: 'Parsing orders...', description: 'Please wait.' });
+    const { update } = toast({ title: 'Parsing orders...', description: 'Please wait.' });
 
     const parsedOrders = parseOrderText(values.rawOrderText);
 
     if (parsedOrders.length === 0) {
         playError();
-        toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Could not find any valid orders in the text.' });
+        update({ variant: 'destructive', title: 'Import Failed', description: 'Could not find any valid orders in the text.' });
         setIsLoading(false);
         return;
     }
 
     if (!settings.locationId || !firestore) {
         playError();
-        toast({ id: toastId, variant: 'destructive', title: 'Import Failed', description: 'Store Location ID is not set or Firestore is not available.' });
+        update({ variant: 'destructive', title: 'Import Failed', description: 'Store Location ID is not set or Firestore is not available.' });
         setIsLoading(false);
         return;
     }
@@ -296,7 +296,7 @@ export default function PickingListClient() {
         const batch = parsedOrders.slice(i, i + BATCH_SIZE);
         const progress = i + batch.length;
 
-        toast({ id: toastId, title: 'Importing Orders...', description: `Processing ${progress} of ${parsedOrders.length}...` });
+        update({ title: 'Importing Orders...', description: `Processing ${progress} of ${parsedOrders.length}...` });
 
         const skusInBatch = new Set<string>();
         batch.forEach(order => order.products.forEach(p => skusInBatch.add(p.sku)));
@@ -309,7 +309,7 @@ export default function PickingListClient() {
         });
 
         if (error) {
-            toast({ id: toastId, variant: 'destructive', title: `Product Fetch Error (Batch ${i/BATCH_SIZE + 1})`, description: error });
+            update({ variant: 'destructive', title: `Product Fetch Error (Batch ${i/BATCH_SIZE + 1})`, description: error });
             continue;
         }
 
@@ -342,7 +342,7 @@ export default function PickingListClient() {
             await firestoreBatch.commit();
         } catch (e) {
             const batchError = e instanceof Error ? e.message : String(e);
-            toast({ id: toastId, variant: 'destructive', title: `Firestore Error (Batch ${i/BATCH_SIZE + 1})`, description: batchError });
+            update({ variant: 'destructive', title: `Firestore Error (Batch ${i/BATCH_SIZE + 1})`, description: batchError });
             continue; 
         }
         
@@ -350,8 +350,7 @@ export default function PickingListClient() {
     }
 
 
-    toast({
-        id: toastId,
+    update({
         title: 'Import Complete',
         description: `Successfully imported ${importedCount} new orders and updated ${updatedCount} existing orders.`
     })
@@ -1468,3 +1467,4 @@ export default function PickingListClient() {
     </>
   );
 }
+
