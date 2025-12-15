@@ -1,4 +1,3 @@
-
 import { Suspense } from 'react';
 import AmazonClient from '../AmazonClient';
 import { Loader2 } from 'lucide-react';
@@ -14,6 +13,7 @@ function Loading() {
     )
 }
 
+// Correctly typed props for an optional catch-all route
 type AmazonSharePageProps = {
   params: { share?: string[] };
   searchParams: { [key: string]: string | string[] | undefined };
@@ -21,7 +21,7 @@ type AmazonSharePageProps = {
 
 
 export default function AmazonSharePage({ params, searchParams }: AmazonSharePageProps) {
-  // The captured URL segment might be URI-encoded, so decode it.
+  // The `share` param is an array of segments. We expect at most one segment for our use case.
   const skuString = params.share?.[0] ? decodeURIComponent(params.share[0]) : undefined;
   
   // Split the string by commas, trim whitespace, and filter out any empty strings.
