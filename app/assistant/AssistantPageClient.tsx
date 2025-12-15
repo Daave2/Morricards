@@ -379,7 +379,7 @@ const ProductSkeleton = () => (
   </div>
 );
 
-export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: string }) {
+export default function AssistantPageClient() {
   const [isScanMode, setIsScanMode] = useState(false);
   const [isFetchingProduct, setIsFetchingProduct] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -546,12 +546,12 @@ export default function AssistantPageClient({ skuFromPath }: { skuFromPath?: str
 
   // Handle dynamic links from URL params
   useEffect(() => {
-    const skuToLoad = skuFromPath || skuFromQuery;
+    const skuToLoad = skuFromQuery;
     
     if (settingsLoaded && skuToLoad && settings.locationId) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
-  }, [skuFromPath, skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, settings.bearerToken, fetchProductAndInsights]);
+  }, [skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, settings.bearerToken, fetchProductAndInsights]);
 
 
   const handleReset = () => {
