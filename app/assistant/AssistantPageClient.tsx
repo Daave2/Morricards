@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -548,10 +546,10 @@ export default function AssistantPageClient() {
   useEffect(() => {
     const skuToLoad = skuFromQuery;
     
-    if (settingsLoaded && skuToLoad && settings.locationId) {
+    if (settingsLoaded && skuToLoad && (locationFromUrl || settings.locationId)) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
     }
-  }, [skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, settings.bearerToken, fetchProductAndInsights]);
+  }, [skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, fetchProductAndInsights]);
 
 
   const handleReset = () => {
