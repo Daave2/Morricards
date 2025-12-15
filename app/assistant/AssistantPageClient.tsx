@@ -548,6 +548,7 @@ export default function AssistantPageClient() {
     
     if (settingsLoaded && skuToLoad && (locationFromUrl || settings.locationId)) {
       fetchProductAndInsights(skuToLoad, locationFromUrl);
+      // Use router.replace to clean up the URL
       router.replace('/assistant');
     }
   }, [skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, fetchProductAndInsights, router]);

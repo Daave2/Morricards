@@ -433,7 +433,7 @@ export default function AssistantPageClient() {
     defaultValues: { sku: '' },
   });
 
-  const fetchProductAndInsights = useCallback(async (sku: string) => {
+  const fetchProductAndInsights = useCallback(async (sku: string, locationIdOverride?: string | null) => {
     if (!sku || sku.trim().length < 4) {
       toast({ variant: 'destructive', title: 'Invalid SKU', description: 'Please enter a valid SKU or EAN.' });
       return;
@@ -441,7 +441,7 @@ export default function AssistantPageClient() {
     setIsFetchingProduct(true);
     handleReset();
 
-    const locationId = settings.locationId;
+    const locationId = locationIdOverride || settings.locationId;
     if (!locationId) {
         playError();
         toast({ variant: 'destructive', title: 'Error', description: 'Please enter a store location ID in settings.' });
@@ -538,6 +538,20 @@ export default function AssistantPageClient() {
     fetchAndUpdateToken,
     consecutiveFails,
   ]);
+
+  const skuFromQuery = useMemo(() => searchParams.get('sku'), [searchParams]);
+  const locationFromUrl = useMemo(() => searchParams.get('locationId'), [searchParams]);
+
+  // Handle dynamic links from URL params
+  useEffect(() => {
+    const skuToLoad = skuFromQuery;
+    
+    if (settingsLoaded && skuToLoad && (locationFromUrl || settings.locationId)) {
+      fetchProductAndInsights(skuToLoad, locationFromUrl);
+      router.replace('/assistant');
+    }
+  }, [skuFromQuery, locationFromUrl, settingsLoaded, settings.locationId, fetchProductAndInsights, router]);
+
 
   const handleReset = () => {
     setProduct(null);
