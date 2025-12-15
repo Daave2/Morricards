@@ -1,6 +1,6 @@
 
 import { Suspense } from 'react';
-import AmazonClient from '../AmazonClient';
+import AmazonClient from '@/app/amazon/AmazonClient';
 import { Loader2 } from 'lucide-react';
 
 function Loading() {
