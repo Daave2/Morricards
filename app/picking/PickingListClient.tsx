@@ -244,22 +244,28 @@ export default function PickingListClient() {
       return [defaultDate, "Unsorted", "N/A"];
   };
 
-    const filteredOrdersFromDb = useMemo(() => {
+  const filteredOrdersFromDb = useMemo(() => {
     if (!ordersFromDb) return [];
     
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to the beginning of today
+    today.setHours(0, 0, 0, 0);
 
     return ordersFromDb.filter(order => {
-        if (order.isArchived) return true; // Always include archived orders in the dataset
-
-        const [orderDate] = parseSlot(order.collectionSlot);
-        if (orderDate.getTime() === 0) return true; // Keep "Unsorted" orders
+        if (order.isArchived) {
+            return true; // Always include archived orders
+        }
         
-        orderDate.setHours(0,0,0,0);
+        const [orderDate] = parseSlot(order.collectionSlot);
+        
+        // Keep orders that couldn't be parsed (date is 1970)
+        if (orderDate.getTime() === new Date(0).getTime()) {
+            return true;
+        }
+        
+        orderDate.setHours(0, 0, 0, 0);
         return orderDate >= today;
     });
-    }, [ordersFromDb]);
+  }, [ordersFromDb]);
 
 
   const handleImportOrders = async (values: z.infer<typeof FormSchema>) => {
@@ -282,7 +288,6 @@ export default function PickingListClient() {
         return;
     }
 
-    const existingOrderIds = new Set(ordersFromDb?.map(o => o.id));
     let importedCount = 0;
     let updatedCount = 0;
 
@@ -324,6 +329,8 @@ export default function PickingListClient() {
 
         try {
             const firestoreBatch = writeBatch(firestore);
+            const existingOrderIds = new Set(ordersFromDb?.map(o => o.id));
+
             enrichedOrders.forEach(orderData => {
                 const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderData.id);
                 // set with merge will create or overwrite
