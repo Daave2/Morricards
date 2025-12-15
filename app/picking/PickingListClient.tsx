@@ -244,6 +244,23 @@ export default function PickingListClient() {
       return [defaultDate, "Unsorted", "N/A"];
   };
 
+    const filteredOrdersFromDb = useMemo(() => {
+    if (!ordersFromDb) return [];
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to the beginning of today
+
+    return ordersFromDb.filter(order => {
+        if (order.isArchived) return true; // Always include archived orders in the dataset
+
+        const [orderDate] = parseSlot(order.collectionSlot);
+        if (orderDate.getTime() === 0) return true; // Keep "Unsorted" orders
+        
+        orderDate.setHours(0,0,0,0);
+        return orderDate >= today;
+    });
+    }, [ordersFromDb]);
+
 
   const handleImportOrders = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
@@ -636,9 +653,9 @@ export default function PickingListClient() {
   }
 
   const groupedOrders = useMemo(() => {
-    if (!ordersFromDb) return {};
+    if (!filteredOrdersFromDb) return {};
     const newGroups: GroupedOrders = {};
-    ordersFromDb.forEach(order => {
+    filteredOrdersFromDb.forEach(order => {
         const slot = order.collectionSlot;
         const [, dateKey, timeKey] = parseSlot(slot);
 
@@ -651,7 +668,7 @@ export default function PickingListClient() {
         newGroups[dateKey][timeKey].push(order);
     });
     return newGroups;
-  }, [ordersFromDb]);
+  }, [filteredOrdersFromDb]);
 
   const getSortedDateKeys = () => {
       return Object.keys(groupedOrders).sort((a, b) => {
@@ -760,7 +777,7 @@ export default function PickingListClient() {
     return substitutingFor.name.split(' ').slice(0, 2).join(' ');
   }, [substitutingFor]);
   
-  const allOrdersList = useMemo(() => ordersFromDb || [], [ordersFromDb]);
+  const allOrdersList = useMemo(() => filteredOrdersFromDb || [], [filteredOrdersFromDb]);
   const pickedOrders = useMemo(() => allOrdersList.filter(o => o.isPicked && !o.isArchived), [allOrdersList]);
   const archivedOrders = useMemo(() => allOrdersList.filter(o => o.isArchived), [allOrdersList]);
 
