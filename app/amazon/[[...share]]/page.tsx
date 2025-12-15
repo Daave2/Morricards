@@ -13,14 +13,15 @@ function Loading() {
     )
 }
 
-// Correctly typed props for an optional catch-all route
-type AmazonSharePageProps = {
+// This is the correct type definition for a page with an optional catch-all route.
+// It explicitly types `params` and `searchParams` as expected by Next.js.
+export default function AmazonSharePage({
+  params,
+  searchParams,
+}: {
   params: { share?: string[] };
   searchParams: { [key: string]: string | string[] | undefined };
-};
-
-
-export default function AmazonSharePage({ params, searchParams }: AmazonSharePageProps) {
+}) {
   // The `share` param is an array of segments. We expect at most one segment for our use case.
   const skuString = params.share?.[0] ? decodeURIComponent(params.share[0]) : undefined;
   
