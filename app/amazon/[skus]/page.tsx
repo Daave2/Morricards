@@ -1,3 +1,4 @@
+
 import { Suspense } from 'react';
 import AmazonClient from '../AmazonClient';
 import { Loader2 } from 'lucide-react';
@@ -13,17 +14,17 @@ function Loading() {
     )
 }
 
-// This is the correct type definition for a page with an optional catch-all route.
-// It explicitly types `params` and `searchParams` as expected by Next.js.
-export default function AmazonSharePage({
+// This page handles a dynamic route segment for SKUs.
+// e.g., /amazon/12345,67890
+export default function AmazonSkuPage({
   params,
   searchParams,
 }: {
-  params: { share?: string[] };
+  params: { skus?: string };
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  // The `share` param is an array of segments. We expect at most one segment for our use case.
-  const skuString = params.share?.[0] ? decodeURIComponent(params.share[0]) : undefined;
+  // The `skus` param is a string from the URL, which might be comma-separated.
+  const skuString = params.skus ? decodeURIComponent(params.skus) : undefined;
   
   // Split the string by commas, trim whitespace, and filter out any empty strings.
   const initialSkus = skuString ? skuString.split(',').map(s => s.trim()).filter(Boolean) : undefined;
