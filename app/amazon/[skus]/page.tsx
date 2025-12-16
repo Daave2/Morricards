@@ -14,15 +14,14 @@ function Loading() {
     )
 }
 
+type AmazonSkuPageProps = {
+    params: { skus?: string };
+    searchParams: { [key: string]: string | string[] | undefined };
+}
+
 // This page handles a dynamic route segment for SKUs.
 // e.g., /amazon/12345,67890
-export default function AmazonSkuPage({
-  params,
-  searchParams,
-}: {
-  params: { skus?: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default function AmazonSkuPage({ params, searchParams }: AmazonSkuPageProps) {
   // The `skus` param is a string from the URL, which might be comma-separated.
   const skuString = params.skus ? decodeURIComponent(params.skus) : undefined;
   
