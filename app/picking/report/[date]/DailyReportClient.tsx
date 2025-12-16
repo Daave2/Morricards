@@ -50,6 +50,8 @@ export default function DailyReportClient({ date }: { date: string }) {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [sortConfig, setSortConfig] = useState('total-desc');
     const [filterQuery, setFilterQuery] = useState('');
+    const [aisleFilter, setAisleFilter] = useState('all');
+
 
     const storageKey = `daily-report-prepicked-${date}`;
 
@@ -99,15 +101,31 @@ export default function DailyReportClient({ date }: { date: string }) {
         return summary;
     }, [allOrders, date]);
 
+    const availableAisles = useMemo(() => {
+        const aisles = new Set<string>();
+        Object.values(productSummary).forEach(p => {
+            const aisleMatch = p.location.match(/Aisle\s*\d+/i);
+            if (aisleMatch) {
+                aisles.add(aisleMatch[0]);
+            }
+        });
+        return Array.from(aisles).sort((a,b) => parseInt(a.replace('Aisle ', '')) - parseInt(b.replace('Aisle ', '')));
+    }, [productSummary]);
+
     const sortedAndFilteredProducts = useMemo(() => {
-        const filtered = Object.values(productSummary).filter(p => 
+        const filteredByName = Object.values(productSummary).filter(p => 
             p.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
             p.sku.includes(filterQuery)
         );
 
+        const filteredByAisle = aisleFilter === 'all'
+            ? filteredByName
+            : filteredByName.filter(p => p.location.includes(aisleFilter));
+
+
         const [key, direction] = sortConfig.split('-');
 
-        filtered.sort((a, b) => {
+        filteredByAisle.sort((a, b) => {
             const aIsPrePicked = prePickedSkus.has(a.sku);
             const bIsPrePicked = prePickedSkus.has(b.sku);
 
@@ -144,8 +162,8 @@ export default function DailyReportClient({ date }: { date: string }) {
             return direction === 'asc' ? valA - valB : valB - valA;
         });
 
-        return filtered;
-    }, [productSummary, prePickedSkus, filterQuery, sortConfig]);
+        return filteredByAisle;
+    }, [productSummary, prePickedSkus, filterQuery, sortConfig, aisleFilter]);
 
     const handlePrePickToggle = (sku: string) => {
         setPrePickedSkus(prev => {
@@ -245,6 +263,17 @@ export default function DailyReportClient({ date }: { date: string }) {
                                 className="pl-10"
                             />
                         </div>
+                        <Select value={aisleFilter} onValueChange={setAisleFilter}>
+                            <SelectTrigger className="w-full sm:w-[180px]">
+                                <SelectValue placeholder="Filter by aisle..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Aisles</SelectItem>
+                                {availableAisles.map(aisle => (
+                                    <SelectItem key={aisle} value={aisle}>{aisle}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Select value={sortConfig} onValueChange={setSortConfig}>
                             <SelectTrigger className="w-full sm:w-[240px]">
                                 <SelectValue placeholder="Sort by..." />
@@ -324,4 +353,5 @@ export default function DailyReportClient({ date }: { date: string }) {
             </Card>
         </main>
     );
-}
+
+    
