@@ -66,6 +66,10 @@ interface OrderProduct {
     quantity: number;
     pickedItems: PickedItem[];
     details?: Product | null;
+    prePickedStatus?: {
+        isPrePicked: boolean;
+        storageLocation?: string;
+    }
 }
 
 interface Order {
@@ -1064,6 +1068,7 @@ export default function PickingListClient() {
                                 const pickedOriginalCount = p.pickedItems.filter(item => !item.isSubstitute).length;
                                 const substitutes = p.pickedItems.filter(item => item.isSubstitute && item.sku !== 'MISSING');
                                 const missingCount = p.pickedItems.filter(item => item.sku === 'MISSING').length;
+                                const prePick = p.prePickedStatus;
 
                                 if (!p.details) {
                                 return (
@@ -1106,8 +1111,18 @@ export default function PickingListClient() {
                                                     <div className="flex-grow min-w-0">
                                                         <p className="font-semibold">{p.name}</p>
                                                         <p className="text-sm text-muted-foreground">SKU: {p.sku}</p>
-                                                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><MapPin className='h-4 w-4' /> {p.details.location.standard}</p>
-                                                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><PoundSterling className='h-4 w-4' /> £{p.details.price.regular?.toFixed(2)}</p>
+                                                        
+                                                        {prePick?.isPrePicked && prePick.storageLocation ? (
+                                                            <Badge variant="secondary" className="mt-1 bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                                                                <PackageCheck className="mr-1.5 h-3.5 w-3.5"/>
+                                                                Pre-picked: {prePick.storageLocation}
+                                                            </Badge>
+                                                        ) : (
+                                                            <>
+                                                                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><MapPin className='h-4 w-4' /> {p.details.location.standard}</p>
+                                                                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1"><PoundSterling className='h-4 w-4' /> £{p.details.price.regular?.toFixed(2)}</p>
+                                                            </>
+                                                        )}
                                                          {substitutes.length > 0 && (
                                                             <Badge variant="secondary" className="mt-1">{substitutes.length} substitute(s)</Badge>
                                                         )}
