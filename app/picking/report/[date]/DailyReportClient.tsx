@@ -8,7 +8,7 @@ import { collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2, Search, ScanLine, X } from 'lucide-react';
+import { FileDown, Loader2, Search, ScanLine, X, Text } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
@@ -61,6 +61,7 @@ const UnloadView = ({
 }) => {
     const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
     const [isScannerActive, setIsScannerActive] = useState(false);
+    const [manualLocation, setManualLocation] = useState('');
     const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
     const { toast } = useToast();
 
@@ -72,16 +73,21 @@ const UnloadView = ({
         }
     }, [isScannerActive]);
 
-    const handleScanResult = (location: string) => {
+    const handleAssign = (location: string) => {
         if (selectedSkus.size === 0) {
-            toast({ variant: 'destructive', title: 'No Items Selected', description: 'Please select items to unload before scanning a location.' });
+            toast({ variant: 'destructive', title: 'No Items Selected', description: 'Please select items to unload before assigning a location.' });
+            return;
+        }
+        if (!location.trim()) {
+            toast({ variant: 'destructive', title: 'No Location', description: 'Please enter a location to assign.' });
             return;
         }
         onAssignLocation(Array.from(selectedSkus), location);
         setSelectedSkus(new Set());
+        setManualLocation('');
         setIsScannerActive(false);
         toast({ title: 'Location Assigned', description: `${selectedSkus.size} items have been assigned to ${location}.` });
-    };
+    }
 
     const toggleSku = (sku: string) => {
         setSelectedSkus(prev => {
@@ -162,14 +168,27 @@ const UnloadView = ({
              <div className="sticky bottom-0 bg-background/80 backdrop-blur-sm p-4 border-t -m-6 mt-6">
                 {isScannerActive ? (
                     <div className="space-y-2">
-                        <ZXingScanner ref={scannerRef} onResult={handleScanResult} onError={(e) => console.warn(e)} />
+                        <ZXingScanner ref={scannerRef} onResult={(text) => handleAssign(text)} onError={(e) => console.warn(e)} />
                         <Button variant="secondary" className="w-full" onClick={() => setIsScannerActive(false)}>Cancel Scan</Button>
                     </div>
                 ) : (
-                    <Button className="w-full" size="lg" onClick={() => setIsScannerActive(true)} disabled={selectedSkus.size === 0}>
-                        <ScanLine className="mr-2 h-5 w-5" />
-                        Scan Location QR ({selectedSkus.size} items selected)
-                    </Button>
+                    <div className="space-y-3">
+                         <div className="flex gap-2">
+                             <Input
+                                placeholder="Or type location..."
+                                value={manualLocation}
+                                onChange={(e) => setManualLocation(e.target.value)}
+                                disabled={selectedSkus.size === 0}
+                            />
+                            <Button onClick={() => handleAssign(manualLocation)} disabled={selectedSkus.size === 0 || !manualLocation.trim()}>
+                                <Text className="mr-2 h-4 w-4" /> Assign
+                            </Button>
+                         </div>
+                        <Button className="w-full" size="lg" onClick={() => setIsScannerActive(true)} disabled={selectedSkus.size === 0}>
+                            <ScanLine className="mr-2 h-5 w-5" />
+                            Scan Location QR ({selectedSkus.size} items selected)
+                        </Button>
+                    </div>
                 )}
             </div>
         </div>
@@ -317,7 +336,7 @@ export default function DailyReportClient({ date }: { date: string }) {
             }
             
             if (typeof valA === 'string') {
-                return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                return direction === 'asc' ? valA.localeCompare(valA) : valB.localeCompare(valA);
             }
             return direction === 'asc' ? valA - valB : valB - valA;
         });
@@ -395,7 +414,7 @@ export default function DailyReportClient({ date }: { date: string }) {
     return (
         <main className="container mx-auto px-4 py-8 md:py-12">
             <Dialog open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
-                <DialogContent className="max-w-2xl">
+                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{selectedProduct?.name || 'Product Details'}</DialogTitle>
                         <DialogDescription>
