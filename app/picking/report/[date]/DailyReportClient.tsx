@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
@@ -396,7 +397,7 @@ export default function DailyReportClient({ date }: { date: string }) {
         <main className="container mx-auto px-4 py-8 md:py-12">
             <Dialog open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
                 <DialogContent className="max-w-2xl">
-                     <DialogHeader>
+                    <DialogHeader>
                         <DialogTitle>{selectedProduct?.name || 'Product Details'}</DialogTitle>
                         <DialogDescription>
                             SKU: {selectedProduct?.sku || 'N/A'}
@@ -429,27 +430,29 @@ export default function DailyReportClient({ date }: { date: string }) {
                 </DialogContent>
             </Dialog>
             <Card>
-                <CardHeader className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <div>
-                        <CardTitle>Daily Order Report</CardTitle>
-                        <CardDescription>Aggregated product list for {date}</CardDescription>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" onClick={() => setIsUnloadViewOpen(true)} disabled={unlocatedPrePicks.length === 0}>
-                            <ScanLine className="mr-2 h-4 w-4" />
-                            Unload Items ({unlocatedPrePicks.length})
-                        </Button>
-                        <Button variant="outline" onClick={handleExportCSV} disabled={sortedAndFilteredProducts.length === 0}>
-                            <FileDown className="mr-2 h-4 w-4" />
-                            Export CSV
-                        </Button>
-                        <Button asChild variant="secondary">
-                           <Link href="/picking">Back to Picking</Link>
-                        </Button>
+                <CardHeader>
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                        <div>
+                            <CardTitle>Daily Order Report</CardTitle>
+                            <CardDescription>Aggregated product list for {date}</CardDescription>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" onClick={() => setIsUnloadViewOpen(true)} disabled={unlocatedPrePicks.length === 0}>
+                                <ScanLine className="mr-2 h-4 w-4" />
+                                Unload Items ({unlocatedPrePicks.length})
+                            </Button>
+                            <Button variant="outline" onClick={handleExportCSV} disabled={sortedAndFilteredProducts.length === 0}>
+                                <FileDown className="mr-2 h-4 w-4" />
+                                Export CSV
+                            </Button>
+                            <Button asChild variant="secondary">
+                               <Link href="/picking">Back to Picking</Link>
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <div className="flex flex-col md:flex-row gap-4 mb-4">
                         <div className="relative flex-grow">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                             <Input
@@ -464,45 +467,47 @@ export default function DailyReportClient({ date }: { date: string }) {
                                 </Button>
                             )}
                         </div>
-                         <Select value={classificationFilter} onValueChange={setClassificationFilter}>
-                            <SelectTrigger className="w-full sm:w-[220px]">
-                                <SelectValue placeholder="Filter by classification..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Classifications</SelectItem>
-                                {availableClassifications.map(c => (
-                                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={aisleFilter} onValueChange={setAisleFilter}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
-                                <SelectValue placeholder="Filter by aisle..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Aisles</SelectItem>
-                                {availableAisles.map(aisle => (
-                                    <SelectItem key={aisle} value={aisle}>{aisle}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={sortConfig} onValueChange={setSortConfig}>
-                            <SelectTrigger className="w-full sm:w-[240px]">
-                                <SelectValue placeholder="Sort by..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="total-desc">Total Ordered (High to Low)</SelectItem>
-                                <SelectItem value="total-asc">Total Ordered (Low to High)</SelectItem>
-                                <SelectItem value="orders-desc"># of Orders (High to Low)</SelectItem>
-                                <SelectItem value="orders-asc"># of Orders (Low to High)</SelectItem>
-                                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                                <SelectItem value="location-asc">Location</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <Select value={classificationFilter} onValueChange={setClassificationFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Filter by classification..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Classifications</SelectItem>
+                                    {availableClassifications.map(c => (
+                                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={aisleFilter} onValueChange={setAisleFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Filter by aisle..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Aisles</SelectItem>
+                                    {availableAisles.map(aisle => (
+                                        <SelectItem key={aisle} value={aisle}>{aisle}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={sortConfig} onValueChange={setSortConfig}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sort by..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="total-desc">Total Ordered (High to Low)</SelectItem>
+                                    <SelectItem value="total-asc">Total Ordered (Low to High)</SelectItem>
+                                    <SelectItem value="orders-desc"># of Orders (High to Low)</SelectItem>
+                                    <SelectItem value="orders-asc"># of Orders (Low to High)</SelectItem>
+                                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                                    <SelectItem value="location-asc">Location</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="hidden md:block border rounded-lg">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -564,9 +569,61 @@ export default function DailyReportClient({ date }: { date: string }) {
                             </TableBody>
                         </Table>
                     </div>
+
+                    <div className="block md:hidden space-y-4">
+                         {sortedAndFilteredProducts.length > 0 ? sortedAndFilteredProducts.map((summary) => {
+                                const state = prePickedState.get(summary.sku);
+                                const isPrePicked = !!state;
+                                return (
+                                    <Card 
+                                        key={summary.sku} 
+                                        className={cn(isPrePicked && 'bg-green-100/50 dark:bg-green-900/20 opacity-70')}
+                                        onClick={() => summary.details && setSelectedProduct(summary.details)}
+                                    >
+                                        <CardContent className="p-3">
+                                            <div className="flex gap-4">
+                                                <div className="flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                    <Checkbox
+                                                        checked={isPrePicked}
+                                                        onCheckedChange={() => handlePrePickToggle(summary.sku)}
+                                                        className="h-6 w-6"
+                                                    />
+                                                    <Image
+                                                        src={summary.details?.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                                        alt={summary.name}
+                                                        width={80}
+                                                        height={80}
+                                                        className="rounded-md border object-cover"
+                                                    />
+                                                </div>
+                                                <div className="flex-grow space-y-1">
+                                                    <p className="font-semibold leading-tight">{summary.name}</p>
+                                                    <p className="text-xs text-muted-foreground">SKU: {summary.sku}</p>
+                                                    <p className="text-sm"><strong>Location:</strong> {summary.location}</p>
+                                                     {state?.location && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md w-fit">{state.location}</div>}
+                                                    <div className="flex items-center justify-between pt-2">
+                                                        <div>
+                                                            <p className="font-bold text-xl">{summary.total}</p>
+                                                            <p className="text-xs text-muted-foreground">Total Units</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-xl">{summary.orders.size}</p>
+                                                            <p className="text-xs text-muted-foreground">Orders</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )
+                         }) : (
+                             <div className="text-center p-8 text-muted-foreground">
+                                No orders found for this date or filter.
+                             </div>
+                         )}
+                    </div>
                 </CardContent>
             </Card>
         </main>
     );
 }
-
