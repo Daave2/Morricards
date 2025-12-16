@@ -8,7 +8,7 @@ import { collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2 } from 'lucide-react';
+import { FileDown, Loader2, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import ProductCard from '@/components/product-card';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -46,6 +48,8 @@ export default function DailyReportClient({ date }: { date: string }) {
     const firestore = useFirestore();
     const [prePickedSkus, setPrePickedSkus] = useState<Set<string>>(new Set());
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [sortConfig, setSortConfig] = useState('total-desc');
+    const [filterQuery, setFilterQuery] = useState('');
 
     const storageKey = `daily-report-prepicked-${date}`;
 
@@ -95,17 +99,53 @@ export default function DailyReportClient({ date }: { date: string }) {
         return summary;
     }, [allOrders, date]);
 
-    const sortedProducts = useMemo(() => {
-        return Object.values(productSummary).sort((a, b) => {
-             const aIsPrePicked = prePickedSkus.has(a.sku);
-             const bIsPrePicked = prePickedSkus.has(b.sku);
+    const sortedAndFilteredProducts = useMemo(() => {
+        const filtered = Object.values(productSummary).filter(p => 
+            p.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
+            p.sku.includes(filterQuery)
+        );
 
-             if (aIsPrePicked && !bIsPrePicked) return 1;
-             if (!aIsPrePicked && bIsPrePicked) return -1;
+        const [key, direction] = sortConfig.split('-');
+
+        filtered.sort((a, b) => {
+            const aIsPrePicked = prePickedSkus.has(a.sku);
+            const bIsPrePicked = prePickedSkus.has(b.sku);
+
+            if (aIsPrePicked && !bIsPrePicked) return 1;
+            if (!aIsPrePicked && bIsPrePicked) return -1;
             
-            return b.total - a.total;
+            let valA: any;
+            let valB: any;
+
+            switch(key) {
+                case 'total':
+                    valA = a.total;
+                    valB = b.total;
+                    break;
+                case 'orders':
+                    valA = a.orders.size;
+                    valB = b.orders.size;
+                    break;
+                case 'name':
+                    valA = a.name.toLowerCase();
+                    valB = b.name.toLowerCase();
+                    break;
+                case 'location':
+                    valA = a.location.toLowerCase();
+                    valB = b.location.toLowerCase();
+                    break;
+                default: 
+                    return 0;
+            }
+            
+            if (typeof valA === 'string') {
+                return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+            return direction === 'asc' ? valA - valB : valB - valA;
         });
-    }, [productSummary, prePickedSkus]);
+
+        return filtered;
+    }, [productSummary, prePickedSkus, filterQuery, sortConfig]);
 
     const handlePrePickToggle = (sku: string) => {
         setPrePickedSkus(prev => {
@@ -121,7 +161,7 @@ export default function DailyReportClient({ date }: { date: string }) {
 
     const handleExportCSV = () => {
         const csvHeader = "Name,SKU,Location,TotalOrdered,OrderCount,PrePicked\n";
-        const csvRows = sortedProducts.map((summary) => {
+        const csvRows = sortedAndFilteredProducts.map((summary) => {
             const row = [
                 `"${summary.name.replace(/"/g, '""')}"`,
                 summary.sku,
@@ -179,13 +219,13 @@ export default function DailyReportClient({ date }: { date: string }) {
                 </DialogContent>
             </Dialog>
             <Card>
-                <CardHeader className="flex flex-row justify-between items-start">
+                <CardHeader className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
                         <CardTitle>Daily Order Report</CardTitle>
                         <CardDescription>Aggregated product list for {date}</CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleExportCSV} disabled={sortedProducts.length === 0}>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={handleExportCSV} disabled={sortedAndFilteredProducts.length === 0}>
                             <FileDown className="mr-2 h-4 w-4" />
                             Export CSV
                         </Button>
@@ -195,6 +235,32 @@ export default function DailyReportClient({ date }: { date: string }) {
                     </div>
                 </CardHeader>
                 <CardContent>
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                        <div className="relative flex-grow">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
+                                placeholder="Filter by name or SKU..."
+                                value={filterQuery}
+                                onChange={(e) => setFilterQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                        <Select value={sortConfig} onValueChange={setSortConfig}>
+                            <SelectTrigger className="w-full sm:w-[240px]">
+                                <SelectValue placeholder="Sort by..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="total-desc">Total Ordered (High to Low)</SelectItem>
+                                <SelectItem value="total-asc">Total Ordered (Low to High)</SelectItem>
+                                <SelectItem value="orders-desc"># of Orders (High to Low)</SelectItem>
+                                <SelectItem value="orders-asc"># of Orders (Low to High)</SelectItem>
+                                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                                <SelectItem value="location-asc">Location</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
@@ -208,7 +274,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sortedProducts.length > 0 ? sortedProducts.map((summary) => {
+                                {sortedAndFilteredProducts.length > 0 ? sortedAndFilteredProducts.map((summary) => {
                                     const isPrePicked = prePickedSkus.has(summary.sku);
                                     return (
                                         <TableRow
@@ -247,7 +313,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                                 }) : (
                                     <TableRow>
                                         <TableCell colSpan={6} className="h-24 text-center">
-                                            No orders found for this date.
+                                            No orders found for this date or filter.
                                         </TableCell>
                                     </TableRow>
                                 )}
