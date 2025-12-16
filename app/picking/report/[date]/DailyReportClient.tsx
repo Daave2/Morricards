@@ -12,7 +12,7 @@ import { FileDown, Loader2, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProductCard from '@/components/product-card';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
@@ -51,6 +51,7 @@ export default function DailyReportClient({ date }: { date: string }) {
     const [sortConfig, setSortConfig] = useState('total-desc');
     const [filterQuery, setFilterQuery] = useState('');
     const [aisleFilter, setAisleFilter] = useState('all');
+    const [classificationFilter, setClassificationFilter] = useState('all');
 
 
     const storageKey = `daily-report-prepicked-${date}`;
@@ -111,21 +112,42 @@ export default function DailyReportClient({ date }: { date: string }) {
         });
         return Array.from(aisles).sort((a,b) => parseInt(a.replace('Aisle ', '')) - parseInt(b.replace('Aisle ', '')));
     }, [productSummary]);
+    
+    const availableClassifications = useMemo(() => {
+        const classifications = new Set<string>();
+        Object.values(productSummary).forEach(p => {
+            const groupName = p.details?.productDetails?.commercialHierarchy?.groupName?.replace(/^\d+\s/, '');
+            if (groupName) {
+                classifications.add(groupName);
+            }
+        });
+        return Array.from(classifications).sort();
+    }, [productSummary]);
 
     const sortedAndFilteredProducts = useMemo(() => {
-        const filteredByName = Object.values(productSummary).filter(p => 
-            p.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
-            p.sku.includes(filterQuery)
-        );
+        let filteredProducts = Object.values(productSummary);
 
-        const filteredByAisle = aisleFilter === 'all'
-            ? filteredByName
-            : filteredByName.filter(p => p.location.includes(aisleFilter));
+        if (filterQuery) {
+            filteredProducts = filteredProducts.filter(p => 
+                p.name.toLowerCase().includes(filterQuery.toLowerCase()) || 
+                p.sku.includes(filterQuery)
+            );
+        }
 
+        if (aisleFilter !== 'all') {
+            filteredProducts = filteredProducts.filter(p => p.location.includes(aisleFilter));
+        }
+
+        if (classificationFilter !== 'all') {
+            filteredProducts = filteredProducts.filter(p => {
+                const groupName = p.details?.productDetails?.commercialHierarchy?.groupName?.replace(/^\d+\s/, '');
+                return groupName === classificationFilter;
+            });
+        }
 
         const [key, direction] = sortConfig.split('-');
 
-        filteredByAisle.sort((a, b) => {
+        filteredProducts.sort((a, b) => {
             const aIsPrePicked = prePickedSkus.has(a.sku);
             const bIsPrePicked = prePickedSkus.has(b.sku);
 
@@ -162,8 +184,8 @@ export default function DailyReportClient({ date }: { date: string }) {
             return direction === 'asc' ? valA - valB : valB - valA;
         });
 
-        return filteredByAisle;
-    }, [productSummary, prePickedSkus, filterQuery, sortConfig, aisleFilter]);
+        return filteredProducts;
+    }, [productSummary, prePickedSkus, filterQuery, sortConfig, aisleFilter, classificationFilter]);
 
     const handlePrePickToggle = (sku: string) => {
         setPrePickedSkus(prev => {
@@ -263,6 +285,17 @@ export default function DailyReportClient({ date }: { date: string }) {
                                 className="pl-10"
                             />
                         </div>
+                         <Select value={classificationFilter} onValueChange={setClassificationFilter}>
+                            <SelectTrigger className="w-full sm:w-[220px]">
+                                <SelectValue placeholder="Filter by classification..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Classifications</SelectItem>
+                                {availableClassifications.map(c => (
+                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Select value={aisleFilter} onValueChange={setAisleFilter}>
                             <SelectTrigger className="w-full sm:w-[180px]">
                                 <SelectValue placeholder="Filter by aisle..." />
@@ -354,3 +387,5 @@ export default function DailyReportClient({ date }: { date: string }) {
         </main>
     );
 }
+
+    
