@@ -31,7 +31,7 @@ interface OrderProduct {
     details?: Product | null;
     prePickedStatus?: {
         isPrePicked: boolean;
-        storageLocation?: string;
+        storageLocation?: string | null;
     }
 }
 
@@ -50,7 +50,7 @@ interface ProductSummary {
     details: Product | null;
     prePickedState?: {
         isPrePicked: boolean;
-        storageLocation?: string;
+        storageLocation?: string | null;
     }
 }
 
@@ -340,6 +340,12 @@ export default function DailyReportClient({ date }: { date: string }) {
 
     const updatePrePickedStatusInDb = useCallback(async (sku: string, newStatus: OrderProduct['prePickedStatus']) => {
         if (!firestore || !settings.locationId) return;
+    
+        // FIRESTORE FIX: Ensure storageLocation is null, not undefined
+        const statusToSave: OrderProduct['prePickedStatus'] = {
+            isPrePicked: newStatus?.isPrePicked || false,
+            storageLocation: newStatus?.storageLocation || null,
+        };
 
         const batch = writeBatch(firestore);
         const productOrders = productSummary[sku]?.orders;
@@ -351,7 +357,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                 if (orderData) {
                     const updatedProducts = orderData.products.map(p => {
                         if (p.sku === sku) {
-                            return { ...p, prePickedStatus: newStatus };
+                            return { ...p, prePickedStatus: statusToSave };
                         }
                         return p;
                     });
@@ -376,7 +382,7 @@ export default function DailyReportClient({ date }: { date: string }) {
         skus.forEach(sku => {
              const newStatus = {
                 isPrePicked: true,
-                storageLocation: location
+                storageLocation: location || null // Ensure null instead of empty string
             };
             updatePrePickedStatusInDb(sku, newStatus);
         });
@@ -657,3 +663,5 @@ export default function DailyReportClient({ date }: { date: string }) {
         </main>
     );
 }
+
+    
