@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -11,7 +12,7 @@ import { useAudioFeedback } from '@/hooks/use-audio-feedback';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand, PackageX, Archive, ArchiveRestore, Mail, MessageSquare } from 'lucide-react';
+import { Loader2, PackageSearch, ScanLine, X, Check, Info, Undo2, Trash2, Link as LinkIcon, CameraOff, Zap, Share2, Copy, Settings, WifiOff, Wifi, RefreshCw, Bolt, Bot, Map, ScanSearch, AlertTriangle, ChevronsUpDown, DownloadCloud, ArrowLeft, User, ListOrdered, CheckCheck, MoreVertical, Phone, Eye, PackageCheck, Upload, CalendarClock, Hash, ChevronDown, Replace, PoundSterling, MapPin, Expand, PackageX, Archive, ArchiveRestore, Mail, MessageSquare, FileDown } from 'lucide-react';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import {
   AlertDialog,
@@ -188,7 +189,7 @@ export default function PickingListClient() {
   const [isSpeedMode, setIsSpeedMode] = useState(false);
 
 
-  const { toast, dismiss } = useToast();
+  const { toast } = useToast();
   const { playSuccess, playError, playInfo } = useAudioFeedback();
   const { settings } = useApiSettings();
   const { isOnline } = useNetworkSync();
@@ -636,7 +637,6 @@ export default function PickingListClient() {
       isPicked: true 
     };
 
-     // HERE IS THE FIX!!!
     const { id: toastId, update } = toast({ title: 'Updating Order...', description: 'Please wait.' });
     updateActiveOrderAndDB(updatedOrder);
 
@@ -973,6 +973,57 @@ export default function PickingListClient() {
     }
   };
 
+  const handleDailyReportExport = (dateKey: string) => {
+    const ordersForDay = Object.values(groupedOrders[dateKey] || {}).flat();
+    if (ordersForDay.length === 0) {
+      toast({ variant: 'destructive', title: 'No Orders', description: 'No orders to export for this day.' });
+      return;
+    }
+
+    const productSummary: Record<string, { name: string; location: string; total: number; orders: Set<string>; details: Product | null }> = {};
+
+    ordersForDay.forEach(order => {
+      order.products.forEach(product => {
+        if (!productSummary[product.sku]) {
+          productSummary[product.sku] = {
+            name: product.name,
+            location: product.details?.location.standard || 'N/A',
+            total: 0,
+            orders: new Set<string>(),
+            details: product.details || null
+          };
+        }
+        productSummary[product.sku].total += product.quantity;
+        productSummary[product.sku].orders.add(order.id);
+      });
+    });
+
+    const csvHeader = "Name,SKU,Location,TotalOrdered,OrderCount\n";
+    const csvRows = Object.entries(productSummary).map(([sku, summary]) => {
+      const row = [
+        `"${summary.name.replace(/"/g, '""')}"`,
+        sku,
+        `"${summary.location.replace(/"/g, '""')}"`,
+        summary.total,
+        summary.orders.size
+      ];
+      return row.join(',');
+    });
+
+    const csvContent = csvHeader + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `daily_order_report_${dateKey}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+     toast({ title: 'Exporting Report', description: `A CSV report for ${dateKey} is being downloaded.` });
+  }
 
   if (activeOrder) {
     return (
@@ -1321,9 +1372,24 @@ export default function PickingListClient() {
 
                         return (
                             <div key={dateKey}>
-                                <h2 className="font-bold text-xl mb-4 border-b-2 border-primary pb-2">
-                                    {dateKey}
-                                </h2>
+                                <div className="flex justify-between items-center mb-4 border-b-2 border-primary pb-2">
+                                    <h2 className="font-bold text-xl">
+                                        {dateKey}
+                                    </h2>
+                                    <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                             <Button variant="outline" size="sm" onClick={() => handleDailyReportExport(dateKey)}>
+                                                <FileDown className="mr-2 h-4 w-4" />
+                                                Daily Report
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Export a CSV summary of all products ordered for this day.</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                                 {timeKeysForDate.map(timeKey => {
                                     const activeOrdersInSlot = groupedOrders[dateKey]?.[timeKey]?.filter(o => !o.isArchived) || [];
                                     if (activeOrdersInSlot.length === 0) return null;
@@ -1469,6 +1535,3 @@ export default function PickingListClient() {
     </>
   );
 }
-
-
-    
