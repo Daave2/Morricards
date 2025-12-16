@@ -1,23 +1,26 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/src/firebase';
 import { useApiSettings } from '@/hooks/use-api-settings';
 import { collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2, Search } from 'lucide-react';
+import { FileDown, Loader2, Search, ScanLine, X } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import ProductCard from '@/components/product-card';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ZXingScanner from '@/components/ZXingScanner';
+import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -43,29 +46,161 @@ interface ProductSummary {
     details: Product | null;
 }
 
+interface PrePickedState {
+    location?: string;
+}
+
+type PrePickedMap = Map<string, PrePickedState>;
+
+const UnloadView = ({
+    items,
+    onAssignLocation
+}: {
+    items: ProductSummary[];
+    onAssignLocation: (skus: string[], location: string) => void;
+}) => {
+    const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+    const [isScannerActive, setIsScannerActive] = useState(false);
+    const scannerRef = useRef<{ start: () => void; stop: () => void; getOcrDataUri: () => string | null; } | null>(null);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (isScannerActive) {
+            scannerRef.current?.start();
+        } else {
+            scannerRef.current?.stop();
+        }
+    }, [isScannerActive]);
+
+    const handleScanResult = (location: string) => {
+        if (selectedSkus.size === 0) {
+            toast({ variant: 'destructive', title: 'No Items Selected', description: 'Please select items to unload before scanning a location.' });
+            return;
+        }
+        onAssignLocation(Array.from(selectedSkus), location);
+        setSelectedSkus(new Set());
+        setIsScannerActive(false);
+        toast({ title: 'Location Assigned', description: `${selectedSkus.size} items have been assigned to ${location}.` });
+    };
+
+    const toggleSku = (sku: string) => {
+        setSelectedSkus(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(sku)) {
+                newSet.delete(sku);
+            } else {
+                newSet.add(sku);
+            }
+            return newSet;
+        });
+    };
+    
+    const toggleGroup = (groupItems: ProductSummary[], checked: boolean) => {
+        setSelectedSkus(prev => {
+            const newSet = new Set(prev);
+            groupItems.forEach(item => {
+                if (checked) {
+                    newSet.add(item.sku);
+                } else {
+                    newSet.delete(item.sku);
+                }
+            });
+            return newSet;
+        });
+    };
+    
+    const groupedItems = useMemo(() => {
+        const groups: Record<string, ProductSummary[]> = {};
+        items.forEach(item => {
+            const classification = item.details?.productDetails?.commercialHierarchy?.groupName?.replace(/^\d+\s/, '') || 'Unclassified';
+            if (!groups[classification]) {
+                groups[classification] = [];
+            }
+            groups[classification].push(item);
+        });
+        return groups;
+    }, [items]);
+
+    if (items.length === 0) {
+        return <p className="text-muted-foreground text-center py-8">All pre-picked items have been unloaded.</p>;
+    }
+
+    return (
+        <div className="space-y-6">
+            {Object.entries(groupedItems).map(([classification, groupItems]) => {
+                const areAllSelected = groupItems.every(item => selectedSkus.has(item.sku));
+                return (
+                    <Card key={classification}>
+                        <CardHeader className="flex flex-row items-center justify-between p-4">
+                            <CardTitle className="text-lg">{classification}</CardTitle>
+                             <div className="flex items-center space-x-2">
+                                <label htmlFor={`select-all-${classification}`} className="text-sm font-medium">Select All</label>
+                                <Checkbox
+                                    id={`select-all-${classification}`}
+                                    checked={areAllSelected}
+                                    onCheckedChange={(checked) => toggleGroup(groupItems, !!checked)}
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-2 p-4 pt-0">
+                            {groupItems.map(item => (
+                                <div key={item.sku} className="flex items-center gap-4 p-2 rounded-md hover:bg-accent">
+                                    <Checkbox checked={selectedSkus.has(item.sku)} onCheckedChange={() => toggleSku(item.sku)} id={`check-${item.sku}`} />
+                                    <label htmlFor={`check-${item.sku}`} className="flex items-center gap-4 cursor-pointer flex-grow">
+                                        <Image src={item.details?.productDetails.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'} alt={item.name} width={40} height={40} className="rounded-md border object-cover" />
+                                        <div>
+                                            <p className="font-medium text-sm">{item.name}</p>
+                                            <p className="text-xs text-muted-foreground">SKU: {item.sku} | Qty: {item.total}</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                );
+            })}
+             <div className="sticky bottom-0 bg-background/80 backdrop-blur-sm p-4 border-t -m-6 mt-6">
+                {isScannerActive ? (
+                    <div className="space-y-2">
+                        <ZXingScanner ref={scannerRef} onResult={handleScanResult} onError={(e) => console.warn(e)} />
+                        <Button variant="secondary" className="w-full" onClick={() => setIsScannerActive(false)}>Cancel Scan</Button>
+                    </div>
+                ) : (
+                    <Button className="w-full" size="lg" onClick={() => setIsScannerActive(true)} disabled={selectedSkus.size === 0}>
+                        <ScanLine className="mr-2 h-5 w-5" />
+                        Scan Location QR ({selectedSkus.size} items selected)
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
 export default function DailyReportClient({ date }: { date: string }) {
     const { settings } = useApiSettings();
     const firestore = useFirestore();
-    const [prePickedSkus, setPrePickedSkus] = useState<Set<string>>(new Set());
+    const [prePickedState, setPrePickedState] = useState<PrePickedMap>(new Map());
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [sortConfig, setSortConfig] = useState('total-desc');
     const [filterQuery, setFilterQuery] = useState('');
     const [aisleFilter, setAisleFilter] = useState('all');
     const [classificationFilter, setClassificationFilter] = useState('all');
+    const [isUnloadViewOpen, setIsUnloadViewOpen] = useState(false);
 
 
-    const storageKey = `daily-report-prepicked-${date}`;
+    const storageKey = `daily-report-prepicked-state-${date}`;
 
     useEffect(() => {
         const savedState = localStorage.getItem(storageKey);
         if (savedState) {
-            setPrePickedSkus(new Set(JSON.parse(savedState)));
+            setPrePickedState(new Map(JSON.parse(savedState)));
         }
     }, [storageKey]);
 
     useEffect(() => {
-        localStorage.setItem(storageKey, JSON.stringify(Array.from(prePickedSkus)));
-    }, [prePickedSkus, storageKey]);
+        localStorage.setItem(storageKey, JSON.stringify(Array.from(prePickedState.entries())));
+    }, [prePickedState, storageKey]);
 
 
     const ordersCollectionRef = useMemoFirebase(
@@ -148,8 +283,11 @@ export default function DailyReportClient({ date }: { date: string }) {
         const [key, direction] = sortConfig.split('-');
 
         filteredProducts.sort((a, b) => {
-            const aIsPrePicked = prePickedSkus.has(a.sku);
-            const bIsPrePicked = prePickedSkus.has(b.sku);
+            const aState = prePickedState.get(a.sku);
+            const bState = prePickedState.get(b.sku);
+            
+            const aIsPrePicked = !!aState;
+            const bIsPrePicked = !!bState;
 
             if (aIsPrePicked && !bIsPrePicked) return 1;
             if (!aIsPrePicked && bIsPrePicked) return -1;
@@ -185,30 +323,44 @@ export default function DailyReportClient({ date }: { date: string }) {
         });
 
         return filteredProducts;
-    }, [productSummary, prePickedSkus, filterQuery, sortConfig, aisleFilter, classificationFilter]);
+    }, [productSummary, prePickedState, filterQuery, sortConfig, aisleFilter, classificationFilter]);
 
     const handlePrePickToggle = (sku: string) => {
-        setPrePickedSkus(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(sku)) {
-                newSet.delete(sku);
+        setPrePickedState(prev => {
+            const newMap = new Map(prev);
+            if (newMap.has(sku)) {
+                newMap.delete(sku);
             } else {
-                newSet.add(sku);
+                newMap.set(sku, {});
             }
-            return newSet;
+            return newMap;
+        });
+    };
+
+    const handleAssignLocation = (skus: string[], location: string) => {
+        setPrePickedState(prev => {
+            const newMap = new Map(prev);
+            skus.forEach(sku => {
+                if(newMap.has(sku)) {
+                    newMap.set(sku, { ...newMap.get(sku)!, location });
+                }
+            });
+            return newMap;
         });
     };
 
     const handleExportCSV = () => {
-        const csvHeader = "Name,SKU,Location,TotalOrdered,OrderCount,PrePicked\n";
+        const csvHeader = "Name,SKU,Location,TotalOrdered,OrderCount,PrePicked,StorageLocation\n";
         const csvRows = sortedAndFilteredProducts.map((summary) => {
+            const state = prePickedState.get(summary.sku);
             const row = [
                 `"${summary.name.replace(/"/g, '""')}"`,
                 summary.sku,
                 `"${summary.location.replace(/"/g, '""')}"`,
                 summary.total,
                 summary.orders.size,
-                prePickedSkus.has(summary.sku) ? 'Yes' : 'No'
+                state ? 'Yes' : 'No',
+                state?.location || ''
             ];
             return row.join(',');
         });
@@ -238,9 +390,11 @@ export default function DailyReportClient({ date }: { date: string }) {
         )
     }
 
+    const unlocatedPrePicks = sortedAndFilteredProducts.filter(p => prePickedState.has(p.sku) && !prePickedState.get(p.sku)?.location);
+
     return (
         <main className="container mx-auto px-4 py-8 md:py-12">
-             <Dialog open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
+            <Dialog open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
                 <DialogContent className="max-w-2xl">
                      <DialogHeader>
                         <DialogTitle>{selectedProduct?.name || 'Product Details'}</DialogTitle>
@@ -258,6 +412,22 @@ export default function DailyReportClient({ date }: { date: string }) {
                     )}
                 </DialogContent>
             </Dialog>
+
+            <Dialog open={isUnloadViewOpen} onOpenChange={setIsUnloadViewOpen}>
+                <DialogContent className="max-w-2xl">
+                     <DialogHeader>
+                        <DialogTitle>Unload Pre-picked Items</DialogTitle>
+                        <DialogDescription>
+                            Select items and scan a location QR code to assign them to a storage spot.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[70vh] -mx-6">
+                        <div className="px-6">
+                            <UnloadView items={unlocatedPrePicks} onAssignLocation={handleAssignLocation} />
+                        </div>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
             <Card>
                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
@@ -265,6 +435,10 @@ export default function DailyReportClient({ date }: { date: string }) {
                         <CardDescription>Aggregated product list for {date}</CardDescription>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={() => setIsUnloadViewOpen(true)} disabled={unlocatedPrePicks.length === 0}>
+                            <ScanLine className="mr-2 h-4 w-4" />
+                            Unload Items ({unlocatedPrePicks.length})
+                        </Button>
                         <Button variant="outline" onClick={handleExportCSV} disabled={sortedAndFilteredProducts.length === 0}>
                             <FileDown className="mr-2 h-4 w-4" />
                             Export CSV
@@ -284,6 +458,11 @@ export default function DailyReportClient({ date }: { date: string }) {
                                 onChange={(e) => setFilterQuery(e.target.value)}
                                 className="pl-10"
                             />
+                             {filterQuery && (
+                                <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setFilterQuery('')}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
                          <Select value={classificationFilter} onValueChange={setClassificationFilter}>
                             <SelectTrigger className="w-full sm:w-[220px]">
@@ -337,7 +516,8 @@ export default function DailyReportClient({ date }: { date: string }) {
                             </TableHeader>
                             <TableBody>
                                 {sortedAndFilteredProducts.length > 0 ? sortedAndFilteredProducts.map((summary) => {
-                                    const isPrePicked = prePickedSkus.has(summary.sku);
+                                    const state = prePickedState.get(summary.sku);
+                                    const isPrePicked = !!state;
                                     return (
                                         <TableRow
                                             key={summary.sku}
@@ -345,7 +525,6 @@ export default function DailyReportClient({ date }: { date: string }) {
                                                 "cursor-pointer",
                                                 isPrePicked && 'bg-green-100/50 dark:bg-green-900/20 opacity-60 hover:opacity-100 hover:bg-green-100/80'
                                             )}
-                                            onClick={() => summary.details && setSelectedProduct(summary.details)}
                                         >
                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <Checkbox
@@ -354,7 +533,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                                                     className="h-6 w-6"
                                                 />
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell onClick={() => summary.details && setSelectedProduct(summary.details)}>
                                                 <Image
                                                     src={summary.details?.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
                                                     alt={summary.name}
@@ -363,13 +542,16 @@ export default function DailyReportClient({ date }: { date: string }) {
                                                     className="rounded-md border object-cover"
                                                 />
                                             </TableCell>
-                                            <TableCell className="font-medium">
+                                            <TableCell className="font-medium" onClick={() => summary.details && setSelectedProduct(summary.details)}>
                                                 {summary.name}
                                                 <p className="text-xs text-muted-foreground">SKU: {summary.sku}</p>
                                             </TableCell>
-                                            <TableCell>{summary.location}</TableCell>
-                                            <TableCell className="text-right font-bold text-lg">{summary.total}</TableCell>
-                                            <TableCell className="text-right">{summary.orders.size}</TableCell>
+                                            <TableCell onClick={() => summary.details && setSelectedProduct(summary.details)}>
+                                                {summary.location}
+                                                {state?.location && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md">{state.location}</div>}
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-lg" onClick={() => summary.details && setSelectedProduct(summary.details)}>{summary.total}</TableCell>
+                                            <TableCell className="text-right" onClick={() => summary.details && setSelectedProduct(summary.details)}>{summary.orders.size}</TableCell>
                                         </TableRow>
                                     )
                                 }) : (
@@ -388,4 +570,3 @@ export default function DailyReportClient({ date }: { date: string }) {
     );
 }
 
-    
