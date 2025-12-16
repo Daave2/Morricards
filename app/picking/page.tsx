@@ -8,7 +8,7 @@ function Loading() {
         <div className="flex justify-center items-center h-screen">
             <div className="text-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading Picking List...</p>
+                <p className="text-muted-foreground">Loading Picker...</p>
             </div>
         </div>
     )

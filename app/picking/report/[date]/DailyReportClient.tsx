@@ -471,7 +471,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         <div>
-                            <CardTitle>Daily Order Report</CardTitle>
+                            <CardTitle>Item List</CardTitle>
                             <CardDescription>Aggregated product list for {date}</CardDescription>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -638,11 +638,11 @@ export default function DailyReportClient({ date }: { date: string }) {
                                                     <p className="text-sm"><strong>Location:</strong> {summary.location}</p>
                                                      {summary.prePickedState?.storageLocation && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md w-fit">{summary.prePickedState.storageLocation}</div>}
                                                     <div className="flex items-center justify-between pt-2">
-                                                        <div>
-                                                            <p className="font-bold text-xl">{summary.total}</p>
+                                                        <div className="text-center">
+                                                            <p className="font-bold text-2xl text-primary">{summary.total}</p>
                                                             <p className="text-xs text-muted-foreground">Total Units</p>
                                                         </div>
-                                                        <div>
+                                                        <div className="text-center">
                                                             <p className="font-bold text-xl">{summary.orders.size}</p>
                                                             <p className="text-xs text-muted-foreground">Orders</p>
                                                         </div>
@@ -663,5 +663,3 @@ export default function DailyReportClient({ date }: { date: string }) {
         </main>
     );
 }
-
-    
