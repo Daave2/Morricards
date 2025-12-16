@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -264,12 +265,12 @@ const MobileProductCard = ({
                                     {summary.prePickedState?.storageLocation && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md w-fit">{summary.prePickedState.storageLocation}</div>}
                                     <div className="flex items-center justify-between pt-2">
                                         <div className="text-center">
-                                            <p className="font-bold text-2xl text-primary">{summary.total}</p>
-                                            <p className="text-xs text-muted-foreground">Total Units</p>
-                                        </div>
-                                        <div className="text-center">
                                             <p className="font-bold text-xl">{summary.orders.size}</p>
                                             <p className="text-xs text-muted-foreground">Orders</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-2xl text-primary">{summary.total}</p>
+                                            <p className="text-xs text-muted-foreground">Total Units</p>
                                         </div>
                                     </div>
                                 </div>
@@ -478,7 +479,7 @@ export default function DailyReportClient({ date }: { date: string }) {
         skus.forEach(sku => {
              const newStatus = {
                 isPrePicked: true,
-                storageLocation: location || null // Ensure null instead of empty string
+                storageLocation: location || null
             };
             updatePrePickedStatusInDb(sku, newStatus);
         });
@@ -722,4 +723,3 @@ export default function DailyReportClient({ date }: { date: string }) {
         </main>
     );
 }
-
