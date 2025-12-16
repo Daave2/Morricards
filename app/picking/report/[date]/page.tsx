@@ -14,15 +14,9 @@ function Loading() {
     )
 }
 
-type DailyReportPageProps = {
-  params: {
-    date: string;
-  };
-};
-
 // This page handles a dynamic route segment for the report date.
 // e.g., /picking/report/25-11-2025
-export default function DailyReportPage({ params }: DailyReportPageProps) {
+export default function DailyReportPage({ params }: { params: { date: string } }) {
   const date = params.date ? decodeURIComponent(params.date) : '';
 
   return (
