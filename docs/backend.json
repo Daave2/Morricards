@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -90,6 +89,18 @@
         "details": {
           "type": "object",
           "description": "Full, rich product details from the Morrisons API, stored at pick time."
+        },
+        "prePickedStatus": {
+          "type": "object",
+          "description": "Tracks the pre-picking planning state for this item within an order.",
+          "properties": {
+            "isPrePicked": {
+              "type": "boolean"
+            },
+            "storageLocation": {
+              "type": "string"
+            }
+          }
         }
       },
       "required": ["sku", "name", "quantity", "pickedItems"]

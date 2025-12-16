@@ -4,7 +4,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/src/firebase';
 import { useApiSettings } from '@/hooks/use-api-settings';
-import { collection } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,10 @@ interface OrderProduct {
     name: string;
     quantity: number;
     details?: Product | null;
+    prePickedStatus?: {
+        isPrePicked: boolean;
+        storageLocation?: string;
+    }
 }
 
 interface Order {
@@ -44,13 +48,11 @@ interface ProductSummary {
     total: number;
     orders: Set<string>;
     details: Product | null;
+    prePickedState?: {
+        isPrePicked: boolean;
+        storageLocation?: string;
+    }
 }
-
-interface PrePickedState {
-    location?: string;
-}
-
-type PrePickedMap = Map<string, PrePickedState>;
 
 const UnloadView = ({
     items,
@@ -199,27 +201,12 @@ const UnloadView = ({
 export default function DailyReportClient({ date }: { date: string }) {
     const { settings } = useApiSettings();
     const firestore = useFirestore();
-    const [prePickedState, setPrePickedState] = useState<PrePickedMap>(new Map());
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [sortConfig, setSortConfig] = useState('total-desc');
     const [filterQuery, setFilterQuery] = useState('');
     const [aisleFilter, setAisleFilter] = useState('all');
     const [classificationFilter, setClassificationFilter] = useState('all');
     const [isUnloadViewOpen, setIsUnloadViewOpen] = useState(false);
-
-
-    const storageKey = `daily-report-prepicked-state-${date}`;
-
-    useEffect(() => {
-        const savedState = localStorage.getItem(storageKey);
-        if (savedState) {
-            setPrePickedState(new Map(JSON.parse(savedState)));
-        }
-    }, [storageKey]);
-
-    useEffect(() => {
-        localStorage.setItem(storageKey, JSON.stringify(Array.from(prePickedState.entries())));
-    }, [prePickedState, storageKey]);
 
 
     const ordersCollectionRef = useMemoFirebase(
@@ -229,12 +216,16 @@ export default function DailyReportClient({ date }: { date: string }) {
 
     const { data: allOrders, isLoading: isDbLoading } = useCollection<Order>(ordersCollectionRef);
 
+    const ordersForDay = useMemo(() => {
+        if (!allOrders) return [];
+        return allOrders.filter(order => order.collectionSlot.includes(date));
+    }, [allOrders, date]);
+
+
     const productSummary = useMemo(() => {
-        if (!allOrders) return {};
+        if (!ordersForDay) return {};
 
         const summary: Record<string, ProductSummary> = {};
-
-        const ordersForDay = allOrders.filter(order => order.collectionSlot.includes(date));
 
         ordersForDay.forEach(order => {
             order.products.forEach(product => {
@@ -246,15 +237,21 @@ export default function DailyReportClient({ date }: { date: string }) {
                         total: 0,
                         orders: new Set<string>(),
                         details: product.details || null,
+                        prePickedState: product.prePickedStatus // Initialize from first product found
                     };
                 }
                 summary[product.sku].total += product.quantity;
                 summary[product.sku].orders.add(order.id);
+                // If we find any pre-picked status for this SKU, we use it.
+                // This assumes pre-pick status is consistent per SKU for the day.
+                if (product.prePickedStatus) {
+                    summary[product.sku].prePickedState = product.prePickedStatus;
+                }
             });
         });
 
         return summary;
-    }, [allOrders, date]);
+    }, [ordersForDay]);
 
     const availableAisles = useMemo(() => {
         const aisles = new Set<string>();
@@ -302,12 +299,9 @@ export default function DailyReportClient({ date }: { date: string }) {
         const [key, direction] = sortConfig.split('-');
 
         filteredProducts.sort((a, b) => {
-            const aState = prePickedState.get(a.sku);
-            const bState = prePickedState.get(b.sku);
+            const aIsPrePicked = a.prePickedState?.isPrePicked;
+            const bIsPrePicked = b.prePickedState?.isPrePicked;
             
-            const aIsPrePicked = !!aState;
-            const bIsPrePicked = !!bState;
-
             if (aIsPrePicked && !bIsPrePicked) return 1;
             if (!aIsPrePicked && bIsPrePicked) return -1;
             
@@ -342,44 +336,64 @@ export default function DailyReportClient({ date }: { date: string }) {
         });
 
         return filteredProducts;
-    }, [productSummary, prePickedState, filterQuery, sortConfig, aisleFilter, classificationFilter]);
+    }, [productSummary, filterQuery, sortConfig, aisleFilter, classificationFilter]);
+
+    const updatePrePickedStatusInDb = useCallback(async (sku: string, newStatus: OrderProduct['prePickedStatus']) => {
+        if (!firestore || !settings.locationId) return;
+
+        const batch = writeBatch(firestore);
+        const productOrders = productSummary[sku]?.orders;
+
+        if (productOrders) {
+            productOrders.forEach(orderId => {
+                const orderRef = doc(firestore, `stores/${settings.locationId}/pickingOrders`, orderId);
+                const orderData = ordersForDay.find(o => o.id === orderId);
+                if (orderData) {
+                    const updatedProducts = orderData.products.map(p => {
+                        if (p.sku === sku) {
+                            return { ...p, prePickedStatus: newStatus };
+                        }
+                        return p;
+                    });
+                    batch.update(orderRef, { products: updatedProducts });
+                }
+            });
+            await batch.commit();
+        }
+    }, [firestore, settings.locationId, ordersForDay, productSummary]);
+
 
     const handlePrePickToggle = (sku: string) => {
-        setPrePickedState(prev => {
-            const newMap = new Map(prev);
-            if (newMap.has(sku)) {
-                newMap.delete(sku);
-            } else {
-                newMap.set(sku, {});
-            }
-            return newMap;
-        });
+        const currentState = productSummary[sku]?.prePickedState;
+        const newStatus = {
+            isPrePicked: !currentState?.isPrePicked,
+            storageLocation: currentState?.storageLocation
+        };
+        updatePrePickedStatusInDb(sku, newStatus);
     };
 
     const handleAssignLocation = (skus: string[], location: string) => {
-        setPrePickedState(prev => {
-            const newMap = new Map(prev);
-            skus.forEach(sku => {
-                if(newMap.has(sku)) {
-                    newMap.set(sku, { ...newMap.get(sku)!, location });
-                }
-            });
-            return newMap;
+        skus.forEach(sku => {
+             const newStatus = {
+                isPrePicked: true,
+                storageLocation: location
+            };
+            updatePrePickedStatusInDb(sku, newStatus);
         });
     };
 
     const handleExportCSV = () => {
         const csvHeader = "Name,SKU,Location,TotalOrdered,OrderCount,PrePicked,StorageLocation\n";
         const csvRows = sortedAndFilteredProducts.map((summary) => {
-            const state = prePickedState.get(summary.sku);
+            const state = summary.prePickedState;
             const row = [
                 `"${summary.name.replace(/"/g, '""')}"`,
                 summary.sku,
                 `"${summary.location.replace(/"/g, '""')}"`,
                 summary.total,
                 summary.orders.size,
-                state ? 'Yes' : 'No',
-                state?.location || ''
+                state?.isPrePicked ? 'Yes' : 'No',
+                state?.storageLocation || ''
             ];
             return row.join(',');
         });
@@ -409,7 +423,7 @@ export default function DailyReportClient({ date }: { date: string }) {
         )
     }
 
-    const unlocatedPrePicks = sortedAndFilteredProducts.filter(p => prePickedState.has(p.sku) && !prePickedState.get(p.sku)?.location);
+    const unlocatedPrePicks = sortedAndFilteredProducts.filter(p => p.prePickedState?.isPrePicked && !p.prePickedState?.storageLocation);
 
     return (
         <main className="container mx-auto px-4 py-8 md:py-12">
@@ -539,8 +553,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                             </TableHeader>
                             <TableBody>
                                 {sortedAndFilteredProducts.length > 0 ? sortedAndFilteredProducts.map((summary) => {
-                                    const state = prePickedState.get(summary.sku);
-                                    const isPrePicked = !!state;
+                                    const isPrePicked = !!summary.prePickedState?.isPrePicked;
                                     return (
                                         <TableRow
                                             key={summary.sku}
@@ -571,7 +584,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                                             </TableCell>
                                             <TableCell onClick={() => summary.details && setSelectedProduct(summary.details)}>
                                                 {summary.location}
-                                                {state?.location && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md">{state.location}</div>}
+                                                {summary.prePickedState?.storageLocation && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md">{summary.prePickedState.storageLocation}</div>}
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-lg" onClick={() => summary.details && setSelectedProduct(summary.details)}>{summary.total}</TableCell>
                                             <TableCell className="text-right" onClick={() => summary.details && setSelectedProduct(summary.details)}>{summary.orders.size}</TableCell>
@@ -590,8 +603,7 @@ export default function DailyReportClient({ date }: { date: string }) {
 
                     <div className="block md:hidden space-y-4">
                          {sortedAndFilteredProducts.length > 0 ? sortedAndFilteredProducts.map((summary) => {
-                                const state = prePickedState.get(summary.sku);
-                                const isPrePicked = !!state;
+                                const isPrePicked = !!summary.prePickedState?.isPrePicked;
                                 return (
                                     <Card 
                                         key={summary.sku} 
@@ -618,7 +630,7 @@ export default function DailyReportClient({ date }: { date: string }) {
                                                     <p className="font-semibold leading-tight">{summary.name}</p>
                                                     <p className="text-xs text-muted-foreground">SKU: {summary.sku}</p>
                                                     <p className="text-sm"><strong>Location:</strong> {summary.location}</p>
-                                                     {state?.location && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md w-fit">{state.location}</div>}
+                                                     {summary.prePickedState?.storageLocation && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md w-fit">{summary.prePickedState.storageLocation}</div>}
                                                     <div className="flex items-center justify-between pt-2">
                                                         <div>
                                                             <p className="font-bold text-xl">{summary.total}</p>
