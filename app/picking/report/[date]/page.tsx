@@ -8,13 +8,17 @@ function Loading() {
         <div className="flex justify-center items-center h-screen">
             <div className="text-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading Daily Report...</p>
+                <p className="text-muted-foreground">Loading Item List...</p>
             </div>
         </div>
     )
 }
 
-export default function DailyReportPage({ params }: { params: { date: string } }) {
+type DailyReportPageProps = {
+  params: { date: string };
+};
+
+export default function DailyReportPage({ params }: DailyReportPageProps) {
   const date = params.date ? decodeURIComponent(params.date) : '';
 
   return (
