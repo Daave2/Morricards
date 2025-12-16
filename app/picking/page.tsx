@@ -1,4 +1,5 @@
 
+
 import { Suspense } from 'react';
 import PickingListClient from './PickingListClient';
 import { Loader2 } from 'lucide-react';
@@ -21,3 +22,4 @@ export default function PickingPage() {
     </Suspense>
   );
 }
+

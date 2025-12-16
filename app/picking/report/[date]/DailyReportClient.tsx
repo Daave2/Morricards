@@ -8,7 +8,7 @@ import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2, Search, ScanLine, X, Text } from 'lucide-react';
+import { FileDown, Loader2, Search, ScanLine, X, Text, Check, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
@@ -21,6 +21,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ZXingScanner from '@/components/ZXingScanner';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ToastAction } from '@/components/ui/toast';
+import { Undo2 } from 'lucide-react';
+
 
 type Product = FetchMorrisonsDataOutput[0];
 
@@ -197,6 +201,87 @@ const UnloadView = ({
     );
 };
 
+const MobileProductCard = ({
+    summary,
+    onPrePickToggle,
+    onShowDetails,
+}: {
+    summary: ProductSummary,
+    onPrePickToggle: (sku: string) => void,
+    onShowDetails: (product: Product) => void,
+}) => {
+    const isPrePicked = !!summary.prePickedState?.isPrePicked;
+    
+    const handleSwipe = (event: MouseEvent | TouchEvent | PointerEvent, info: any) => {
+        if (info.offset.x > 100 && info.velocity.x > 200) {
+            onPrePickToggle(summary.sku);
+        }
+    };
+    
+    return (
+        <AnimatePresence>
+            <motion.div
+                layout
+                key={summary.sku}
+                initial={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragEnd={handleSwipe}
+                className="relative"
+            >
+                <div className={cn("absolute inset-y-0 left-0 w-full rounded-lg flex items-center justify-start pl-6", isPrePicked ? 'bg-yellow-400' : 'bg-green-500')}>
+                    <Check className="h-8 w-8 text-white" />
+                </div>
+
+                <motion.div className="relative bg-card">
+                    <Card
+                        className={cn(isPrePicked && 'bg-green-100/50 dark:bg-green-900/20 opacity-70')}
+                        onClick={() => summary.details && onShowDetails(summary.details)}
+                    >
+                        <CardContent className="p-3">
+                            <div className="flex gap-4">
+                                <div className="flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                        checked={isPrePicked}
+                                        onCheckedChange={() => onPrePickToggle(summary.sku)}
+                                        className="h-6 w-6"
+                                    />
+                                    <Image
+                                        src={summary.details?.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
+                                        alt={summary.name}
+                                        width={80}
+                                        height={80}
+                                        className="rounded-md border object-cover"
+                                    />
+                                </div>
+                                <div className="flex-grow space-y-1">
+                                    <p className="font-semibold leading-tight">{summary.name}</p>
+                                    <p className="text-xs text-muted-foreground">SKU: {summary.sku}</p>
+                                    <p className="text-sm"><strong>Location:</strong> {summary.location}</p>
+                                    {summary.prePickedState?.storageLocation && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md w-fit">{summary.prePickedState.storageLocation}</div>}
+                                    <div className="flex items-center justify-between pt-2">
+                                        <div className="text-center">
+                                            <p className="font-bold text-2xl text-primary">{summary.total}</p>
+                                            <p className="text-xs text-muted-foreground">Total Units</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-xl">{summary.orders.size}</p>
+                                            <p className="text-xs text-muted-foreground">Orders</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>
+    );
+};
+
 
 export default function DailyReportClient({ date }: { date: string }) {
     const { settings } = useApiSettings();
@@ -207,6 +292,7 @@ export default function DailyReportClient({ date }: { date: string }) {
     const [aisleFilter, setAisleFilter] = useState('all');
     const [classificationFilter, setClassificationFilter] = useState('all');
     const [isUnloadViewOpen, setIsUnloadViewOpen] = useState(false);
+    const { toast } = useToast();
 
 
     const ordersCollectionRef = useMemoFirebase(
@@ -341,7 +427,6 @@ export default function DailyReportClient({ date }: { date: string }) {
     const updatePrePickedStatusInDb = useCallback(async (sku: string, newStatus: OrderProduct['prePickedStatus']) => {
         if (!firestore || !settings.locationId) return;
     
-        // FIRESTORE FIX: Ensure storageLocation is null, not undefined
         const statusToSave: OrderProduct['prePickedStatus'] = {
             isPrePicked: newStatus?.isPrePicked || false,
             storageLocation: newStatus?.storageLocation || null,
@@ -369,14 +454,25 @@ export default function DailyReportClient({ date }: { date: string }) {
     }, [firestore, settings.locationId, ordersForDay, productSummary]);
 
 
-    const handlePrePickToggle = (sku: string) => {
+    const handlePrePickToggle = useCallback((sku: string) => {
         const currentState = productSummary[sku]?.prePickedState;
         const newStatus = {
             isPrePicked: !currentState?.isPrePicked,
             storageLocation: currentState?.storageLocation
         };
         updatePrePickedStatusInDb(sku, newStatus);
-    };
+        
+        toast({
+            title: `Item ${newStatus.isPrePicked ? 'Pre-picked' : 'Un-picked'}`,
+            action: (
+              <ToastAction altText="Undo" onClick={() => handlePrePickToggle(sku)}>
+                  <Undo2 className="mr-1 h-4 w-4" />
+                  Undo
+              </ToastAction>
+          ),
+        });
+
+    }, [productSummary, updatePrePickedStatusInDb, toast]);
 
     const handleAssignLocation = (skus: string[], location: string) => {
         skus.forEach(sku => {
@@ -608,51 +704,14 @@ export default function DailyReportClient({ date }: { date: string }) {
                     </div>
 
                     <div className="block md:hidden space-y-4">
-                         {sortedAndFilteredProducts.length > 0 ? sortedAndFilteredProducts.map((summary) => {
-                                const isPrePicked = !!summary.prePickedState?.isPrePicked;
-                                return (
-                                    <Card 
-                                        key={summary.sku} 
-                                        className={cn(isPrePicked && 'bg-green-100/50 dark:bg-green-900/20 opacity-70')}
-                                        onClick={() => summary.details && setSelectedProduct(summary.details)}
-                                    >
-                                        <CardContent className="p-3">
-                                            <div className="flex gap-4">
-                                                <div className="flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                                    <Checkbox
-                                                        checked={isPrePicked}
-                                                        onCheckedChange={() => handlePrePickToggle(summary.sku)}
-                                                        className="h-6 w-6"
-                                                    />
-                                                    <Image
-                                                        src={summary.details?.productDetails?.imageUrl?.[0]?.url || 'https://placehold.co/100x100.png'}
-                                                        alt={summary.name}
-                                                        width={80}
-                                                        height={80}
-                                                        className="rounded-md border object-cover"
-                                                    />
-                                                </div>
-                                                <div className="flex-grow space-y-1">
-                                                    <p className="font-semibold leading-tight">{summary.name}</p>
-                                                    <p className="text-xs text-muted-foreground">SKU: {summary.sku}</p>
-                                                    <p className="text-sm"><strong>Location:</strong> {summary.location}</p>
-                                                     {summary.prePickedState?.storageLocation && <div className="text-xs font-semibold text-primary mt-1 p-1 bg-primary/10 rounded-md w-fit">{summary.prePickedState.storageLocation}</div>}
-                                                    <div className="flex items-center justify-between pt-2">
-                                                        <div className="text-center">
-                                                            <p className="font-bold text-2xl text-primary">{summary.total}</p>
-                                                            <p className="text-xs text-muted-foreground">Total Units</p>
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <p className="font-bold text-xl">{summary.orders.size}</p>
-                                                            <p className="text-xs text-muted-foreground">Orders</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )
-                         }) : (
+                         {sortedAndFilteredProducts.length > 0 ? sortedAndFilteredProducts.map((summary) => (
+                             <MobileProductCard
+                                key={summary.sku}
+                                summary={summary}
+                                onPrePickToggle={handlePrePickToggle}
+                                onShowDetails={(details) => setSelectedProduct(details)}
+                            />
+                         )) : (
                              <div className="text-center p-8 text-muted-foreground">
                                 No orders found for this date or filter.
                              </div>
@@ -663,3 +722,4 @@ export default function DailyReportClient({ date }: { date: string }) {
         </main>
     );
 }
+
