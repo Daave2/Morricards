@@ -1,3 +1,4 @@
+
 import { Suspense } from 'react';
 import AssistantPageClient from "./AssistantPageClient";
 import { Loader2 } from 'lucide-react';
@@ -13,7 +14,8 @@ function Loading() {
     )
 }
 
-// This is now a static Server Component that renders the client component.
+// This page now wraps the client component in a Suspense boundary
+// to handle the use of `useSearchParams` within it.
 export default function AssistantPage() {
   return (
     <Suspense fallback={<Loading />}>
