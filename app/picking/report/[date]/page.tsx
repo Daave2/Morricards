@@ -14,11 +14,8 @@ function Loading() {
     )
 }
 
-type DailyReportPageProps = {
-  params: { date: string };
-};
-
-export default function DailyReportPage({ params }: DailyReportPageProps) {
+// Correctly type the props for a Next.js App Router page with dynamic params
+export default function DailyReportPage({ params }: { params: { date: string } }) {
   const date = params.date ? decodeURIComponent(params.date) : '';
 
   return (
