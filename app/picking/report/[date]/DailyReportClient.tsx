@@ -12,7 +12,7 @@ import { FileDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import ProductCard from '@/components/product-card';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
@@ -162,6 +162,12 @@ export default function DailyReportClient({ date }: { date: string }) {
         <main className="container mx-auto px-4 py-8 md:py-12">
              <Dialog open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
                 <DialogContent className="max-w-2xl">
+                     <DialogHeader>
+                        <DialogTitle>{selectedProduct?.name || 'Product Details'}</DialogTitle>
+                        <DialogDescription>
+                            SKU: {selectedProduct?.sku || 'N/A'}
+                        </DialogDescription>
+                    </DialogHeader>
                     {selectedProduct && (
                         <ProductCard
                             product={selectedProduct}
