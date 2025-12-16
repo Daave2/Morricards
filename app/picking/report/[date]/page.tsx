@@ -1,5 +1,5 @@
 
-import { Suspense } from 'react';
+import { Suspense, use } from 'react';
 import DailyReportClient from './DailyReportClient';
 import { Loader2 } from 'lucide-react';
 
@@ -16,8 +16,9 @@ function Loading() {
 
 // This page handles a dynamic route segment for the report date.
 // e.g., /picking/report/25-11-2025
-export default function DailyReportPage({ params }: { params: { date: string } }) {
-  const date = params.date ? decodeURIComponent(params.date) : '';
+export default function DailyReportPage({ params }: { params: Promise<{ date: string }> }) {
+  const { date: encodedDate } = use(params);
+  const date = encodedDate ? decodeURIComponent(encodedDate) : '';
 
   return (
     <Suspense fallback={<Loading />}>
