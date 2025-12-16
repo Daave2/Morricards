@@ -353,5 +353,4 @@ export default function DailyReportClient({ date }: { date: string }) {
             </Card>
         </main>
     );
-
-    
+}
