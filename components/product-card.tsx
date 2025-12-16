@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck, History, Link as LinkIcon } from 'lucide-react';
+import { Boxes, MapPin, PoundSterling, Tag, ChevronDown, Barcode, Thermometer, Weight, Info, Footprints, Leaf, Shell, Beaker, CheckCircle2, Expand, Snowflake, ThermometerSnowflake, AlertTriangle, Globe, Crown, GlassWater, FileText, Package, CalendarClock, Flag, Building2, Layers, WifiOff, Map, Truck, History, Link as LinkIcon, ShoppingBasket } from 'lucide-react';
 import type { FetchMorrisonsDataOutput, DeliveryInfo, Order } from '@/lib/morrisons-api';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -342,6 +342,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <DataRow icon={<Barcode />} label="SKU" value={`${product.sku} (EAN: ${product.primaryEan13 || product.scannedSku}) ${product.stockSkuUsed ? `(Stock SKU: ${product.stockSkuUsed})` : ''}`} />
                           <DataRow icon={<Info />} label="Status" value={product.status} />
+                           <DataRow icon={<ShoppingBasket />} label="Classification" value={product.productDetails?.commercialHierarchy?.groupName?.replace(/^\d+\s/, '')} />
                           <DataRow icon={<Footprints />} label="Walk Sequence" value={product.productDetails.legacyItemNumbers} />
                           <DataRow icon={<Tag />} label="Promo Location" value={product.location.promotional} />
                           <DataRow icon={<Crown />} label="Brand" value={product.productDetails.brand} />
@@ -389,7 +390,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                             </AccordionItem>
                             {product.productDetails.commercialHierarchy && (
                                <AccordionItem value="classification">
-                                  <AccordionTrigger className='py-2 text-xs font-semibold'>Classification</AccordionTrigger>
+                                  <AccordionTrigger className='py-2 text-xs font-semibold'>Full Hierarchy</AccordionTrigger>
                                   <AccordionContent className="pt-2">
                                      <p className="text-xs">
                                         {
@@ -399,8 +400,7 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
                                             product.productDetails.commercialHierarchy.departmentName,
                                             product.productDetails.commercialHierarchy.className,
                                             product.productDetails.commercialHierarchy.subclassName,
-                                          ].filter(Boolean).map(s => s?.replace(/^\d+\s/, '')).join(' → ')
-                                        }
+                                          ].filter(Boolean).map(s => s?.replace(/^\d+\s/, '')).join(' → ')}
                                       </p>
                                   </AccordionContent>
                                </AccordionItem>
@@ -496,3 +496,5 @@ export default function ProductCard({ product, layout, onPick, isPicker = false,
     </Collapsible>
   );
 }
+
+    
