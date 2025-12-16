@@ -48,6 +48,7 @@ import { setDocumentNonBlocking } from '@/src/firebase/non-blocking-updates';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 
 // TYPES
@@ -973,58 +974,6 @@ export default function PickingListClient() {
     }
   };
 
-  const handleDailyReportExport = (dateKey: string) => {
-    const ordersForDay = Object.values(groupedOrders[dateKey] || {}).flat();
-    if (ordersForDay.length === 0) {
-      toast({ variant: 'destructive', title: 'No Orders', description: 'No orders to export for this day.' });
-      return;
-    }
-
-    const productSummary: Record<string, { name: string; location: string; total: number; orders: Set<string>; details: Product | null }> = {};
-
-    ordersForDay.forEach(order => {
-      order.products.forEach(product => {
-        if (!productSummary[product.sku]) {
-          productSummary[product.sku] = {
-            name: product.name,
-            location: product.details?.location.standard || 'N/A',
-            total: 0,
-            orders: new Set<string>(),
-            details: product.details || null
-          };
-        }
-        productSummary[product.sku].total += product.quantity;
-        productSummary[product.sku].orders.add(order.id);
-      });
-    });
-
-    const csvHeader = "Name,SKU,Location,TotalOrdered,OrderCount\n";
-    const csvRows = Object.entries(productSummary).map(([sku, summary]) => {
-      const row = [
-        `"${summary.name.replace(/"/g, '""')}"`,
-        sku,
-        `"${summary.location.replace(/"/g, '""')}"`,
-        summary.total,
-        summary.orders.size
-      ];
-      return row.join(',');
-    });
-
-    const csvContent = csvHeader + csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `daily_order_report_${dateKey}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-     toast({ title: 'Exporting Report', description: `A CSV report for ${dateKey} is being downloaded.` });
-  }
-
   if (activeOrder) {
     return (
         <main className="container mx-auto px-4 py-8 md:py-12">
@@ -1379,13 +1328,15 @@ export default function PickingListClient() {
                                     <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                             <Button variant="outline" size="sm" onClick={() => handleDailyReportExport(dateKey)}>
-                                                <FileDown className="mr-2 h-4 w-4" />
-                                                Daily Report
+                                             <Button variant="outline" size="sm" asChild>
+                                                <Link href={`/picking/report/${dateKey}`}>
+                                                    <FileDown className="mr-2 h-4 w-4" />
+                                                    Daily Report
+                                                </Link>
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>Export a CSV summary of all products ordered for this day.</p>
+                                            <p>View an aggregated report of all products ordered for this day.</p>
                                         </TooltipContent>
                                     </Tooltip>
                                     </TooltipProvider>
