@@ -1,68 +1,32 @@
-
-'use server';
-/**
- * @fileOverview An AI flow for validating a shelf's layout against a planogram.
- *
- * - planogramFlow - A function that takes two images and returns the differences.
- */
-
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+// 'use server';
 import { PlanogramInputSchema, PlanogramOutputSchema, type PlanogramInput, type PlanogramOutput } from './planogram-types';
 
-
-const planogramPrompt = ai.definePrompt({
-    name: 'planogramPrompt',
-    input: { schema: PlanogramInputSchema },
-    output: { schema: PlanogramOutputSchema },
-    prompt: `You are an expert at retail planogram compliance and analysis. You will be given one or two images.
-
-{{#if shelfImageDataUri}}
-## Two-Image Comparison Task
-
-You have been given two images:
-1.  **The Planogram**: An official document showing what *should* be on the shelf.
-2.  **The Shelf Photo**: A photo of the actual shelf.
-
-Your tasks are:
-1.  **Analyze the Planogram**: Identify every product on the planogram. For each, extract its name, SKU, and EAN (if visible), which shelf it's on (1 is the top shelf), and its position from the left (1 is the leftmost).
-
-2.  **Analyze the Shelf Photo**: Identify every product on the shelf by its **packaging and appearance**. For each product you identify, extract its name, SKU, and EAN (if you can discern it), and determine its shelf and position.
-
-3.  **Compare and Consolidate**: Compare the list from the planogram to the list from the shelf. You must intelligently match products even if the names are slightly different (e.g., 'GU Hot Choc Puds 2x80G' on the planogram and 'GU Hot Chocolate Puddings' on the shelf are the same). The SKU or EAN is the best unique identifier. Generate a single 'comparisonResults' list with a status for each item:
-    - **Correct**: The product is on the correct shelf and position.
-    - **Misplaced**: The product is on the shelf, but on the wrong shelf or in the wrong position.
-    - **Missing**: The product is on the planogram but cannot be found on the shelf. If you identify a gap where a product should be, you must use the planogram data to determine which product is missing and include its name and SKU in the result.
-    - **Extra**: The product is on the shelf but is not on the planogram.
-
-4. For each item in your result, provide the product name, SKU, EAN (if available), expected location (if any), and actual location (if any).
-
-Planogram Image:
-{{media url=planogramImageDataUri}}
-
-Shelf Image:
-{{media url=shelfImageDataUri}}
-
-{{else}}
-## Single Planogram Analysis Task
-
-You have been given a single image of a planogram. Your task is to extract product information from it.
-
-Your tasks are:
-1.  **Check for Circled Items**: First, determine if any items on the planogram have been circled or otherwise highlighted by a user.
-2.  **Extract Products**:
-    - **If items are circled**: Identify *only* the products that are circled.
-    - **If NO items are circled**: Identify *all* products on the entire planogram.
-3.  **Generate Results**: For each product you identify, extract its name, SKU, EAN, and its location (which shelf it's on, and its position from the left). Return this as a 'comparisonResults' list. For every item, set the 'status' field to **'Listed'**.
-
-Planogram Image:
-{{media url=planogramImageDataUri}}
-{{/if}}
-`,
-});
-
-
 export async function planogramFlow(input: PlanogramInput): Promise<PlanogramOutput> {
-  const { output } = await planogramPrompt(input);
-  return output!;
+    console.log('Mock planogramFlow called');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    return {
+        comparisonResults: [
+            {
+                status: 'Correct',
+                productName: 'Mock Correct Item',
+                sku: '111111',
+                ean: '111111',
+                expectedShelf: 1,
+                expectedPosition: 1,
+                actualShelf: 1,
+                actualPosition: 1,
+            },
+            {
+                status: 'Missing',
+                productName: 'Mock Missing Item',
+                sku: '222222',
+                ean: '222222',
+                expectedShelf: 1,
+                expectedPosition: 2,
+                actualShelf: null,
+                actualPosition: null,
+            }
+        ]
+    };
 }

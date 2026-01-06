@@ -8,9 +8,21 @@ const withPWA = require('next-pwa')({
     disable: process.env.NODE_ENV === 'development',
 });
 
+// GitHub Pages configuration
+const isGitHubPages = process.env.GITHUB_PAGES === 'true';
+const repoName = 'Morricards'; // Your repository name
 
 const nextConfig = {
+    // Enable static export for GitHub Pages
+    output: 'export',
+    
+    // Set basePath and assetPrefix for GitHub Pages
+    basePath: isGitHubPages ? `/${repoName}` : '',
+    assetPrefix: isGitHubPages ? `/${repoName}/` : '',
+    
+    // Disable image optimization (requires server)
     images: {
+        unoptimized: true,
         remotePatterns: [
             {
                 protocol: 'https',
@@ -30,15 +42,9 @@ const nextConfig = {
             },
         ],
     },
-    experimental: {
-      serverActions: {
-        // Allow returning closures or functions from server actions
-        // This is needed for the cookie clearing action in settings
-        allowedForwardedHosts: ['localhost'],
-        allowedOrigins: ['localhost:3000'],
-        bodySizeLimit: '4.5mb',
-      },
-    },
+    
+    // Trailing slash for static hosting compatibility
+    trailingSlash: true,
 };
 
 module.exports = withPWA(nextConfig);

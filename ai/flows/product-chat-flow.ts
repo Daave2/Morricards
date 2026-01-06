@@ -1,67 +1,12 @@
-
-'use server';
-/**
- * @fileOverview A conversational AI flow for answering questions about a product.
- */
-
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
-import type { ProductChatInput, ProductChatOutput, ChatMessage } from './product-chat-types';
-import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
-import { findAisleForProductTool } from './aisle-finder-flow';
-
-const systemPrompt = `You are a friendly and knowledgeable Morrisons AI shopping assistant.
-Your goal is to answer questions from a store colleague about a specific product.
-You have been provided with the product's full data in JSON format and the conversation history.
-
-Use the provided product data as your primary source of truth. If the answer is not in the data, it's okay to say you don't know, but you can also use your general knowledge to provide helpful, related information (e.g., recipe ideas, common uses).
-
-If the user asks where to find the primary product, or any other product category including cross-sell items, you MUST use the 'findAisleForProduct' tool to get the aisle number.
-
-IMPORTANT: If the user asks a generic location question like 'where can I find it?', assume 'it' refers to the primary product for which you have the data. Use that product's category (e.g., from the 'commercialHierarchy') with the 'findAisleForProduct' tool.
-
-Keep your answers concise, helpful, and easy to understand.
-
-Full Product Data:
-\`\`\`json
-{{{json productData}}}
-\`\`\`
-`;
+// 'use server';
+import type { ProductChatInput, ProductChatOutput } from './product-chat-types';
+// import { findAisleForProductTool } from './aisle-finder-flow'; // Disabled
 
 export async function productChatFlow(input: ProductChatInput): Promise<ProductChatOutput> {
-  const { productData, messages, locationId } = input;
-
-  const prompt = ai.definePrompt({
-    name: 'productChatPrompt',
-    system: systemPrompt,
-    tools: [findAisleForProductTool],
-    input: {
-      schema: z.object({
-        productData: z.custom<FetchMorrisonsDataOutput[0]>(),
-        locationId: z.string().optional(),
-      }),
-    },
-    output: { schema: z.object({ response: z.string() }) },
-    // Convert the simple chat history into the format Genkit expects.
-    messages: [
-      ...messages.map(msg => ({
-        role: msg.role,
-        content: [{ text: msg.content }],
-      })),
-    ]
-  });
-
-  // Sanitize the complex product data object before passing it to the prompt.
-  const sanitizedProductData = JSON.parse(JSON.stringify(productData));
-
-  const llmResponse = await prompt({
-    productData: sanitizedProductData,
-    locationId,
-  });
-  
-  const output = llmResponse.output || { response: "I'm sorry, I couldn't generate a response." };
+  console.log('Mock productChatFlow called');
+  await new Promise(resolve => setTimeout(resolve, 800));
 
   return {
-    response: output.response,
+    response: "I'm a mock AI assistant running in a static deployment. I can't process real data right now, but I hope you're having a great day!",
   };
 }

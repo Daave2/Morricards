@@ -3,7 +3,7 @@
  * @fileOverview Shared types for the planogram validation flow.
  */
 
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export const PlanogramInputSchema = z.object({
   planogramImageDataUri: z
@@ -21,22 +21,22 @@ export const PlanogramInputSchema = z.object({
 export type PlanogramInput = z.infer<typeof PlanogramInputSchema>;
 
 export const ProductOnPlanSchema = z.object({
-    sku: z.string().nullable(),
-    productName: z.string(),
-    shelf: z.number().describe("The shelf number, counting from the top (1 is the top shelf)."),
-    position: z.number().describe("The position on the shelf, from left to right (1 is a leftmost)."),
+  sku: z.string().nullable(),
+  productName: z.string(),
+  shelf: z.number().describe("The shelf number, counting from the top (1 is the top shelf)."),
+  position: z.number().describe("The position on the shelf, from left to right (1 is a leftmost)."),
 });
 export type ProductOnPlan = z.infer<typeof ProductOnPlanSchema>;
 
 export const ComparisonResultSchema = z.object({
-    status: z.enum(['Correct', 'Misplaced', 'Missing', 'Extra', 'Listed']),
-    productName: z.string(),
-    sku: z.string().nullable(),
-    ean: z.string().nullable().describe("The EAN barcode number, if available."),
-    expectedShelf: z.number().nullable(),
-    expectedPosition: z.number().nullable(),
-    actualShelf: z.number().nullable(),
-    actualPosition: z.number().nullable(),
+  status: z.enum(['Correct', 'Misplaced', 'Missing', 'Extra', 'Listed']),
+  productName: z.string(),
+  sku: z.string().nullable(),
+  ean: z.string().nullable().describe("The EAN barcode number, if available."),
+  expectedShelf: z.number().nullable(),
+  expectedPosition: z.number().nullable(),
+  actualShelf: z.number().nullable(),
+  actualPosition: z.number().nullable(),
 });
 export type ComparisonResult = z.infer<typeof ComparisonResultSchema>;
 

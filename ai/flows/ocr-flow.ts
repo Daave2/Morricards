@@ -1,15 +1,5 @@
-
-'use server';
-/**
- * @fileOverview An AI flow for performing Optical Character Recognition (OCR) on product labels.
- *
- * - ocrFlow - A function that takes an image data URI and extracts EAN or SKU numbers.
- * - OcrFlowInput - The input type for the ocrFlow function.
- * - OcrFlowOutput - The return type for the ocrFlow function.
- */
-
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+// 'use server';
+import { z } from 'zod';
 
 const OcrFlowInputSchema = z.object({
   imageDataUri: z
@@ -27,19 +17,7 @@ export type OcrFlowOutput = z.infer<typeof OcrFlowOutputSchema>;
 
 
 export async function ocrFlow(input: OcrFlowInput): Promise<OcrFlowOutput> {
-  const prompt = ai.definePrompt({
-    name: 'ocrPrompt',
-    input: { schema: OcrFlowInputSchema },
-    output: { schema: OcrFlowOutputSchema },
-    prompt: `You are an expert at reading product labels to find barcodes and product numbers. Analyze the following image.
-Your task is to identify and extract any EAN (a 13-digit number) or an internal SKU (a 7 to 10-digit number).
-
-Prioritize the 13-digit EAN if you find one. If not, look for a valid SKU. If you find multiple numbers, return only the most prominent and likely candidate.
-If no plausible EAN or SKU is visible, return null for the 'eanOrSku' field.
-
-Image: {{media url=imageDataUri}}`,
-  });
-
-  const { output } = await prompt(input);
-  return output!;
+  console.log('Mock ocrFlow called');
+  // Return a dummy SKU
+  return { eanOrSku: "123456" };
 }

@@ -3,7 +3,7 @@
  * @fileOverview Shared types and schemas for the price validator flow.
  */
 
-import { z } from 'genkit';
+import { z } from 'zod';
 import type { FetchMorrisonsDataOutput } from '@/lib/morrisons-api';
 
 
