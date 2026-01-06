@@ -10,16 +10,17 @@ const withPWA = require('next-pwa')({
 
 // GitHub Pages configuration
 const isGitHubPages = process.env.GITHUB_PAGES === 'true';
-const repoName = 'Morricards'; // Your repository name
+const repoName = process.env.REPO_NAME || 'Morricards';
 
 const nextConfig = {
     // Enable static export for GitHub Pages
     output: 'export',
-    
-    // Set basePath and assetPrefix for GitHub Pages
+
+    // Set basePath for GitHub Pages
     basePath: isGitHubPages ? `/${repoName}` : '',
-    assetPrefix: isGitHubPages ? `/${repoName}/` : '',
-    
+    // assetPrefix is automatically handled by basePath for same-domain serving
+
+
     // Disable image optimization (requires server)
     images: {
         unoptimized: true,
@@ -42,7 +43,7 @@ const nextConfig = {
             },
         ],
     },
-    
+
     // Trailing slash for static hosting compatibility
     trailingSlash: true,
 };

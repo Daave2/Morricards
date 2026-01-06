@@ -1,12 +1,10 @@
 // 'use server';
-import type { ProductChatInput, ProductChatOutput } from './product-chat-types';
-// import { findAisleForProductTool } from './aisle-finder-flow'; // Disabled
+import { z } from 'zod';
 
-export async function productChatFlow(input: ProductChatInput): Promise<ProductChatOutput> {
-  console.log('Mock productChatFlow called');
-  await new Promise(resolve => setTimeout(resolve, 800));
-
+export async function productChatFlow(input: any) {
+  console.log('productChatFlow called (Disabled)');
+  // Simulate unavailability
   return {
-    response: "I'm a mock AI assistant running in a static deployment. I can't process real data right now, but I hope you're having a great day!",
+    response: "Chat features are disabled in this static demo.",
   };
 }

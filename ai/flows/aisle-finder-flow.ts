@@ -16,6 +16,6 @@ const AisleFinderOutputSchema = z.object({
 
 // Mock Tool Function
 export const findAisleForProductTool = async (input: { productCategory: string }) => {
-  console.log('Mock findAisleForProductTool called with:', input);
-  return { bestAisleId: "10" };
+  console.log('findAisleForProductTool called (Disabled)');
+  return { bestAisleId: null };
 };

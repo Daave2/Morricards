@@ -3,19 +3,10 @@ import { z } from 'zod';
 import { PriceTicketValidationOutputSchema, OcrDataSchema, type PriceTicketValidationOutput } from './price-validator-types';
 
 export const priceTicketOcrPrompt = async (input: { imageDataUri: string }) => {
-  console.log('Mock priceTicketOcrPrompt called');
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  console.log('priceTicketOcrPrompt called (Disabled)');
+  // Disabled: return empty result
   return {
-    output: [
-      {
-        productName: "Mock Product",
-        productSubName: "100g",
-        mainPrice: "£1.00",
-        promotionalOffer: null,
-        unitPrice: "£1.00 per 100g",
-        eanOrSku: "123456"
-      }
-    ]
+    output: []
   };
 };
 
@@ -32,21 +23,13 @@ const SingleTicketValidationInputSchema = z.object({
 });
 
 export async function validatePriceTicket(input: z.infer<typeof SingleTicketValidationInputSchema>): Promise<PriceTicketValidationOutput> {
-  console.log('Mock validatePriceTicket called');
-  await new Promise(resolve => setTimeout(resolve, 500));
-
+  console.log('validatePriceTicket called (Disabled)');
   const { ocrData } = input;
 
-  // Return a mock success response
   return {
-    isCorrect: true,
-    mismatchReason: null,
+    isCorrect: false,
+    mismatchReason: "Validation is disabled in this static demo.",
     ocrData,
-    product: {
-      sku: ocrData.eanOrSku || "123456",
-      name: ocrData.productName || "Mock Product",
-      price: { regular: 1.00 },
-      // ... other mock fields as needed
-    } as any,
+    product: null,
   };
 }

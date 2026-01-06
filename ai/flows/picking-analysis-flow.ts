@@ -2,21 +2,19 @@
 import { z } from 'zod';
 
 export const ocrPrompt = async (input: { imageDataUri: string }) => {
-  console.log('Mock ocrPrompt called');
-  await new Promise(resolve => setTimeout(resolve, 500));
+  console.log('ocrPrompt called (Disabled)');
   return {
     output: {
-      skus: ['123456']
+      skus: []
     }
   };
 };
 
 export const pickerDiagnosisPrompt = async (input: { rawData: any }) => {
-  console.log('Mock pickerDiagnosisPrompt called');
-  await new Promise(resolve => setTimeout(resolve, 500));
+  console.log('pickerDiagnosisPrompt called (Disabled)');
   return {
     output: {
-      diagnosticSummary: "Stock is clear, delivery due tomorrow."
+      diagnosticSummary: ""
     }
   };
 };
